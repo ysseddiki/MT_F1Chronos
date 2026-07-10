@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Threading;
 using MT_F1Chronos.App.Native;
 using MT_F1Chronos.App.Windows;

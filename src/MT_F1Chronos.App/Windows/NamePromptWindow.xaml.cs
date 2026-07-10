@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 
 namespace MT_F1Chronos.App.Windows;
 
@@ -25,12 +27,12 @@ public partial class NamePromptWindow : Window
                 Content = name,
                 Margin = new Thickness(0, 0, 6, 6),
                 Padding = new Thickness(8, 4, 8, 4),
-                Background = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF2A2A34")!),
-                Foreground = System.Windows.Media.Brushes.White,
-                BorderBrush = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#44FFFFFF")!),
-                Cursor = System.Windows.Input.Cursors.Hand,
+                Background = new SolidColorBrush(
+                    (Color)ColorConverter.ConvertFromString("#FF2A2A34")!),
+                Foreground = Brushes.White,
+                BorderBrush = new SolidColorBrush(
+                    (Color)ColorConverter.ConvertFromString("#44FFFFFF")!),
+                Cursor = Cursors.Hand,
             };
             button.Click += (_, _) => NameBox.Text = name;
             SuggestionsPanel.Children.Add(button);

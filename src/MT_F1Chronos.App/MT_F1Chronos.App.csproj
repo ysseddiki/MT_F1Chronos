@@ -16,4 +16,10 @@
     <ProjectReference Include="..\MT_F1Chronos.Core\MT_F1Chronos.Core.csproj" />
   </ItemGroup>
 
+  <!-- WinForms is only used for the tray icon; keep it out of global usings to avoid WPF name clashes. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
 </Project>
