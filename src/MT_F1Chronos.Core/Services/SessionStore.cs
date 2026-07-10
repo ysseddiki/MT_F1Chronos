@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MT_F1Chronos.Core.Models;
+using MT_F1Chronos.Core.Telemetry;
 
 namespace MT_F1Chronos.Core.Services;
 
