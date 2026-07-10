@@ -25,13 +25,20 @@ public sealed class LeaderboardRow
     public string FormattedTime { get; init; } = "--:--.---";
 }
 
+public sealed class TrackSummary
+{
+    public int TrackId { get; init; }
+    public string TrackName { get; init; } = string.Empty;
+    public int ScoreCount { get; init; }
+}
+
 public sealed class OverlaySnapshot
 {
     public string TrackName { get; init; } = "—";
     public string CurrentSessionName { get; init; } = "—";
     public string CurrentBestFormatted { get; init; } = "--:--.---";
     public bool HasCurrentBest { get; init; }
-    public IReadOnlyList<LeaderboardRow> TopThree { get; init; } = [];
+    public IReadOnlyList<LeaderboardRow> TopFive { get; init; } = [];
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }
 }

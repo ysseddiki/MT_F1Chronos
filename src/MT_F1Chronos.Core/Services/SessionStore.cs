@@ -96,6 +96,15 @@ public sealed class SessionStore
         }
     }
 
+    public void RenameActiveSession(string name)
+    {
+        if (_activeSession is null || string.IsNullOrWhiteSpace(name))
+            return;
+
+        _activeSession.Name = name.Trim();
+        Save();
+    }
+
     public void CloseActiveSession()
     {
         if (_activeSession is null)
@@ -107,12 +116,35 @@ public sealed class SessionStore
         Save();
     }
 
-    public IReadOnlyList<LeaderboardRow> GetTopThree(int trackId, int count = 3)
+    public IReadOnlyList<LeaderboardRow> GetLeaderboard(int trackId, int count = 5)
+    {
+        return GetScoresForTrack(trackId).Take(count).ToList();
+    }
+
+    public IReadOnlyList<TrackSummary> GetTracksWithScores()
+    {
+        return _database.Sessions
+            .Where(s => s.BestLapMs.HasValue && s.BestLapMs > 0)
+            .GroupBy(s => s.TrackId)
+            .Select(g =>
+            {
+                var latest = g.OrderByDescending(s => s.StartedAt).First();
+                return new TrackSummary
+                {
+                    TrackId = g.Key,
+                    TrackName = latest.TrackName,
+                    ScoreCount = g.Count(),
+                };
+            })
+            .OrderBy(t => t.TrackName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId)
     {
         return _database.Sessions
             .Where(s => s.TrackId == trackId && s.BestLapMs.HasValue && s.BestLapMs > 0)
             .OrderBy(s => s.BestLapMs)
-            .Take(count)
             .Select((s, i) => new LeaderboardRow
             {
                 Rank = i + 1,
@@ -150,8 +182,8 @@ public sealed class SessionStore
 
     public OverlaySnapshot BuildSnapshot(TelemetryState state)
     {
-        var topThree = state.TrackId >= 0
-            ? GetTopThree(state.TrackId)
+        var topFive = state.TrackId >= 0
+            ? GetLeaderboard(state.TrackId)
             : [];
 
         var currentBest = _activeSession?.BestLapMs ?? state.EffectiveBestLapMs;
@@ -164,7 +196,7 @@ public sealed class SessionStore
                 ? LapTimeFormatter.Format(currentBest.Value)
                 : "--:--.---",
             HasCurrentBest = currentBest.HasValue && currentBest > 0,
-            TopThree = topThree,
+            TopFive = topFive,
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,
             IsTimeTrial = state.IsTimeTrial,

@@ -9,9 +9,10 @@ public partial class NamePromptWindow : Window
 {
     public string SessionName => NameBox.Text;
 
-    public NamePromptWindow(string defaultName, IReadOnlyList<string> recentNames, string trackName)
+    public NamePromptWindow(string defaultName, IReadOnlyList<string> recentNames, string trackName, bool isRename = false)
     {
         InitializeComponent();
+        TitleText.Text = isRename ? "Renommer le chrono" : "Nouveau chrono";
         NameBox.Text = defaultName;
         TrackHintText.Text = $"Circuit : {trackName}";
         Loaded += (_, _) =>

@@ -1,24 +1,77 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
-using MT_F1Chronos.App.Native;
+using MT_F1Chronos.App.Services;
 using MT_F1Chronos.Core.Models;
+using Application = System.Windows.Application;
 
 namespace MT_F1Chronos.App.Windows;
 
 public partial class OverlayWindow : Window
 {
-    public OverlayWindow(AppSettings settings)
+    private readonly AppController _controller;
+    private HwndSource? _hwndSource;
+
+    public OverlayWindow(AppSettings settings, AppController controller)
     {
+        _controller = controller;
         InitializeComponent();
         Width = settings.OverlayWidth;
-        Loaded += OnLoaded;
+
+        SourceInitialized += OnSourceInitialized;
+        Closed += OnClosed;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private void OnSourceInitialized(object? sender, EventArgs e)
     {
-        ClickThroughHelper.EnableClickThrough(this);
+        _hwndSource = (HwndSource)PresentationSource.FromVisual(this)!;
+        _hwndSource.AddHook(WndProc);
+        HotKeyHelper.Register(_hwndSource.Handle);
     }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == HotKeyHelper.WmHotKey && wParam == (IntPtr)HotKeyHelper.NewSessionId)
+        {
+            _controller.RequestRename();
+            handled = true;
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        if (_hwndSource is not null)
+        {
+            HotKeyHelper.Unregister(_hwndSource.Handle);
+            _hwndSource.RemoveHook(WndProc);
+        }
+    }
+
+    private void OnHeaderDrag(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+            DragMove();
+    }
+
+    private void OnMenuButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (MenuButton.ContextMenu is ContextMenu menu)
+        {
+            menu.PlacementTarget = MenuButton;
+            menu.IsOpen = true;
+        }
+    }
+
+    private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.RequestRename();
+    private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
+    private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
+    private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
+    private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
+    private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
 
     public void UpdateSnapshot(OverlaySnapshot snapshot)
     {
@@ -26,16 +79,16 @@ public partial class OverlayWindow : Window
         SessionNameText.Text = snapshot.CurrentSessionName;
         CurrentBestText.Text = snapshot.CurrentBestFormatted;
 
-        TopThreePanel.Children.Clear();
+        TopFivePanel.Children.Clear();
 
-        if (snapshot.TopThree.Count == 0)
+        if (snapshot.TopFive.Count == 0)
         {
-            TopThreePanel.Children.Add(CreateRow("—", "Aucun chrono", "--:--.---", false));
+            TopFivePanel.Children.Add(CreateRow("—", "Aucun chrono", "--:--.---", false));
         }
         else
         {
-            foreach (var row in snapshot.TopThree)
-                TopThreePanel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true));
+            foreach (var row in snapshot.TopFive)
+                TopFivePanel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true));
         }
 
         StatusText.Text = snapshot.IsConnected

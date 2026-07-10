@@ -4,7 +4,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>MT_F1Chronos.App</RootNamespace>
@@ -14,12 +13,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MT_F1Chronos.Core\MT_F1Chronos.Core.csproj" />
-  </ItemGroup>
-
-  <!-- WinForms is only used for the tray icon; keep it out of global usings to avoid WPF name clashes. -->
-  <ItemGroup>
-    <Using Remove="System.Windows.Forms" />
-    <Using Remove="System.Drawing" />
   </ItemGroup>
 
 </Project>

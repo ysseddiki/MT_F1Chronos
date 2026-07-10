@@ -1,17 +1,18 @@
 # MT_F1Chronos
 
-Overlay PC pour **EA Sports F1 25** affichant le **TOP 3** de tes chronos nommés et ton **meilleur tour** de la session en cours.
+Overlay PC pour **EA Sports F1 25** affichant le **TOP 5** de tes chronos nommés et ton **meilleur tour** de la session en cours.
 
 ![Placement overlay](docs/overlay-preview.jpg)
 
 ## Fonctionnalités
 
-- Overlay toujours visible, **click-through** (ne bloque pas la conduite)
+- Overlay visible dans la **barre des tâches** (fenêtre principale, plus d'icône tray)
 - Positionné en **haut-droite**, sous le panneau de chrono du jeu
+- **Menu burger** cliquable : renommer, tous les scores, taille, quitter
+- Affichage du **TOP 5** par circuit + **ton meilleur tour** actuel
 - À chaque session chrono : popup pour **nommer la session**
-- Affichage du **TOP 3** par circuit + **ton meilleur tour** actuel
 - Raccourci global `Ctrl+Shift+N` pour renommer / créer un chrono
-- Icône dans la barre des tâches (system tray)
+- Déplacement de l'overlay par **glisser-déposer** sur l'en-tête
 
 ## Prérequis
 
@@ -44,17 +45,26 @@ L'exécutable se trouve dans :
 ## Utilisation
 
 1. Lancer `MT_F1Chronos.exe`
-2. Lancer F1 25 et démarrer une session **Chrono / Time Trial**
-3. Nommer la session dans la popup
-4. L'overlay affiche le TOP 3 + ton meilleur tour
+2. L'overlay apparaît en haut-droite et dans la barre des tâches
+3. Lancer F1 25 et démarrer une session **Chrono / Time Trial**
+4. Nommer la session dans la popup
+5. L'overlay affiche le TOP 5 + ton meilleur tour
 
-### Raccourcis & tray
+### Menu burger (☰)
 
-| Action | Raccourci / Menu |
+| Action | Description |
 |---|---|
-| Nouveau nom de chrono | `Ctrl+Shift+N` |
-| Repositionner l'overlay | Clic droit tray → Repositionner |
-| Quitter | Clic droit tray → Quitter |
+| Changer le nom | Renomme la session active ou en crée une nouvelle |
+| Tous les scores | Scores par circuit, navigation ◀ ▶ entre les circuits |
+| Taille de l'overlay | Petit (220px) / Moyen (268px) / Grand (340px) |
+| Quitter | Ferme l'application |
+
+### Raccourcis
+
+| Action | Raccourci |
+|---|---|
+| Renommer / nouveau chrono | `Ctrl+Shift+N` |
+| Déplacer l'overlay | Glisser l'en-tête (nom du circuit) |
 
 ## Personnalisation position
 
@@ -80,11 +90,11 @@ Les sessions sont sauvegardées dans :
 
 ```
 MT_F1Chronos.Core   → Télémétrie UDP F1 25, parsing, stockage JSON
-MT_F1Chronos.App    → Overlay WPF, popup nom, tray, hotkeys
+MT_F1Chronos.App    → Overlay WPF, popup nom, menu, hotkeys
 ```
 
 ## Limites
 
 - Ne modifie pas l'UI native du jeu (overlay externe uniquement)
-- Le TOP 3 regroupe tes sessions **nommées** avec un meilleur tour enregistré
+- Le TOP 5 regroupe tes sessions **nommées** avec un meilleur tour enregistré
 - Nécessite la télémétrie UDP activée dans F1 25
