@@ -1,6 +1,7 @@
 using System.Windows;
 using MT_F1Chronos.App.Services;
 using MT_F1Chronos.App.Windows;
+using Application = System.Windows.Application;
 
 namespace MT_F1Chronos.App;
 
