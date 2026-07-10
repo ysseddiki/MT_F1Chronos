@@ -1,0 +1,78 @@
+<Window x:Class="MT_F1Chronos.App.Windows.NamePromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nommer le chrono"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        Width="340"
+        SizeToContent="Height"
+        ShowInTaskbar="False">
+    <Border CornerRadius="6"
+            BorderThickness="1"
+            Padding="16">
+        <Border.Background>
+            <SolidColorBrush Color="#F0101018"/>
+        </Border.Background>
+        <Border.BorderBrush>
+            <SolidColorBrush Color="#FFE10600"/>
+        </Border.BorderBrush>
+        <StackPanel>
+            <TextBlock x:Name="TitleText"
+                       Text="Nouveau chrono"
+                       FontFamily="Segoe UI"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       Margin="0,0,0,4"/>
+            <TextBlock x:Name="TrackHintText"
+                       FontFamily="Segoe UI"
+                       FontSize="11"
+                       Foreground="#FFB0B8C8"
+                       Margin="0,0,0,12"/>
+
+            <TextBlock Text="Nom de la session"
+                       FontFamily="Segoe UI"
+                       FontSize="11"
+                       Foreground="#FFB0B8C8"
+                       Margin="0,0,0,4"/>
+            <TextBox x:Name="NameBox"
+                     FontFamily="Segoe UI"
+                     FontSize="14"
+                     Padding="8,6"
+                     Background="#FF1A1A24"
+                     Foreground="White"
+                     BorderBrush="#44FFFFFF"
+                     CaretBrush="White"
+                     Margin="0,0,0,10"/>
+
+            <TextBlock Text="Récents"
+                       FontFamily="Segoe UI"
+                       FontSize="10"
+                       Foreground="#88FFFFFF"
+                       Margin="0,0,0,4"/>
+            <WrapPanel x:Name="SuggestionsPanel" Margin="0,0,0,14"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Ignorer"
+                        Width="90"
+                        Height="32"
+                        Margin="0,0,8,0"
+                        Click="OnSkipClick"
+                        Background="#FF2A2A34"
+                        Foreground="White"
+                        BorderBrush="#44FFFFFF"/>
+                <Button Content="Valider"
+                        Width="90"
+                        Height="32"
+                        Click="OnConfirmClick"
+                        Background="#FFE10600"
+                        Foreground="White"
+                        BorderBrush="#FFE10600"
+                        IsDefault="True"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

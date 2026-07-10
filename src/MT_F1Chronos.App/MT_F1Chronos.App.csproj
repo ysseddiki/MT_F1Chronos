@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MT_F1Chronos.App</RootNamespace>
+    <ApplicationIcon></ApplicationIcon>
+    <AssemblyName>MT_F1Chronos</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MT_F1Chronos.Core\MT_F1Chronos.Core.csproj" />
+  </ItemGroup>
+
+</Project>
