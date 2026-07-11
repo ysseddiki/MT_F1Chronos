@@ -6,6 +6,7 @@ namespace MT_F1Chronos.Core.Telemetry;
 public sealed class UdpTelemetryListener : IDisposable
 {
     private readonly TelemetryState _state = new();
+    private readonly F1UdpPacketParser _parser = new();
     private UdpClient? _client;
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
@@ -14,6 +15,13 @@ public sealed class UdpTelemetryListener : IDisposable
     public event Action<Exception>? ErrorOccurred;
 
     public TelemetryState State => _state;
+    public F1UdpPacketParser Parser => _parser;
+
+    public void SetFormat(ushort format)
+    {
+        _parser.SetFormat(format);
+        _state.ConfiguredFormat = format;
+    }
 
     public void Start(int port = F1UdpConstants.DefaultPort)
     {
@@ -42,7 +50,7 @@ public sealed class UdpTelemetryListener : IDisposable
             try
             {
                 var result = await _client.ReceiveAsync(token);
-                if (F1UdpPacketParser.TryParse(result.Buffer, _state, out var update) && update is not null)
+                if (_parser.TryParse(result.Buffer, _state, out var update) && update is not null)
                     UpdateReceived?.Invoke(update);
             }
             catch (OperationCanceledException)

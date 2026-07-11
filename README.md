@@ -1,6 +1,6 @@
 # MT_F1Chronos
 
-Overlay PC pour **EA Sports F1 25/26** (format UDP **2026**) affichant le **TOP 5** par circuit, ton **tour en cours** et ton **meilleur tour**.
+Overlay PC pour **EA Sports F1 25/26** avec choix du format UDP **2025/2026**, affichant le **TOP 5** par circuit, ton **tour en cours** et ton **meilleur tour**.
 
 ![Placement overlay](docs/overlay-preview.jpg)
 
@@ -30,10 +30,10 @@ Dans le jeu : **Settings → Telemetry Settings**
 | UDP Telemetry | **On** |
 | UDP IP Address | `127.0.0.1` |
 | UDP Port | `20777` |
-| UDP Format | **`2026`** (valeur par défaut) |
+| UDP Format | **`2025`** pour F1 25, **`2026`** pour F1 26 |
 | UDP Send Rate | 20–60 Hz |
 
-> Le format **2026** est obligatoire — c'est celui utilisé par le parser de l'application.
+> Le format dans le jeu et dans l'overlay (menu ☰ → **Format UDP**) doivent correspondre.
 
 ## Compilation
 
@@ -81,6 +81,8 @@ Aucune popup ne s'affiche à chaque session — le nom du joueur est réutilisé
 | Changer le nom du joueur | Modifie ton identité pour les chronos |
 | Scores par circuit | Tous les scores du circuit, navigation ◀ ▶ |
 | Taille de l'overlay | Petit (220 px) / Moyen (268 px) / Grand (340 px) |
+| Format UDP | **2025** (F1 25) ou **2026** |
+| Diagnostic UDP | Ligne technique de debug |
 | Quitter | Ferme l'application |
 
 ### Raccourcis
@@ -96,6 +98,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 
 ```json
 {
+  "udpFormat": 2025,
   "udpPort": 20777,
   "overlayTop": 195,
   "overlayRight": 12,
@@ -106,6 +109,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 
 | Clé | Description |
 |---|---|
+| `udpFormat` | Format parser : **2025** ou **2026** (défaut 2025) |
 | `overlayTop` | Distance depuis le haut de l'écran (px) |
 | `overlayRight` | Distance depuis le bord droit (px) |
 | `overlayWidth` | Largeur de l'overlay (px) |
@@ -123,7 +127,7 @@ Les scores sont regroupés **par circuit**. Chaque session de chrono crée une e
 ## Architecture
 
 ```
-MT_F1Chronos.Core   → Télémétrie UDP F1 2026, parsing paquets, stockage JSON
+MT_F1Chronos.Core   → Télémétrie UDP F1 2025/2026, parsing paquets, stockage JSON
 MT_F1Chronos.App    → Overlay WPF, fenêtre nom joueur, menu burger, hotkeys
 ```
 
@@ -132,25 +136,27 @@ MT_F1Chronos.App    → Overlay WPF, fenêtre nom joueur, menu burger, hotkeys
 Active le mode diagnostic via le menu ☰ → **Diagnostic UDP**. Une ligne technique s'affiche sous le statut :
 
 ```
-UDP 2026 · pkt 2 · car 0 · trk 29 · lap 45.230 / best 44.891 · drv 1 · 18 pkt/s
+cfg 2025 · rx 2025 · pkt 2 · lapPkt 2 · car 0 · trk 2 (Shanghai) · lap 45.230 / best 44.891 · drv 1 · 18 pkt/s
 ```
 
 | Valeur | Signification | Valeur attendue |
 |---|---|---|
-| `UDP 2026` | Format paquet reçu | **2026** |
-| `pkt 2` | Dernier type de paquet (2 = Lap Data) | 1, 2 ou 14 en chrono |
+| `cfg 2025` | Format configuré dans l'overlay | doit = format jeu |
+| `rx 2025` | Format reçu du jeu | **2025** ou **2026** |
+| `pkt 2` | Dernier paquet reçu | varie |
+| `lapPkt 2` | Dernier paquet Lap Data | **2** en roulant |
 | `car 0` | Voiture détectée | 0 en solo |
-| `trk 29` | ID circuit brut | doit correspondre au circuit |
-| `lap …` | Tour en cours (ms) | augmente pendant le tour |
-| `best …` | Meilleur tour (ms) | se remplit après un tour complet |
-| `drv 1` | Statut pilote (1=vol, 4=piste) | 1 ou 4 en roulant |
-| `pkt/s` | Paquets UDP par seconde | > 10 si connecté |
+| `trk 2 (Shanghai)` | Circuit (ID + nom) | doit correspondre |
+| `lap …` | Tour en cours | augmente en roulant |
+| `best …` | Meilleur tour | se remplit après un tour |
+| `drv 1` | Statut pilote | 1, 2, 3 ou 4 en roulant |
+| `pkt/s` | Débit UDP | > 10 si connecté |
 
-Si `lap` et `best` restent `—` alors que `drv` est 1 ou 4, vérifie que le format UDP est bien **2026** et que tu es en session chrono active (pas dans les menus).
+Si `cfg` ≠ `rx`, change le **Format UDP** dans le menu. Si `lapPkt` reste 0 en roulant, vérifie le format.
 
 ## Limites
 
 - Ne modifie pas l'UI native du jeu (overlay externe uniquement)
-- Nécessite la télémétrie UDP activée avec le format **2026**
+- Nécessite la télémétrie UDP activée (format **2025** ou **2026** selon le jeu)
 - L'overlay couvre une petite zone de l'écran (boutons cliquables, non click-through)
 - Le TOP 5 affiche les sessions avec un meilleur tour enregistré sur le circuit en cours

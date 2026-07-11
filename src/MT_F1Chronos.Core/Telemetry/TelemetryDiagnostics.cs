@@ -2,11 +2,14 @@ namespace MT_F1Chronos.Core.Telemetry;
 
 public sealed class TelemetryDiagnostics
 {
+    public ushort ConfiguredFormat { get; init; }
     public ushort PacketFormat { get; init; }
     public byte LastPacketId { get; init; }
+    public byte LastLapDataPacketId { get; init; }
     public byte PlayerCarIndex { get; init; }
     public byte ResolvedCarIndex { get; init; }
     public int TrackId { get; init; }
+    public ushort TrackLengthMeters { get; init; }
     public byte DriverStatus { get; init; }
     public uint LastLapMs { get; init; }
     public uint CurrentLapMs { get; init; }
@@ -15,7 +18,8 @@ public sealed class TelemetryDiagnostics
     public string LastEventCode { get; init; } = "—";
 
     public string ToStatusLine() =>
-        $"UDP {PacketFormat} · pkt {LastPacketId} · car {ResolvedCarIndex} · trk {TrackId} · " +
+        $"cfg {ConfiguredFormat} · rx {PacketFormat} · pkt {LastPacketId} · lapPkt {LastLapDataPacketId} · " +
+        $"car {ResolvedCarIndex} · trk {TrackId} ({F1UdpConstants.GetTrackName(TrackId)}) · len {TrackLengthMeters}m · " +
         $"lap {FormatMs(CurrentLapMs)} / best {FormatMs(SessionBestMs)} · drv {DriverStatus} · {PacketsPerSecond} pkt/s";
 
     private static string FormatMs(uint ms)

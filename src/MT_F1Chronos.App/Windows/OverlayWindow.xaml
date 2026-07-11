@@ -57,6 +57,10 @@
                                 <MenuItem Header="Moyen" Click="OnSizeMediumClick"/>
                                 <MenuItem Header="Grand" Click="OnSizeLargeClick"/>
                             </MenuItem>
+                            <MenuItem Header="Format UDP">
+                                <MenuItem Header="2025 (F1 25)" Click="OnFormat2025Click"/>
+                                <MenuItem Header="2026" Click="OnFormat2026Click"/>
+                            </MenuItem>
                             <MenuItem Header="Diagnostic UDP" Click="OnDiagnosticsClick"/>
                             <Separator/>
                             <MenuItem Header="Quitter" Click="OnQuitClick"/>

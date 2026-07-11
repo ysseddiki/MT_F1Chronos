@@ -4,6 +4,9 @@ public sealed class AppSettings
 {
     public int UdpPort { get; set; } = 20777;
 
+    /// <summary>UDP packet format expected by the parser: 2025 or 2026.</summary>
+    public int UdpFormat { get; set; } = 2025;
+
     /// <summary>Distance from top of screen (px) — aligned below F1 timing panel.</summary>
     public double OverlayTop { get; set; } = 195;
 

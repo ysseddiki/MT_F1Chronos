@@ -61,4 +61,43 @@ public static class F1UdpConstants
 
     public static string GetTrackName(int trackId) =>
         TrackNames.TryGetValue(trackId, out var name) ? name : $"Circuit #{trackId}";
+
+    /// <summary>Resolve track ID using track length (metres) when the raw ID looks wrong.</summary>
+    public static int ResolveTrackId(int rawTrackId, ushort trackLengthMeters)
+    {
+        if (trackLengthMeters > 0 &&
+            TrackLengthToId.TryGetValue(trackLengthMeters, out var resolved))
+            return resolved;
+
+        return rawTrackId;
+    }
+
+    private static readonly Dictionary<ushort, int> TrackLengthToId = new()
+    {
+        [5273] = 0,   // Melbourne
+        [5451] = 2,   // Shanghai
+        [5412] = 3,   // Sakhir
+        [4675] = 4,   // Catalunya
+        [3337] = 5,   // Monaco
+        [4361] = 6,   // Montreal
+        [5891] = 7,   // Silverstone
+        [4381] = 9,   // Hungaroring
+        [7004] = 10,  // Spa
+        [5793] = 11,  // Monza
+        [5063] = 12,  // Singapore
+        [5807] = 13,  // Suzuka
+        [5281] = 14,  // Abu Dhabi
+        [5513] = 15,  // Texas
+        [4309] = 16,  // Brasil
+        [4318] = 17,  // Austria
+        [4304] = 19,  // Mexico
+        [6003] = 20,  // Baku
+        [4252] = 26,  // Zandvoort
+        [4954] = 27,  // Imola
+        [6174] = 29,  // Jeddah
+        [5417] = 30,  // Miami
+        [6201] = 31,  // Las Vegas
+        [5410] = 32,  // Losail
+        [5474] = 42,  // Madrid
+    };
 }

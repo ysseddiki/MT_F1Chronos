@@ -32,6 +32,7 @@ public sealed class AppController : IDisposable
         _dispatcher = Dispatcher.CurrentDispatcher;
         _settings = LoadSettings();
         _store.Load();
+        _listener.SetFormat((ushort)_settings.UdpFormat);
 
         _listener.UpdateReceived += OnTelemetryUpdate;
         _listener.ErrorOccurred += _ => { };
@@ -130,6 +131,15 @@ public sealed class AppController : IDisposable
         RefreshOverlay();
     }
 
+    public void SetUdpFormat(int format)
+    {
+        _settings.UdpFormat = format is 2026 ? 2026 : 2025;
+        _listener.SetFormat((ushort)_settings.UdpFormat);
+        _listener.State.ResetLapData();
+        SaveSettings();
+        RefreshOverlay();
+    }
+
     private void OnTelemetryUpdate(TelemetryUpdate update)
     {
         _dispatcher.BeginInvoke(() =>
@@ -168,7 +178,11 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        var snapshot = _store.BuildSnapshot(_listener.State, _settings.PlayerName, _settings.ShowDiagnostics);
+        var snapshot = _store.BuildSnapshot(
+            _listener.State,
+            _settings.PlayerName,
+            _listener.Parser,
+            _settings.ShowDiagnostics);
         _overlay.UpdateSnapshot(snapshot);
     }
 

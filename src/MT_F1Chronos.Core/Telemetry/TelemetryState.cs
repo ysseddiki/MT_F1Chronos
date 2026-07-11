@@ -6,12 +6,14 @@ public sealed class TelemetryState
     public DateTime LastPacketUtc { get; set; }
     public ulong SessionUid { get; set; }
     public int TrackId { get; set; } = -1;
+    public ushort TrackLengthMeters { get; set; }
     public byte SessionType { get; set; }
     public byte GameMode { get; set; }
     public byte PlayerCarIndex { get; set; }
     public byte ResolvedCarIndex { get; set; }
     public byte DriverStatus { get; set; }
     public ushort PacketFormat { get; set; }
+    public ushort ConfiguredFormat { get; set; }
     public byte LastPacketId { get; set; }
     public uint? SessionBestLapMs { get; set; }
     public uint? PersonalBestLapMs { get; set; }
