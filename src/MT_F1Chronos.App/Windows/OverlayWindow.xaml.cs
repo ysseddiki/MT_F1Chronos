@@ -72,6 +72,7 @@ public partial class OverlayWindow : Window
     private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
     private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
     private void OnDiagnosticsClick(object sender, RoutedEventArgs e) => _controller.ToggleDiagnostics();
+    private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
     private void OnFormat2025Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2025);
     private void OnFormat2026Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2026);
     private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();

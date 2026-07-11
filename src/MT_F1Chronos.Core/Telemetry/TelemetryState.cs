@@ -6,6 +6,7 @@ public sealed class TelemetryState
     public DateTime LastPacketUtc { get; set; }
     public ulong SessionUid { get; set; }
     public int TrackId { get; set; } = -1;
+    public int RawTrackId { get; set; } = -1;
     public ushort TrackLengthMeters { get; set; }
     public byte SessionType { get; set; }
     public byte GameMode { get; set; }

@@ -42,6 +42,22 @@ public sealed class SessionStore
     }
 
     public ChronoEntry? ActiveSession => _activeSession;
+    public string SessionsFilePath => _filePath;
+
+    public SessionStoreDebugInfo BuildDebugInfo()
+    {
+        return new SessionStoreDebugInfo
+        {
+            HasActiveSession = _activeSession is not null,
+            ActiveSessionName = _activeSession?.Name,
+            ActiveTrackId = _activeSession?.TrackId,
+            ActiveTrackName = _activeSession?.TrackName,
+            ActiveBestLapMs = _activeSession?.BestLapMs,
+            SessionsFilePath = _filePath,
+            TotalSessions = _database.Sessions.Count,
+            ScoredSessions = _database.Sessions.Count(s => s.BestLapMs is > 0),
+        };
+    }
 
     public void Load()
     {

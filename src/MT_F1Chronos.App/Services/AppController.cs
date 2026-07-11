@@ -22,6 +22,7 @@ public sealed class AppController : IDisposable
     private readonly AppSettings _settings;
 
     private OverlayWindow? _overlay;
+    private DebugWindow? _debugWindow;
     private bool _promptOpen;
 
     public AppSettings Settings => _settings;
@@ -131,6 +132,29 @@ public sealed class AppController : IDisposable
         RefreshOverlay();
     }
 
+    public void ShowDebugWindow()
+    {
+        if (_overlay is null)
+            return;
+
+        if (_debugWindow is { IsLoaded: true })
+        {
+            _debugWindow.Activate();
+            _debugWindow.Focus();
+            return;
+        }
+
+        _debugWindow = new DebugWindow(this)
+        {
+            Owner = _overlay,
+        };
+        _debugWindow.Closed += (_, _) => _debugWindow = null;
+        _debugWindow.Show();
+    }
+
+    public TelemetryDebugSnapshot BuildDebugSnapshot() =>
+        _listener.Parser.BuildDebugSnapshot(_listener.State, _store.BuildDebugInfo());
+
     public void SetUdpFormat(int format)
     {
         _settings.UdpFormat = format is 2026 ? 2026 : 2025;
@@ -219,6 +243,7 @@ public sealed class AppController : IDisposable
     {
         _store.CloseActiveSession();
         _listener.Dispose();
+        _debugWindow?.Close();
         _overlay?.Close();
     }
 }

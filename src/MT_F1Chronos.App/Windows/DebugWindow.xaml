@@ -1,0 +1,63 @@
+<Window x:Class="MT_F1Chronos.App.Windows.DebugWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Debug UDP"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        Width="560"
+        Height="640"
+        ShowInTaskbar="False">
+    <Border CornerRadius="6"
+            BorderThickness="1"
+            Padding="14">
+        <Border.Background>
+            <SolidColorBrush Color="#F0101018"/>
+        </Border.Background>
+        <Border.BorderBrush>
+            <SolidColorBrush Color="#FFE10600"/>
+        </Border.BorderBrush>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Text="Debug UDP"
+                       FontFamily="Segoe UI"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       Margin="0,0,0,10"/>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="SectionsPanel"/>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,12,0,0">
+                <Button Content="Exporter log"
+                        Width="110"
+                        Height="32"
+                        Margin="0,0,8,0"
+                        Click="OnExportClick"
+                        Background="#FF2A2A34"
+                        Foreground="White"
+                        BorderBrush="#44FFFFFF"/>
+                <Button Content="Fermer"
+                        Width="90"
+                        Height="32"
+                        Click="OnCloseClick"
+                        Background="#FF2A2A34"
+                        Foreground="White"
+                        BorderBrush="#44FFFFFF"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

@@ -62,6 +62,7 @@
                                 <MenuItem Header="2026" Click="OnFormat2026Click"/>
                             </MenuItem>
                             <MenuItem Header="Diagnostic UDP" Click="OnDiagnosticsClick"/>
+                            <MenuItem Header="Debug UDP" Click="OnDebugClick"/>
                             <Separator/>
                             <MenuItem Header="Quitter" Click="OnQuitClick"/>
                         </ContextMenu>
