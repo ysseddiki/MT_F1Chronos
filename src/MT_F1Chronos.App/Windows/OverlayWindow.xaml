@@ -57,6 +57,7 @@
                                 <MenuItem Header="Moyen" Click="OnSizeMediumClick"/>
                                 <MenuItem Header="Grand" Click="OnSizeLargeClick"/>
                             </MenuItem>
+                            <MenuItem Header="Diagnostic UDP" Click="OnDiagnosticsClick"/>
                             <Separator/>
                             <MenuItem Header="Quitter" Click="OnQuitClick"/>
                         </ContextMenu>
@@ -137,6 +138,14 @@
                        Foreground="#66FFFFFF"
                        Margin="0,8,0,0"
                        Text="En attente de F1 26…"/>
+
+            <TextBlock x:Name="DiagnosticsText"
+                       FontFamily="Consolas"
+                       FontSize="8"
+                       Foreground="#55FFFFFF"
+                       Margin="0,4,0,0"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed"/>
         </StackPanel>
     </Border>
 </Window>

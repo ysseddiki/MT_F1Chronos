@@ -123,6 +123,13 @@ public sealed class AppController : IDisposable
         window.ShowDialog();
     }
 
+    public void ToggleDiagnostics()
+    {
+        _settings.ShowDiagnostics = !_settings.ShowDiagnostics;
+        SaveSettings();
+        RefreshOverlay();
+    }
+
     private void OnTelemetryUpdate(TelemetryUpdate update)
     {
         _dispatcher.BeginInvoke(() =>
@@ -130,7 +137,9 @@ public sealed class AppController : IDisposable
             if (update.SessionEnded)
                 _store.CloseActiveSession();
 
-            if (update.State.TrackId >= 0)
+            if (update.TrackChanged)
+                TryEnsureActiveSession(update.State);
+            else if (update.State.TrackId >= 0 && _store.ActiveSession is null)
                 TryEnsureActiveSession(update.State);
 
             if (update.CompletedLapMs.HasValue)
@@ -159,7 +168,7 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        var snapshot = _store.BuildSnapshot(_listener.State, _settings.PlayerName);
+        var snapshot = _store.BuildSnapshot(_listener.State, _settings.PlayerName, _settings.ShowDiagnostics);
         _overlay.UpdateSnapshot(snapshot);
     }
 

@@ -12,6 +12,11 @@ public static class F1UdpConstants
     public const byte PacketLapData = 2;
     public const byte PacketEvent = 3;
     public const byte PacketTimeTrial = 14;
+    public const byte PacketSessionHistory = 11;
+
+    public const int LapDataDriverStatusOffset = 44;
+    public const int LapHistoryDataSize = 14;
+    public const int SessionHistoryLapDataOffset = 36;
 
     public const byte SessionTypeTimeTrial = 18;
     public const byte GameModeTimeTrial = 5;

@@ -127,6 +127,27 @@ MT_F1Chronos.Core   → Télémétrie UDP F1 2026, parsing paquets, stockage JSO
 MT_F1Chronos.App    → Overlay WPF, fenêtre nom joueur, menu burger, hotkeys
 ```
 
+### Diagnostic UDP
+
+Active le mode diagnostic via le menu ☰ → **Diagnostic UDP**. Une ligne technique s'affiche sous le statut :
+
+```
+UDP 2026 · pkt 2 · car 0 · trk 29 · lap 45.230 / best 44.891 · drv 1 · 18 pkt/s
+```
+
+| Valeur | Signification | Valeur attendue |
+|---|---|---|
+| `UDP 2026` | Format paquet reçu | **2026** |
+| `pkt 2` | Dernier type de paquet (2 = Lap Data) | 1, 2 ou 14 en chrono |
+| `car 0` | Voiture détectée | 0 en solo |
+| `trk 29` | ID circuit brut | doit correspondre au circuit |
+| `lap …` | Tour en cours (ms) | augmente pendant le tour |
+| `best …` | Meilleur tour (ms) | se remplit après un tour complet |
+| `drv 1` | Statut pilote (1=vol, 4=piste) | 1 ou 4 en roulant |
+| `pkt/s` | Paquets UDP par seconde | > 10 si connecté |
+
+Si `lap` et `best` restent `—` alors que `drv` est 1 ou 4, vérifie que le format UDP est bien **2026** et que tu es en session chrono active (pas dans les menus).
+
 ## Limites
 
 - Ne modifie pas l'UI native du jeu (overlay externe uniquement)

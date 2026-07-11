@@ -9,11 +9,18 @@ public sealed class TelemetryState
     public byte SessionType { get; set; }
     public byte GameMode { get; set; }
     public byte PlayerCarIndex { get; set; }
+    public byte ResolvedCarIndex { get; set; }
+    public byte DriverStatus { get; set; }
+    public ushort PacketFormat { get; set; }
+    public byte LastPacketId { get; set; }
     public uint? SessionBestLapMs { get; set; }
     public uint? PersonalBestLapMs { get; set; }
     public uint? CurrentLastLapMs { get; set; }
     public uint? CurrentLapTimeMs { get; set; }
     public string? LastEventCode { get; set; }
+
+    public bool IsOnTrack =>
+        DriverStatus is 1 or 2 or 4;
 
     public bool IsTimeTrial =>
         SessionType == F1UdpConstants.SessionTypeTimeTrial ||
@@ -24,15 +31,13 @@ public sealed class TelemetryState
     public uint? EffectiveBestLapMs =>
         SessionBestLapMs ?? PersonalBestLapMs ?? CurrentLastLapMs;
 
-    public void ResetForNewSession()
+    public void ResetLapData()
     {
         SessionBestLapMs = null;
         PersonalBestLapMs = null;
         CurrentLastLapMs = null;
         CurrentLapTimeMs = null;
-        TrackId = -1;
-        SessionType = 0;
-        GameMode = 0;
+        DriverStatus = 0;
     }
 }
 

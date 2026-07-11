@@ -13,4 +13,6 @@ public sealed class AppSettings
     public double OverlayWidth { get; set; } = 268;
 
     public string PlayerName { get; set; } = string.Empty;
+
+    public bool ShowDiagnostics { get; set; }
 }

@@ -206,7 +206,7 @@ public sealed class SessionStore
         return numbers.Max() + 1;
     }
 
-    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName)
+    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName, bool showDiagnostics = false)
     {
         var topFive = state.TrackId >= 0
             ? GetLeaderboard(state.TrackId)
@@ -214,6 +214,7 @@ public sealed class SessionStore
 
         var sessionBest = _activeSession?.BestLapMs ?? state.EffectiveBestLapMs;
         var currentLap = state.CurrentLapTimeMs;
+        var diagnostics = F1UdpPacketParser.BuildDiagnostics(state);
 
         return new OverlaySnapshot
         {
@@ -233,6 +234,8 @@ public sealed class SessionStore
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,
             IsTimeTrial = state.IsTimeTrial,
+            ShowDiagnostics = showDiagnostics,
+            DiagnosticsText = diagnostics.ToStatusLine(),
         };
     }
 }

@@ -71,6 +71,7 @@ public partial class OverlayWindow : Window
     private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
     private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
     private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
+    private void OnDiagnosticsClick(object sender, RoutedEventArgs e) => _controller.ToggleDiagnostics();
     private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
 
     public void UpdateSnapshot(OverlaySnapshot snapshot)
@@ -96,6 +97,11 @@ public partial class OverlayWindow : Window
         StatusText.Text = snapshot.IsConnected
             ? (snapshot.IsTimeTrial ? "Chrono actif" : snapshot.HasCurrentLap ? "Tour en cours" : "Connecté")
             : "En attente de F1 26…";
+
+        DiagnosticsText.Text = snapshot.DiagnosticsText;
+        DiagnosticsText.Visibility = snapshot.ShowDiagnostics
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private static UIElement CreateRow(string rank, string name, string time, bool hasData)

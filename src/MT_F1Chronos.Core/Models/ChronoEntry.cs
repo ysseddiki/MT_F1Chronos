@@ -43,4 +43,6 @@ public sealed class OverlaySnapshot
     public IReadOnlyList<LeaderboardRow> TopFive { get; init; } = [];
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }
+    public bool ShowDiagnostics { get; init; }
+    public string DiagnosticsText { get; init; } = string.Empty;
 }
