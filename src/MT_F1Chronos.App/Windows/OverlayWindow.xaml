@@ -50,7 +50,7 @@
                         Click="OnMenuButtonClick">
                     <Button.ContextMenu>
                         <ContextMenu Background="#FF1A1A24" Foreground="White" BorderBrush="#44FFFFFF">
-                            <MenuItem Header="Changer le nom" Click="OnRenameClick"/>
+                            <MenuItem Header="Changer le nom du joueur" Click="OnRenameClick"/>
                             <MenuItem Header="Scores par circuit" Click="OnScoresClick"/>
                             <MenuItem Header="Taille de l'overlay">
                                 <MenuItem Header="Petit" Click="OnSizeSmallClick"/>
@@ -75,7 +75,36 @@
 
             <Rectangle Height="1" Fill="#33FFFFFF" Margin="0,0,0,8"/>
 
-            <TextBlock Text="TON MEILLEUR"
+            <TextBlock Text="TOUR EN COURS"
+                       FontFamily="Segoe UI"
+                       FontSize="10"
+                       FontWeight="Bold"
+                       Foreground="#FF5E8BFF"
+                       Margin="0,0,0,4"/>
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="PlayerNameText"
+                           Grid.Column="0"
+                           FontFamily="Segoe UI"
+                           FontSize="12"
+                           Foreground="White"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="CurrentLapText"
+                           Grid.Column="1"
+                           FontFamily="Consolas"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#FF5E8BFF"
+                           Margin="12,0,0,0"/>
+            </Grid>
+
+            <Rectangle Height="1" Fill="#33FFFFFF" Margin="0,0,0,8"/>
+
+            <TextBlock Text="MEILLEUR TOUR"
                        FontFamily="Segoe UI"
                        FontSize="10"
                        FontWeight="Bold"
@@ -87,7 +116,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="SessionNameText"
+                <TextBlock x:Name="BestLabelText"
                            Grid.Column="0"
                            FontFamily="Segoe UI"
                            FontSize="12"
@@ -107,7 +136,7 @@
                        FontSize="9"
                        Foreground="#66FFFFFF"
                        Margin="0,8,0,0"
-                       Text="En attente de F1 25…"/>
+                       Text="En attente de F1 26…"/>
         </StackPanel>
     </Border>
 </Window>

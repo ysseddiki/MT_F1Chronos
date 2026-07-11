@@ -35,9 +35,11 @@ public sealed class TrackSummary
 public sealed class OverlaySnapshot
 {
     public string TrackName { get; init; } = "—";
-    public string CurrentSessionName { get; init; } = "—";
+    public string PlayerName { get; init; } = "Joueur";
     public string CurrentBestFormatted { get; init; } = "--:--.---";
+    public string CurrentLapFormatted { get; init; } = "--:--.---";
     public bool HasCurrentBest { get; init; }
+    public bool HasCurrentLap { get; init; }
     public IReadOnlyList<LeaderboardRow> TopFive { get; init; } = [];
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }

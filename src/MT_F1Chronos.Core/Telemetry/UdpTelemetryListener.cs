@@ -15,7 +15,7 @@ public sealed class UdpTelemetryListener : IDisposable
 
     public TelemetryState State => _state;
 
-    public void Start(int port = F125Constants.DefaultPort)
+    public void Start(int port = F1UdpConstants.DefaultPort)
     {
         Stop();
 
@@ -42,7 +42,7 @@ public sealed class UdpTelemetryListener : IDisposable
             try
             {
                 var result = await _client.ReceiveAsync(token);
-                if (F125PacketParser.TryParse(result.Buffer, _state, out var update) && update is not null)
+                if (F1UdpPacketParser.TryParse(result.Buffer, _state, out var update) && update is not null)
                     UpdateReceived?.Invoke(update);
             }
             catch (OperationCanceledException)

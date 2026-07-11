@@ -84,6 +84,32 @@ public sealed class SessionStore
         return entry;
     }
 
+    public void EnsureActiveSession(string playerName, int trackId, string trackName)
+    {
+        if (string.IsNullOrWhiteSpace(playerName) || trackId < 0)
+            return;
+
+        if (_activeSession is not null &&
+            _activeSession.IsActive &&
+            _activeSession.TrackId == trackId)
+            return;
+
+        CloseActiveSession();
+
+        var entry = new ChronoEntry
+        {
+            Name = playerName.Trim(),
+            TrackId = trackId,
+            TrackName = trackName,
+            StartedAt = DateTime.UtcNow,
+            IsActive = true,
+        };
+
+        _database.Sessions.Add(entry);
+        _activeSession = entry;
+        Save();
+    }
+
     public void UpdateActiveBest(uint lapMs)
     {
         if (_activeSession is null || lapMs == 0)
@@ -180,22 +206,29 @@ public sealed class SessionStore
         return numbers.Max() + 1;
     }
 
-    public OverlaySnapshot BuildSnapshot(TelemetryState state)
+    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName)
     {
         var topFive = state.TrackId >= 0
             ? GetLeaderboard(state.TrackId)
             : [];
 
-        var currentBest = _activeSession?.BestLapMs ?? state.EffectiveBestLapMs;
+        var sessionBest = _activeSession?.BestLapMs ?? state.EffectiveBestLapMs;
+        var currentLap = state.CurrentLapTimeMs;
 
         return new OverlaySnapshot
         {
             TrackName = state.TrackName,
-            CurrentSessionName = _activeSession?.Name ?? "Session actuelle",
-            CurrentBestFormatted = currentBest.HasValue
-                ? LapTimeFormatter.Format(currentBest.Value)
+            PlayerName = string.IsNullOrWhiteSpace(playerName)
+                ? (_activeSession?.Name ?? "Joueur")
+                : playerName,
+            CurrentBestFormatted = sessionBest.HasValue
+                ? LapTimeFormatter.Format(sessionBest.Value)
                 : "--:--.---",
-            HasCurrentBest = currentBest.HasValue && currentBest > 0,
+            CurrentLapFormatted = currentLap.HasValue && currentLap > 0
+                ? LapTimeFormatter.Format(currentLap.Value)
+                : "--:--.---",
+            HasCurrentBest = sessionBest.HasValue && sessionBest > 0,
+            HasCurrentLap = currentLap.HasValue && currentLap > 0,
             TopFive = topFive,
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,

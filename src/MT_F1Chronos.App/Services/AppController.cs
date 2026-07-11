@@ -50,9 +50,13 @@ public sealed class AppController : IDisposable
 
         _overlay.Show();
         PositionOverlay();
+
+        if (string.IsNullOrWhiteSpace(_settings.PlayerName))
+            PromptPlayerName(required: true);
+
         _listener.Start(_settings.UdpPort);
 
-        var refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        var refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         refreshTimer.Tick += (_, _) => RefreshOverlay();
         refreshTimer.Start();
     }
@@ -77,46 +81,32 @@ public sealed class AppController : IDisposable
             _overlay.Width = width;
     }
 
-    public void RequestRename()
+    public void PromptPlayerName(bool required = false)
     {
         if (_promptOpen)
             return;
 
-        var state = _listener.State;
-        var active = _store.ActiveSession;
-        var isRename = active is not null;
-
-        if (!isRename && !state.IsTimeTrial && state.TrackId < 0)
-            return;
-
         _promptOpen = true;
 
-        var defaultName = isRename
-            ? active!.Name
-            : $"Chrono #{_store.GetNextDefaultNumber()}";
-        var recentNames = _store.GetRecentNames().ToList();
-
-        var prompt = new NamePromptWindow(
-            defaultName,
-            recentNames,
-            state.TrackName,
-            isRename: isRename);
+        var prompt = new PlayerNameWindow(_settings.PlayerName);
         var accepted = prompt.ShowDialog() == true;
 
-        if (accepted && !string.IsNullOrWhiteSpace(prompt.SessionName))
+        if (accepted && !string.IsNullOrWhiteSpace(prompt.PlayerName))
         {
-            var name = prompt.SessionName.Trim();
-            if (isRename)
-            {
-                _store.RenameActiveSession(name);
-            }
-            else
-            {
-                _store.StartSession(name, state.TrackId, state.TrackName);
-            }
+            _settings.PlayerName = prompt.PlayerName.Trim();
+            SaveSettings();
+
+            if (_store.ActiveSession is not null)
+                _store.RenameActiveSession(_settings.PlayerName);
+        }
+        else if (required && string.IsNullOrWhiteSpace(_settings.PlayerName))
+        {
+            _settings.PlayerName = "Joueur";
+            SaveSettings();
         }
 
         _promptOpen = false;
+        TryEnsureActiveSession(_listener.State);
         RefreshOverlay();
     }
 
@@ -137,11 +127,11 @@ public sealed class AppController : IDisposable
     {
         _dispatcher.BeginInvoke(() =>
         {
-            if (update.SessionStarted && update.State.IsTimeTrial)
-                RequestRename();
-
             if (update.SessionEnded)
                 _store.CloseActiveSession();
+
+            if (update.State.TrackId >= 0)
+                TryEnsureActiveSession(update.State);
 
             if (update.CompletedLapMs.HasValue)
                 _store.UpdateActiveBest(update.CompletedLapMs.Value);
@@ -153,12 +143,23 @@ public sealed class AppController : IDisposable
         });
     }
 
+    private void TryEnsureActiveSession(TelemetryState state)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.PlayerName) || state.TrackId < 0)
+            return;
+
+        _store.EnsureActiveSession(
+            _settings.PlayerName,
+            state.TrackId,
+            state.TrackName);
+    }
+
     private void RefreshOverlay()
     {
         if (_overlay is null)
             return;
 
-        var snapshot = _store.BuildSnapshot(_listener.State);
+        var snapshot = _store.BuildSnapshot(_listener.State, _settings.PlayerName);
         _overlay.UpdateSnapshot(snapshot);
     }
 

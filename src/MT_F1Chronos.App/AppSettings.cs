@@ -12,5 +12,5 @@ public sealed class AppSettings
 
     public double OverlayWidth { get; set; } = 268;
 
-    public bool StartMinimized { get; set; } = true;
+    public string PlayerName { get; set; } = string.Empty;
 }

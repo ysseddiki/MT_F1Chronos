@@ -35,7 +35,7 @@ public partial class OverlayWindow : Window
     {
         if (msg == HotKeyHelper.WmHotKey && wParam == (IntPtr)HotKeyHelper.NewSessionId)
         {
-            _controller.RequestRename();
+            _controller.PromptPlayerName();
             handled = true;
         }
 
@@ -66,7 +66,7 @@ public partial class OverlayWindow : Window
         }
     }
 
-    private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.RequestRename();
+    private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.PromptPlayerName();
     private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
     private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
     private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
@@ -76,7 +76,9 @@ public partial class OverlayWindow : Window
     public void UpdateSnapshot(OverlaySnapshot snapshot)
     {
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
-        SessionNameText.Text = snapshot.CurrentSessionName;
+        PlayerNameText.Text = snapshot.PlayerName;
+        CurrentLapText.Text = snapshot.CurrentLapFormatted;
+        BestLabelText.Text = "Meilleur";
         CurrentBestText.Text = snapshot.CurrentBestFormatted;
 
         TopFivePanel.Children.Clear();
@@ -92,8 +94,8 @@ public partial class OverlayWindow : Window
         }
 
         StatusText.Text = snapshot.IsConnected
-            ? (snapshot.IsTimeTrial ? "Chrono actif" : "Connecté")
-            : "En attente de F1 25…";
+            ? (snapshot.IsTimeTrial ? "Chrono actif" : snapshot.HasCurrentLap ? "Tour en cours" : "Connecté")
+            : "En attente de F1 26…";
     }
 
     private static UIElement CreateRow(string rank, string name, string time, bool hasData)
