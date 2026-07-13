@@ -25,8 +25,10 @@ public sealed class TelemetryState
     public bool IsOnTrack =>
         DriverStatus is 1 or 2 or 4;
 
+    public byte TimeTrialSessionType { get; set; } = 13;
+
     public bool IsTimeTrial =>
-        SessionType == F1UdpConstants.SessionTypeTimeTrial ||
+        SessionType == TimeTrialSessionType ||
         GameMode == F1UdpConstants.GameModeTimeTrial;
 
     public string TrackName => F1UdpConstants.GetTrackName(TrackId);

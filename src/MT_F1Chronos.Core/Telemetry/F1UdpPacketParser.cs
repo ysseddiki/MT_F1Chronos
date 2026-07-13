@@ -43,16 +43,19 @@ public sealed class F1UdpPacketParser
     public bool TryParse(ReadOnlySpan<byte> buffer, TelemetryState state, out TelemetryUpdate? update)
     {
         update = null;
-        if (buffer.Length < F1UdpConstants.HeaderSize)
+        if (buffer.Length < Profile.HeaderSize)
             return false;
 
         TrackPacketRate();
 
         state.PacketFormat = BinaryPrimitives.ReadUInt16LittleEndian(buffer[0..2]);
         state.ConfiguredFormat = Profile.Format;
-        var packetId = buffer[5];
-        var sessionUid = BinaryPrimitives.ReadUInt64LittleEndian(buffer[6..14]);
-        state.PlayerCarIndex = buffer[22];
+        state.TimeTrialSessionType = Profile.SessionTypeTimeTrial;
+
+        var packetId = buffer[Profile.PacketIdOffset];
+        var sessionUid = BinaryPrimitives.ReadUInt64LittleEndian(
+            buffer[Profile.SessionUidOffset..(Profile.SessionUidOffset + 8)]);
+        state.PlayerCarIndex = buffer[Profile.PlayerCarIndexOffset];
         state.LastPacketId = packetId;
         state.IsReceiving = true;
         state.LastPacketUtc = DateTime.UtcNow;
@@ -84,7 +87,7 @@ public sealed class F1UdpPacketParser
 
             case F1UdpConstants.PacketLapData:
                 ParseLapDataPacket(buffer, state, ref lapCompleted, ref completedLapMs);
-                packetSummary = $"lap car={state.ResolvedCarIndex} last={_rawLastLapMs} cur={_rawCurrentLapMs} drv={state.DriverStatus}";
+                packetSummary = $"lap player={state.PlayerCarIndex} last={_rawLastLapMs} cur={_rawCurrentLapMs} drv={state.DriverStatus}";
                 break;
 
             case F1UdpConstants.PacketEvent:
@@ -99,7 +102,7 @@ public sealed class F1UdpPacketParser
 
             case F1UdpConstants.PacketSessionHistory:
                 ParseSessionHistoryPacket(buffer, state, ref completedLapMs);
-                packetSummary = $"history car={buffer[F1UdpConstants.HeaderSize]} laps={buffer[F1UdpConstants.HeaderSize + 1]}";
+                packetSummary = $"history car={buffer[Profile.HeaderSize]} laps={buffer[Profile.HeaderSize + 1]}";
                 break;
 
             default:
@@ -149,7 +152,7 @@ public sealed class F1UdpPacketParser
 
     public TelemetryDebugSnapshot BuildDebugSnapshot(TelemetryState state, SessionStoreDebugInfo storeInfo)
     {
-        var lapOffset = F1UdpConstants.HeaderSize + state.ResolvedCarIndex * Profile.LapDataSize;
+        var lapOffset = Profile.HeaderSize + state.ResolvedCarIndex * Profile.LapDataSize;
         var secondsSince = (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds;
 
         return new TelemetryDebugSnapshot
@@ -243,7 +246,7 @@ public sealed class F1UdpPacketParser
 
     private void ParseSessionPacket(ReadOnlySpan<byte> buffer, TelemetryState state)
     {
-        var offset = F1UdpConstants.HeaderSize;
+        var offset = Profile.HeaderSize;
 
         if (buffer.Length < offset + 8)
             return;
@@ -313,11 +316,14 @@ public sealed class F1UdpPacketParser
         ref bool lapCompleted,
         ref uint? completedLapMs)
     {
-        var carIndex = ResolveActiveCarIndex(buffer, state);
+        var carIndex = state.PlayerCarIndex;
+        if (carIndex >= Profile.MaxCars)
+            return;
+
         state.ResolvedCarIndex = carIndex;
         UpdateCarRows(buffer, state);
 
-        var offset = F1UdpConstants.HeaderSize + carIndex * Profile.LapDataSize;
+        var offset = Profile.HeaderSize + carIndex * Profile.LapDataSize;
         if (buffer.Length < offset + F1UdpConstants.LapDataDriverStatusOffset + 1)
             return;
 
@@ -349,7 +355,7 @@ public sealed class F1UdpPacketParser
         var rows = new CarLapDebugRow[Profile.MaxCars];
         for (byte i = 0; i < Profile.MaxCars; i++)
         {
-            var offset = F1UdpConstants.HeaderSize + i * Profile.LapDataSize;
+            var offset = Profile.HeaderSize + i * Profile.LapDataSize;
             if (buffer.Length < offset + F1UdpConstants.LapDataDriverStatusOffset + 1)
                 continue;
 
@@ -367,71 +373,16 @@ public sealed class F1UdpPacketParser
         _carRows = rows;
     }
 
-    private byte ResolveActiveCarIndex(ReadOnlySpan<byte> buffer, TelemetryState state)
-    {
-        byte? bestByCurrentLap = null;
-        uint bestCurrentLap = 0;
-
-        for (byte i = 0; i < Profile.MaxCars; i++)
-        {
-            var currentLap = ReadCurrentLap(buffer, i);
-            if (currentLap > bestCurrentLap)
-            {
-                bestCurrentLap = currentLap;
-                bestByCurrentLap = i;
-            }
-        }
-
-        if (bestByCurrentLap.HasValue)
-            return bestByCurrentLap.Value;
-
-        if (state.PlayerCarIndex < Profile.MaxCars &&
-            IsActiveDriver(ReadDriverStatus(buffer, state.PlayerCarIndex)))
-            return state.PlayerCarIndex;
-
-        for (byte i = 0; i < Profile.MaxCars; i++)
-        {
-            if (IsActiveDriver(ReadDriverStatus(buffer, i)))
-                return i;
-        }
-
-        if (state.PlayerCarIndex < Profile.MaxCars)
-            return state.PlayerCarIndex;
-
-        return 0;
-    }
-
-    private uint ReadCurrentLap(ReadOnlySpan<byte> buffer, int carIndex)
-    {
-        var offset = F1UdpConstants.HeaderSize + carIndex * Profile.LapDataSize + 4;
-        if (buffer.Length < offset + 4)
-            return 0;
-
-        return BinaryPrimitives.ReadUInt32LittleEndian(buffer[offset..]);
-    }
-
-    private byte ReadDriverStatus(ReadOnlySpan<byte> buffer, int carIndex)
-    {
-        var offset = F1UdpConstants.HeaderSize +
-                     carIndex * Profile.LapDataSize +
-                     F1UdpConstants.LapDataDriverStatusOffset;
-
-        return buffer.Length > offset ? buffer[offset] : (byte)0;
-    }
-
-    private static bool IsActiveDriver(byte driverStatus) =>
-        driverStatus is 1 or 2 or 3 or 4;
-
     private void ParseEventPacket(
         ReadOnlySpan<byte> buffer,
         TelemetryState state,
         ref bool sessionStarted,
         ref bool sessionEnded)
     {
-        if (buffer.Length < F1UdpConstants.HeaderSize + 4)
+        if (buffer.Length < Profile.HeaderSize + 4)
             return;
 
-        var code = Encoding.ASCII.GetString(buffer[F1UdpConstants.HeaderSize..(F1UdpConstants.HeaderSize + 4)]);
+        var code = Encoding.ASCII.GetString(buffer[Profile.HeaderSize..(Profile.HeaderSize + 4)]);
         state.LastEventCode = code;
 
         sessionStarted = code == "SSTA";
@@ -443,7 +394,7 @@ public sealed class F1UdpPacketParser
         TelemetryState state,
         ref uint? completedLapMs)
     {
-        var offset = F1UdpConstants.HeaderSize;
+        var offset = Profile.HeaderSize;
 
         if (buffer.Length < offset + Profile.TimeTrialDataSetSize)
             return;
@@ -472,16 +423,14 @@ public sealed class F1UdpPacketParser
         if (buffer.Length < F1UdpConstants.SessionHistoryLapDataOffset + 4)
             return;
 
-        var carIdx = buffer[F1UdpConstants.HeaderSize];
+        var carIdx = buffer[Profile.HeaderSize];
         if (carIdx >= Profile.MaxCars)
             return;
 
-        if (carIdx != state.ResolvedCarIndex &&
-            carIdx != state.PlayerCarIndex &&
-            state.ResolvedCarIndex != 0)
+        if (carIdx != state.PlayerCarIndex)
             return;
 
-        var numLaps = buffer[F1UdpConstants.HeaderSize + 1];
+        var numLaps = buffer[Profile.HeaderSize + 1];
         if (numLaps == 0)
             return;
 

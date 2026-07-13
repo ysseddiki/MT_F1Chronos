@@ -18,7 +18,6 @@ public static class F1UdpConstants
     public const int LapHistoryDataSize = 14;
     public const int SessionHistoryLapDataOffset = 36;
 
-    public const byte SessionTypeTimeTrial = 18;
     public const byte GameModeTimeTrial = 5;
 
     public const int MarshalZoneSize = 5;
@@ -62,9 +61,12 @@ public static class F1UdpConstants
     public static string GetTrackName(int trackId) =>
         TrackNames.TryGetValue(trackId, out var name) ? name : $"Circuit #{trackId}";
 
-    /// <summary>Resolve track ID using track length (metres) when the raw ID looks wrong.</summary>
+    /// <summary>Fallback track ID from length when raw ID is unknown (&lt; 0).</summary>
     public static int ResolveTrackId(int rawTrackId, ushort trackLengthMeters)
     {
+        if (rawTrackId >= 0)
+            return rawTrackId;
+
         if (trackLengthMeters > 0 &&
             TrackLengthToId.TryGetValue(trackLengthMeters, out var resolved))
             return resolved;
