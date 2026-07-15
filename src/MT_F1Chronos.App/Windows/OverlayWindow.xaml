@@ -61,7 +61,6 @@
                                 <MenuItem Header="2025 (F1 25)" Click="OnFormat2025Click"/>
                                 <MenuItem Header="2026" Click="OnFormat2026Click"/>
                             </MenuItem>
-                            <MenuItem Header="Diagnostic UDP" Click="OnDiagnosticsClick"/>
                             <MenuItem Header="Debug UDP" Click="OnDebugClick"/>
                             <Separator/>
                             <MenuItem Header="Quitter" Click="OnQuitClick"/>
@@ -88,7 +87,7 @@
                        Foreground="#FF5E8BFF"
                        Margin="0,0,0,4"/>
 
-            <Grid Margin="0,0,0,8">
+            <Grid Margin="0,0,0,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -108,49 +107,12 @@
                            Margin="12,0,0,0"/>
             </Grid>
 
-            <Rectangle Height="1" Fill="#33FFFFFF" Margin="0,0,0,8"/>
-
-            <TextBlock Text="MEILLEUR TOUR"
-                       FontFamily="Segoe UI"
-                       FontSize="10"
-                       FontWeight="Bold"
-                       Foreground="#FF00D2BE"
-                       Margin="0,0,0,4"/>
-
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="BestLabelText"
-                           Grid.Column="0"
-                           FontFamily="Segoe UI"
-                           FontSize="12"
-                           Foreground="White"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock x:Name="CurrentBestText"
-                           Grid.Column="1"
-                           FontFamily="Consolas"
-                           FontSize="14"
-                           FontWeight="Bold"
-                           Foreground="#FFFFD700"
-                           Margin="12,0,0,0"/>
-            </Grid>
-
             <TextBlock x:Name="StatusText"
                        FontFamily="Segoe UI"
                        FontSize="9"
                        Foreground="#66FFFFFF"
-                       Margin="0,8,0,0"
-                       Text="En attente de F1 26…"/>
-
-            <TextBlock x:Name="DiagnosticsText"
-                       FontFamily="Consolas"
-                       FontSize="8"
-                       Foreground="#55FFFFFF"
                        Margin="0,4,0,0"
-                       TextWrapping="Wrap"
-                       Visibility="Collapsed"/>
+                       Text="En attente de F1…"/>
         </StackPanel>
     </Border>
 </Window>

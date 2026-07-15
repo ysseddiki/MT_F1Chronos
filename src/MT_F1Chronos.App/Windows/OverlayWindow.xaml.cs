@@ -90,7 +90,6 @@ public partial class OverlayWindow : Window
     private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
     private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
     private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
-    private void OnDiagnosticsClick(object sender, RoutedEventArgs e) => _controller.ToggleDiagnostics();
     private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
     private void OnFormat2025Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2025);
     private void OnFormat2026Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2026);
@@ -101,8 +100,6 @@ public partial class OverlayWindow : Window
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
-        BestLabelText.Text = "Dernier tour";
-        CurrentBestText.Text = snapshot.CurrentBestFormatted;
 
         TopFivePanel.Children.Clear();
 
@@ -119,11 +116,6 @@ public partial class OverlayWindow : Window
         StatusText.Text = snapshot.IsConnected
             ? (snapshot.IsTimeTrial ? "Chrono actif" : snapshot.HasCurrentLap ? "Tour en cours" : "Connecté")
             : "En attente de F1…";
-
-        DiagnosticsText.Text = snapshot.DiagnosticsText;
-        DiagnosticsText.Visibility = snapshot.ShowDiagnostics
-            ? Visibility.Visible
-            : Visibility.Collapsed;
     }
 
     private static UIElement CreateRow(string rank, string name, string time, bool hasData)

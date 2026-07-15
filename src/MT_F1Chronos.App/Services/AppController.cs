@@ -55,6 +55,9 @@ public sealed class AppController : IDisposable
         if (string.IsNullOrWhiteSpace(_settings.PlayerName))
             PromptPlayerName(required: true);
 
+        // Show persisted TOP 5 immediately (before UDP track id is known).
+        RefreshOverlay();
+
         _listener.Start(_settings.UdpPort);
         _refreshTimer.Start();
     }
@@ -115,13 +118,6 @@ public sealed class AppController : IDisposable
             Owner = _overlay,
         };
         window.ShowDialog();
-    }
-
-    public void ToggleDiagnostics()
-    {
-        _settings.ShowDiagnostics = !_settings.ShowDiagnostics;
-        SaveSettings();
-        RefreshOverlay();
     }
 
     public void ShowDebugWindow()
@@ -199,9 +195,7 @@ public sealed class AppController : IDisposable
 
         _overlay.UpdateSnapshot(_store.BuildSnapshot(
             _listener.State,
-            _settings.PlayerName,
-            _listener.Parser,
-            _settings.ShowDiagnostics));
+            _settings.PlayerName));
     }
 
     private static string SettingsPath =>
