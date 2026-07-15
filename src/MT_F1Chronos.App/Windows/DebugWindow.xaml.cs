@@ -274,7 +274,7 @@ public partial class DebugWindow : Window
     private static string FormatMs(uint ms) => ms == 0 ? "—" : LapTimeFormatter.Format(ms);
 
     private static string FormatNullableMs(uint? ms) =>
-        ms is > 0 value ? $"{value} ms ({LapTimeFormatter.Format(value)})" : "—";
+        ms is > 0 ? $"{ms.Value} ms ({LapTimeFormatter.Format(ms.Value)})" : "—";
 
     private static string BoolLabel(bool value) => value ? "oui" : "non";
 
