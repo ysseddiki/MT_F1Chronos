@@ -1,6 +1,6 @@
 # MT_F1Chronos
 
-Overlay PC pour **EA Sports F1 25/26** avec choix du format UDP **2025/2026**, affichant le **TOP 5** par circuit, ton **tour en cours** et ton **meilleur tour**.
+Overlay PC pour **EA Sports F1 25/26** (format UDP **2025/2026**) : **TOP 5** par circuit, tour en cours, meilleur tour.
 
 ![Placement overlay](docs/overlay-preview.jpg)
 
@@ -19,7 +19,7 @@ Overlay PC pour **EA Sports F1 25/26** avec choix du format UDP **2025/2026**, a
 
 - Windows 10/11
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- F1 25 ou F1 26 en mode **Fenêtré** ou **Borderless** (pas plein écran exclusif)
+- F1 25 ou F1 26 en mode **Fenêtré** ou **Borderless** (**recommandé**). Le **plein écran exclusif** peut passer au-dessus de l'overlay ; Borderless reste la config fiable.
 
 ## Configuration F1 25/26
 
@@ -78,7 +78,7 @@ Aucune popup ne s'affiche à chaque session — le nom du joueur est réutilisé
 
 | Action | Description |
 |---|---|
-| Changer le nom du joueur | Modifie ton identité pour les chronos |
+| Changer le nom du joueur | Modifie le pseudo pour les **prochains** tours (l'historique conserve les anciens noms) |
 | Scores par circuit | Tous les scores du circuit, navigation ◀ ▶ |
 | Taille de l'overlay | Petit (220 px) / Moyen (268 px) / Grand (340 px) |
 | Format UDP | **2025** (F1 25) ou **2026** |
@@ -113,7 +113,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `overlayTop` | Distance depuis le haut de l'écran (px) |
 | `overlayRight` | Distance depuis le bord droit (px) |
 | `overlayWidth` | Largeur de l'overlay (px) |
-| `playerName` | Nom du joueur utilisé pour tous les chronos |
+| `playerName` | Pseudo utilisé pour les **prochains** tours enregistrés |
 
 Ajuste `overlayTop` / `overlayRight` pour caler l'overlay sous le panneau de chrono du jeu.
 
@@ -122,7 +122,9 @@ Ajuste `overlayTop` / `overlayRight` pour caler l'overlay sous le panneau de chr
 Les chronos sont sauvegardés dans :
 `%LOCALAPPDATA%\MT_F1Chronos\sessions.json`
 
-Les scores sont regroupés **par circuit**. Chaque session de chrono crée une entrée avec le nom du joueur, le circuit et le meilleur tour enregistré.
+Le fichier est lu au démarrage et réécrit à chaque tour terminé (et à la fermeture). Les scores **survivent** à la fermeture / réouverture de l'exe.
+
+Chaque **tour terminé** crée une entrée `{ nom du moment, circuit, temps, date }`. Toutes les entrées sont conservées ; le **TOP 5** n'est qu'un filtre d'affichage (les 5 meilleurs du circuit). Changer le pseudo ne renomme pas l'historique.
 
 ## Architecture
 
@@ -159,4 +161,5 @@ Si `cfg` ≠ `rx`, change le **Format UDP** dans le menu. Si `lapPkt` reste 0 en
 - Ne modifie pas l'UI native du jeu (overlay externe uniquement)
 - Nécessite la télémétrie UDP activée (format **2025** ou **2026** selon le jeu)
 - L'overlay couvre une petite zone de l'écran (boutons cliquables, non click-through)
-- Le TOP 5 affiche les sessions avec un meilleur tour enregistré sur le circuit en cours
+- Le TOP 5 affiche les 5 meilleurs tours enregistrés sur le circuit en cours (tous les tours restent en base)
+- L'overlay est forcé au premier plan (`HWND_TOPMOST`) en fenêtré / **Borderless** ; le **plein écran exclusif** du jeu peut tout de même le masquer

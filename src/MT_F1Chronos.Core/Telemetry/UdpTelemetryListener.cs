@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Sockets;
 
 namespace MT_F1Chronos.Core.Telemetry;
@@ -9,10 +8,8 @@ public sealed class UdpTelemetryListener : IDisposable
     private readonly F1UdpPacketParser _parser = new();
     private UdpClient? _client;
     private CancellationTokenSource? _cts;
-    private Task? _listenTask;
 
     public event Action<TelemetryUpdate>? UpdateReceived;
-    public event Action<Exception>? ErrorOccurred;
 
     public TelemetryState State => _state;
     public F1UdpPacketParser Parser => _parser;
@@ -29,7 +26,7 @@ public sealed class UdpTelemetryListener : IDisposable
 
         _cts = new CancellationTokenSource();
         _client = new UdpClient(port);
-        _listenTask = Task.Run(() => ListenLoop(_cts.Token));
+        _ = Task.Run(() => ListenLoop(_cts.Token));
     }
 
     public void Stop()
@@ -57,9 +54,9 @@ public sealed class UdpTelemetryListener : IDisposable
             {
                 break;
             }
-            catch (Exception ex)
+            catch
             {
-                ErrorOccurred?.Invoke(ex);
+                // Ignore transient socket errors while listening.
             }
         }
     }

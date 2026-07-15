@@ -16,6 +16,7 @@ public sealed class CarLapDebugRow
     public byte DriverStatus { get; init; }
     public bool IsPlayerCar { get; init; }
     public bool IsResolvedCar { get; init; }
+    public byte CurrentLapInvalid { get; init; }
 }
 
 public sealed class SessionStoreDebugInfo
@@ -52,6 +53,7 @@ public sealed class TelemetryDebugSnapshot
     public uint RawLastLapMs { get; init; }
     public uint RawCurrentLapMs { get; init; }
     public byte DriverStatus { get; init; }
+    public byte CurrentLapInvalid { get; init; }
     public int LapDataOffset { get; init; }
     public int LapDataSize { get; init; }
     public IReadOnlyList<CarLapDebugRow> Cars { get; init; } = [];

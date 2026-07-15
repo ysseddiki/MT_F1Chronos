@@ -13,6 +13,7 @@ public sealed class TelemetryState
     public byte PlayerCarIndex { get; set; }
     public byte ResolvedCarIndex { get; set; }
     public byte DriverStatus { get; set; }
+    public byte CurrentLapInvalid { get; set; }
     public ushort PacketFormat { get; set; }
     public ushort ConfiguredFormat { get; set; }
     public byte LastPacketId { get; set; }
@@ -43,6 +44,7 @@ public sealed class TelemetryState
         CurrentLastLapMs = null;
         CurrentLapTimeMs = null;
         DriverStatus = 0;
+        CurrentLapInvalid = 0;
     }
 }
 

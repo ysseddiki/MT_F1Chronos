@@ -20,13 +20,11 @@ public sealed class AppController : IDisposable
     private readonly SessionStore _store = new();
     private readonly Dispatcher _dispatcher;
     private readonly AppSettings _settings;
+    private readonly DispatcherTimer _refreshTimer;
 
     private OverlayWindow? _overlay;
     private DebugWindow? _debugWindow;
     private bool _promptOpen;
-
-    public AppSettings Settings => _settings;
-    public SessionStore Store => _store;
 
     public AppController()
     {
@@ -34,9 +32,10 @@ public sealed class AppController : IDisposable
         _settings = LoadSettings();
         _store.Load();
         _listener.SetFormat((ushort)_settings.UdpFormat);
-
         _listener.UpdateReceived += OnTelemetryUpdate;
-        _listener.ErrorOccurred += _ => { };
+
+        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _refreshTimer.Tick += (_, _) => RefreshOverlay();
     }
 
     public OverlayWindow CreateOverlay()
@@ -57,10 +56,7 @@ public sealed class AppController : IDisposable
             PromptPlayerName(required: true);
 
         _listener.Start(_settings.UdpPort);
-
-        var refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
-        refreshTimer.Tick += (_, _) => RefreshOverlay();
-        refreshTimer.Start();
+        _refreshTimer.Start();
     }
 
     public void PositionOverlay()
@@ -97,9 +93,6 @@ public sealed class AppController : IDisposable
         {
             _settings.PlayerName = prompt.PlayerName.Trim();
             SaveSettings();
-
-            if (_store.ActiveSession is not null)
-                _store.RenameActiveSession(_settings.PlayerName);
         }
         else if (required && string.IsNullOrWhiteSpace(_settings.PlayerName))
         {
@@ -108,7 +101,6 @@ public sealed class AppController : IDisposable
         }
 
         _promptOpen = false;
-        TryEnsureActiveSession(_listener.State);
         RefreshOverlay();
     }
 
@@ -140,15 +132,16 @@ public sealed class AppController : IDisposable
         if (_debugWindow is { IsLoaded: true })
         {
             _debugWindow.Activate();
-            _debugWindow.Focus();
             return;
         }
 
-        _debugWindow = new DebugWindow(this)
+        _listener.Parser.CaptureVerboseDebug = true;
+        _debugWindow = new DebugWindow(this) { Owner = _overlay };
+        _debugWindow.Closed += (_, _) =>
         {
-            Owner = _overlay,
+            _listener.Parser.CaptureVerboseDebug = false;
+            _debugWindow = null;
         };
-        _debugWindow.Closed += (_, _) => _debugWindow = null;
         _debugWindow.Show();
     }
 
@@ -171,30 +164,32 @@ public sealed class AppController : IDisposable
             if (update.SessionEnded)
                 _store.CloseActiveSession();
 
-            if (update.TrackChanged)
-                TryEnsureActiveSession(update.State);
-            else if (update.State.TrackId >= 0 && _store.ActiveSession is null)
-                TryEnsureActiveSession(update.State);
+            if (update.TrackChanged ||
+                (update.State.TrackId >= 0 && !_store.HasLiveSession))
+                TryEnsureTrackContext(update.State);
 
-            if (update.CompletedLapMs.HasValue)
-                _store.UpdateActiveBest(update.CompletedLapMs.Value);
-
-            if (update.State.EffectiveBestLapMs.HasValue && _store.ActiveSession is not null)
-                _store.UpdateActiveBest(update.State.EffectiveBestLapMs.Value);
+            if (update.LapCompleted &&
+                update.CompletedLapMs is > 0 &&
+                update.State.TrackId >= 0 &&
+                !string.IsNullOrWhiteSpace(_settings.PlayerName))
+            {
+                _store.RecordCompletedLap(
+                    _settings.PlayerName,
+                    update.State.TrackId,
+                    update.State.TrackName,
+                    update.CompletedLapMs.Value);
+            }
 
             RefreshOverlay();
         });
     }
 
-    private void TryEnsureActiveSession(TelemetryState state)
+    private void TryEnsureTrackContext(TelemetryState state)
     {
-        if (string.IsNullOrWhiteSpace(_settings.PlayerName) || state.TrackId < 0)
+        if (state.TrackId < 0)
             return;
 
-        _store.EnsureActiveSession(
-            _settings.PlayerName,
-            state.TrackId,
-            state.TrackName);
+        _store.EnsureTrackContext(state.TrackId, state.TrackName);
     }
 
     private void RefreshOverlay()
@@ -202,12 +197,11 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        var snapshot = _store.BuildSnapshot(
+        _overlay.UpdateSnapshot(_store.BuildSnapshot(
             _listener.State,
             _settings.PlayerName,
             _listener.Parser,
-            _settings.ShowDiagnostics);
-        _overlay.UpdateSnapshot(snapshot);
+            _settings.ShowDiagnostics));
     }
 
     private static string SettingsPath =>
@@ -235,13 +229,14 @@ public sealed class AppController : IDisposable
     private void SaveSettings()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        var json = JsonSerializer.Serialize(_settings, JsonOptions);
-        File.WriteAllText(SettingsPath, json);
+        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(_settings, JsonOptions));
     }
 
     public void Dispose()
     {
+        _refreshTimer.Stop();
         _store.CloseActiveSession();
+        _store.Save();
         _listener.Dispose();
         _debugWindow?.Close();
         _overlay?.Close();

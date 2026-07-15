@@ -4,23 +4,6 @@ using MT_F1Chronos.Core.Telemetry;
 
 namespace MT_F1Chronos.Core.Services;
 
-public static class LapTimeFormatter
-{
-    public static string Format(uint lapMs)
-    {
-        if (lapMs == 0)
-            return "--:--.---";
-
-        var totalSeconds = lapMs / 1000.0;
-        var minutes = (int)(totalSeconds / 60);
-        var seconds = totalSeconds - minutes * 60;
-
-        return minutes > 0
-            ? $"{minutes}:{seconds:00.000}"
-            : $"{seconds:0.000}";
-    }
-}
-
 public sealed class SessionStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -31,7 +14,10 @@ public sealed class SessionStore
 
     private readonly string _filePath;
     private ChronoDatabase _database = new();
-    private ChronoEntry? _activeSession;
+
+    private int _liveTrackId = -1;
+    private string _liveTrackName = "Inconnu";
+    private uint? _liveLastLapMs;
 
     public SessionStore(string? filePath = null)
     {
@@ -41,23 +27,19 @@ public sealed class SessionStore
             "sessions.json");
     }
 
-    public ChronoEntry? ActiveSession => _activeSession;
+    public bool HasLiveSession => _liveTrackId >= 0;
     public string SessionsFilePath => _filePath;
 
-    public SessionStoreDebugInfo BuildDebugInfo()
+    public SessionStoreDebugInfo BuildDebugInfo() => new()
     {
-        return new SessionStoreDebugInfo
-        {
-            HasActiveSession = _activeSession is not null,
-            ActiveSessionName = _activeSession?.Name,
-            ActiveTrackId = _activeSession?.TrackId,
-            ActiveTrackName = _activeSession?.TrackName,
-            ActiveBestLapMs = _activeSession?.BestLapMs,
-            SessionsFilePath = _filePath,
-            TotalSessions = _database.Sessions.Count,
-            ScoredSessions = _database.Sessions.Count(s => s.BestLapMs is > 0),
-        };
-    }
+        HasActiveSession = HasLiveSession,
+        ActiveTrackId = HasLiveSession ? _liveTrackId : null,
+        ActiveTrackName = HasLiveSession ? _liveTrackName : null,
+        ActiveBestLapMs = _liveLastLapMs,
+        SessionsFilePath = _filePath,
+        TotalSessions = _database.Sessions.Count,
+        ScoredSessions = _database.Sessions.Count(s => s.BestLapMs is > 0),
+    };
 
     public void Load()
     {
@@ -71,102 +53,73 @@ public sealed class SessionStore
 
         var json = File.ReadAllText(_filePath);
         _database = JsonSerializer.Deserialize<ChronoDatabase>(json, JsonOptions) ?? new ChronoDatabase();
-        _activeSession = _database.Sessions.FirstOrDefault(s => s.IsActive);
+
+        var dirty = false;
+        foreach (var session in _database.Sessions.Where(s => s.IsActive))
+        {
+            session.IsActive = false;
+            session.EndedAt ??= DateTime.UtcNow;
+            dirty = true;
+        }
+
+        if (dirty)
+            Save();
     }
 
     public void Save()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-        var json = JsonSerializer.Serialize(_database, JsonOptions);
-        File.WriteAllText(_filePath, json);
+        File.WriteAllText(_filePath, JsonSerializer.Serialize(_database, JsonOptions));
     }
 
-    public ChronoEntry StartSession(string name, int trackId, string trackName)
+    /// <summary>Tracks current circuit only — player name is never stored here.</summary>
+    public void EnsureTrackContext(int trackId, string trackName)
     {
-        CloseActiveSession();
+        if (trackId < 0)
+            return;
 
-        var entry = new ChronoEntry
-        {
-            Name = name,
-            TrackId = trackId,
-            TrackName = trackName,
-            StartedAt = DateTime.UtcNow,
-            IsActive = true,
-        };
+        if (_liveTrackId != trackId)
+            _liveLastLapMs = null;
 
-        _database.Sessions.Add(entry);
-        _activeSession = entry;
-        Save();
-        return entry;
+        _liveTrackId = trackId;
+        _liveTrackName = trackName;
     }
 
-    public void EnsureActiveSession(string playerName, int trackId, string trackName)
+    /// <summary>Persists one valid completed lap under the player name at record time.</summary>
+    public void RecordCompletedLap(string playerName, int trackId, string trackName, uint lapMs)
     {
-        if (string.IsNullOrWhiteSpace(playerName) || trackId < 0)
+        if (string.IsNullOrWhiteSpace(playerName) || trackId < 0 || lapMs == 0)
             return;
 
-        if (_activeSession is not null &&
-            _activeSession.IsActive &&
-            _activeSession.TrackId == trackId)
-            return;
+        EnsureTrackContext(trackId, trackName);
 
-        CloseActiveSession();
-
-        var entry = new ChronoEntry
+        _database.Sessions.Add(new ChronoEntry
         {
             Name = playerName.Trim(),
             TrackId = trackId,
             TrackName = trackName,
+            BestLapMs = lapMs,
             StartedAt = DateTime.UtcNow,
-            IsActive = true,
-        };
+            EndedAt = DateTime.UtcNow,
+        });
 
-        _database.Sessions.Add(entry);
-        _activeSession = entry;
-        Save();
-    }
-
-    public void UpdateActiveBest(uint lapMs)
-    {
-        if (_activeSession is null || lapMs == 0)
-            return;
-
-        if (!_activeSession.BestLapMs.HasValue || lapMs < _activeSession.BestLapMs)
-        {
-            _activeSession.BestLapMs = lapMs;
-            Save();
-        }
-    }
-
-    public void RenameActiveSession(string name)
-    {
-        if (_activeSession is null || string.IsNullOrWhiteSpace(name))
-            return;
-
-        _activeSession.Name = name.Trim();
+        _liveLastLapMs = lapMs;
         Save();
     }
 
     public void CloseActiveSession()
     {
-        if (_activeSession is null)
-            return;
-
-        _activeSession.IsActive = false;
-        _activeSession.EndedAt = DateTime.UtcNow;
-        _activeSession = null;
-        Save();
+        _liveTrackId = -1;
+        _liveTrackName = "Inconnu";
+        _liveLastLapMs = null;
     }
 
-    public IReadOnlyList<LeaderboardRow> GetLeaderboard(int trackId, int count = 5)
-    {
-        return GetScoresForTrack(trackId).Take(count).ToList();
-    }
+    public IReadOnlyList<LeaderboardRow> GetLeaderboard(int trackId, int count = 5) =>
+        RankedLaps(trackId).Take(count).ToList();
 
-    public IReadOnlyList<TrackSummary> GetTracksWithScores()
-    {
-        return _database.Sessions
-            .Where(s => s.BestLapMs.HasValue && s.BestLapMs > 0)
+    public IReadOnlyList<TrackSummary> GetTracksWithScores() =>
+        _database.Sessions
+            .Where(s => s.BestLapMs is > 0)
             .GroupBy(s => s.TrackId)
             .Select(g =>
             {
@@ -180,47 +133,9 @@ public sealed class SessionStore
             })
             .OrderBy(t => t.TrackName, StringComparer.OrdinalIgnoreCase)
             .ToList();
-    }
 
-    public IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId)
-    {
-        return _database.Sessions
-            .Where(s => s.TrackId == trackId && s.BestLapMs.HasValue && s.BestLapMs > 0)
-            .OrderBy(s => s.BestLapMs)
-            .Select((s, i) => new LeaderboardRow
-            {
-                Rank = i + 1,
-                Name = s.Name,
-                BestLapMs = s.BestLapMs!.Value,
-                FormattedTime = LapTimeFormatter.Format(s.BestLapMs.Value),
-            })
-            .ToList();
-    }
-
-    public IEnumerable<string> GetRecentNames(int limit = 8)
-    {
-        return _database.Sessions
-            .OrderByDescending(s => s.StartedAt)
-            .Select(s => s.Name)
-            .Distinct()
-            .Take(limit);
-    }
-
-    public int GetNextDefaultNumber()
-    {
-        var numbers = _database.Sessions
-            .Select(s => s.Name)
-            .Select(name =>
-            {
-                if (name.StartsWith("Chrono #", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(name["Chrono #".Length..], out var n))
-                    return n;
-                return 0;
-            })
-            .DefaultIfEmpty(0);
-
-        return numbers.Max() + 1;
-    }
+    public IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId) =>
+        RankedLaps(trackId).ToList();
 
     public OverlaySnapshot BuildSnapshot(
         TelemetryState state,
@@ -228,34 +143,42 @@ public sealed class SessionStore
         F1UdpPacketParser parser,
         bool showDiagnostics = false)
     {
-        var topFive = state.TrackId >= 0
-            ? GetLeaderboard(state.TrackId)
-            : [];
-
-        var sessionBest = _activeSession?.BestLapMs ?? state.EffectiveBestLapMs;
+        var topFive = state.TrackId >= 0 ? GetLeaderboard(state.TrackId) : [];
+        var lastLap = _liveLastLapMs ?? state.CurrentLastLapMs;
         var currentLap = state.CurrentLapTimeMs;
-        var diagnostics = parser.BuildDiagnostics(state);
 
         return new OverlaySnapshot
         {
             TrackName = state.TrackName,
-            PlayerName = string.IsNullOrWhiteSpace(playerName)
-                ? (_activeSession?.Name ?? "Joueur")
-                : playerName,
-            CurrentBestFormatted = sessionBest.HasValue
-                ? LapTimeFormatter.Format(sessionBest.Value)
+            PlayerName = string.IsNullOrWhiteSpace(playerName) ? "Joueur" : playerName,
+            CurrentBestFormatted = lastLap is > 0
+                ? LapTimeFormatter.Format(lastLap.Value)
                 : "--:--.---",
-            CurrentLapFormatted = currentLap.HasValue && currentLap > 0
+            CurrentLapFormatted = currentLap is > 0
                 ? LapTimeFormatter.Format(currentLap.Value)
                 : "--:--.---",
-            HasCurrentBest = sessionBest.HasValue && sessionBest > 0,
-            HasCurrentLap = currentLap.HasValue && currentLap > 0,
+            HasCurrentLap = currentLap is > 0,
             TopFive = topFive,
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,
             IsTimeTrial = state.IsTimeTrial,
             ShowDiagnostics = showDiagnostics,
-            DiagnosticsText = diagnostics.ToStatusLine(),
+            DiagnosticsText = showDiagnostics
+                ? parser.BuildDiagnostics(state).ToStatusLine()
+                : string.Empty,
         };
     }
+
+    private IEnumerable<LeaderboardRow> RankedLaps(int trackId) =>
+        _database.Sessions
+            .Where(s => s.TrackId == trackId && s.BestLapMs is > 0)
+            .OrderBy(s => s.BestLapMs)
+            .ThenBy(s => s.StartedAt)
+            .Select((s, i) => new LeaderboardRow
+            {
+                Rank = i + 1,
+                Name = s.Name,
+                BestLapMs = s.BestLapMs!.Value,
+                FormattedTime = LapTimeFormatter.Format(s.BestLapMs.Value),
+            });
 }

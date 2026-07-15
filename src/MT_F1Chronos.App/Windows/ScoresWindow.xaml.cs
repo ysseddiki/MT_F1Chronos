@@ -29,7 +29,16 @@ public partial class ScoresWindow : Window
 
         if (initialTrackId.HasValue)
         {
-            var index = _tracks.ToList().FindIndex(t => t.TrackId == initialTrackId.Value);
+            var index = -1;
+            for (var i = 0; i < _tracks.Count; i++)
+            {
+                if (_tracks[i].TrackId == initialTrackId.Value)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
             if (index >= 0)
                 return index;
         }

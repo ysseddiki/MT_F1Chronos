@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using MT_F1Chronos.App.Services;
 using MT_F1Chronos.Core.Models;
 using Application = System.Windows.Application;
@@ -13,15 +14,23 @@ public partial class OverlayWindow : Window
 {
     private readonly AppController _controller;
     private HwndSource? _hwndSource;
+    private readonly DispatcherTimer _topMostTimer;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
         _controller = controller;
         InitializeComponent();
         Width = settings.OverlayWidth;
+        Topmost = true;
 
         SourceInitialized += OnSourceInitialized;
+        Activated += (_, _) => AssertTopMost();
+        Deactivated += (_, _) => AssertTopMost();
         Closed += OnClosed;
+
+        _topMostTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _topMostTimer.Tick += (_, _) => AssertTopMost();
+        _topMostTimer.Start();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -29,6 +38,14 @@ public partial class OverlayWindow : Window
         _hwndSource = (HwndSource)PresentationSource.FromVisual(this)!;
         _hwndSource.AddHook(WndProc);
         HotKeyHelper.Register(_hwndSource.Handle);
+        AssertTopMost();
+    }
+
+    private void AssertTopMost()
+    {
+        Topmost = true;
+        if (_hwndSource is not null)
+            TopMostHelper.Assert(_hwndSource.Handle);
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -44,6 +61,8 @@ public partial class OverlayWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _topMostTimer.Stop();
+
         if (_hwndSource is not null)
         {
             HotKeyHelper.Unregister(_hwndSource.Handle);
@@ -82,7 +101,7 @@ public partial class OverlayWindow : Window
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
-        BestLabelText.Text = "Meilleur";
+        BestLabelText.Text = "Dernier tour";
         CurrentBestText.Text = snapshot.CurrentBestFormatted;
 
         TopFivePanel.Children.Clear();
@@ -99,7 +118,7 @@ public partial class OverlayWindow : Window
 
         StatusText.Text = snapshot.IsConnected
             ? (snapshot.IsTimeTrial ? "Chrono actif" : snapshot.HasCurrentLap ? "Tour en cours" : "Connecté")
-            : "En attente de F1 26…";
+            : "En attente de F1…";
 
         DiagnosticsText.Text = snapshot.DiagnosticsText;
         DiagnosticsText.Visibility = snapshot.ShowDiagnostics

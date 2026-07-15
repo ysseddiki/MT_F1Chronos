@@ -12,15 +12,34 @@ namespace MT_F1Chronos.App.Windows;
 
 public partial class DebugWindow : Window
 {
+    private static readonly (string Title, Func<TelemetryDebugSnapshot, string> Builder)[] Sections =
+    [
+        ("Connexion", BuildConnectionText),
+        ("Session", BuildSessionText),
+        ("Voiture active (Lap Data)", BuildActiveCarText),
+        ("Lap Data — toutes les voitures", BuildCarsText),
+        ("Time Trial", BuildTimeTrialText),
+        ("Événements / dernier update", BuildEventsText),
+        ("État parsé (TelemetryState)", BuildParsedStateText),
+        ("SessionStore", BuildStoreText),
+        ("Compteurs paquets", BuildPacketCountsText),
+        ("Log — 20 derniers paquets", BuildPacketLogText),
+    ];
+
     private readonly AppController _controller;
     private readonly DispatcherTimer _refreshTimer;
+    private readonly TextBlock[] _bodyBlocks;
 
     public DebugWindow(AppController controller)
     {
         _controller = controller;
         InitializeComponent();
 
-        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _bodyBlocks = new TextBlock[Sections.Length];
+        for (var i = 0; i < Sections.Length; i++)
+            SectionsPanel.Children.Add(CreateSection(Sections[i].Title, out _bodyBlocks[i]));
+
+        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _refreshTimer.Tick += (_, _) => Refresh();
         _refreshTimer.Start();
 
@@ -31,21 +50,11 @@ public partial class DebugWindow : Window
     private void Refresh()
     {
         var snapshot = _controller.BuildDebugSnapshot();
-        SectionsPanel.Children.Clear();
-
-        SectionsPanel.Children.Add(CreateSection("Connexion", BuildConnectionText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("Session", BuildSessionText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("Voiture active (Lap Data)", BuildActiveCarText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("Lap Data — toutes les voitures", BuildCarsText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("Time Trial", BuildTimeTrialText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("Événements / dernier update", BuildEventsText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("État parsé (TelemetryState)", BuildParsedStateText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("SessionStore", BuildStoreText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("Compteurs paquets", BuildPacketCountsText(snapshot)));
-        SectionsPanel.Children.Add(CreateSection("Log — 20 derniers paquets", BuildPacketLogText(snapshot)));
+        for (var i = 0; i < Sections.Length; i++)
+            _bodyBlocks[i].Text = Sections[i].Builder(snapshot);
     }
 
-    private static UIElement CreateSection(string title, string content)
+    private static UIElement CreateSection(string title, out TextBlock body)
     {
         var border = new Border
         {
@@ -67,60 +76,52 @@ public partial class DebugWindow : Window
             Foreground = Brushes.White,
             Margin = new Thickness(0, 0, 0, 6),
         });
-        panel.Children.Add(new TextBlock
+
+        body = new TextBlock
         {
-            Text = content,
             FontFamily = new FontFamily("Consolas"),
             FontSize = 11,
             Foreground = new SolidColorBrush(Color.FromArgb(0xDD, 0xFF, 0xFF, 0xFF)),
             TextWrapping = TextWrapping.Wrap,
-        });
-
+        };
+        panel.Children.Add(body);
         border.Child = panel;
         return border;
     }
 
-    private static string BuildConnectionText(TelemetryDebugSnapshot s)
-    {
-        var status = s.IsConnected ? "connecté" : "déconnecté";
-        return $"""
-                cfg {s.ConfiguredFormat} · rx {s.ReceivedFormat}
-                état : {status}
-                débit : {s.PacketsPerSecond} pkt/s
-                dernier paquet : il y a {s.SecondsSinceLastPacket:F1}s
-                """;
-    }
+    private static string BuildConnectionText(TelemetryDebugSnapshot s) =>
+        $"""
+        cfg {s.ConfiguredFormat} · rx {s.ReceivedFormat}
+        état : {(s.IsConnected ? "connecté" : "déconnecté")}
+        débit : {s.PacketsPerSecond} pkt/s
+        dernier paquet : il y a {s.SecondsSinceLastPacket:F1}s
+        """;
 
-    private static string BuildSessionText(TelemetryDebugSnapshot s)
-    {
-        var rawName = F1UdpConstants.GetTrackName(s.RawTrackId);
-        var resolvedName = F1UdpConstants.GetTrackName(s.ResolvedTrackId);
-        return $"""
-                trackId brut : {s.RawTrackId} ({rawName})
-                trackId résolu : {s.ResolvedTrackId} ({resolvedName})
-                longueur circuit : {s.TrackLengthMeters} m
-                sessionType : {s.SessionType} {(s.IsTimeTrial ? "(Time Trial)" : "")}
-                gameMode : {s.GameMode}
-                sessionUid : {s.SessionUid}
-                """;
-    }
+    private static string BuildSessionText(TelemetryDebugSnapshot s) =>
+        $"""
+        trackId brut : {s.RawTrackId} ({F1UdpConstants.GetTrackName(s.RawTrackId)})
+        trackId résolu : {s.ResolvedTrackId} ({F1UdpConstants.GetTrackName(s.ResolvedTrackId)})
+        longueur circuit : {s.TrackLengthMeters} m
+        sessionType : {s.SessionType} {(s.IsTimeTrial ? "(Time Trial)" : "")}
+        gameMode : {s.GameMode}
+        sessionUid : {s.SessionUid}
+        """;
 
-    private static string BuildActiveCarText(TelemetryDebugSnapshot s)
-    {
-        return $"""
-                playerCarIndex : {s.PlayerCarIndex}
-                resolvedCarIndex : {s.ResolvedCarIndex}
-                lapData offset : {s.LapDataOffset} (taille {s.LapDataSize} o/voiture)
-                lastLap brut : {s.RawLastLapMs} ms ({FormatMs(s.RawLastLapMs)})
-                currentLap brut : {s.RawCurrentLapMs} ms ({FormatMs(s.RawCurrentLapMs)})
+    private static string BuildActiveCarText(TelemetryDebugSnapshot s) =>
+        $"""
+        playerCarIndex : {s.PlayerCarIndex}
+        resolvedCarIndex : {s.ResolvedCarIndex}
+        lapData offset : {s.LapDataOffset} (taille {s.LapDataSize} o/voiture)
+        lastLap brut : {s.RawLastLapMs} ms ({FormatMs(s.RawLastLapMs)})
+        currentLap brut : {s.RawCurrentLapMs} ms ({FormatMs(s.RawCurrentLapMs)})
                 driverStatus brut : {s.DriverStatus} ({DriverStatusLabel(s.DriverStatus)})
-                """;
-    }
+        currentLapInvalid : {s.CurrentLapInvalid} {(s.CurrentLapInvalid == 1 ? "(cut — non enregistré)" : "")}
+        """;
 
     private static string BuildCarsText(TelemetryDebugSnapshot s)
     {
         if (s.Cars.Count == 0)
-            return "Aucun paquet Lap Data reçu.";
+            return "Ouvre Debug pendant que des Lap Data arrivent, ou aucun paquet encore.";
 
         var sb = new StringBuilder();
         sb.AppendLine("car | lastLap      | currentLap   | drv | flags");
@@ -131,46 +132,40 @@ public partial class DebugWindow : Window
             if (car.LastLapMs == 0 && car.CurrentLapMs == 0 && car.DriverStatus == 0)
                 continue;
 
-            var flags = new List<string>();
+            var flags = new List<string>(2);
             if (car.IsPlayerCar) flags.Add("P");
             if (car.IsResolvedCar) flags.Add("R");
 
             sb.AppendLine(
-                $"{car.CarIndex,3} | {FormatMs(car.LastLapMs),12} | {FormatMs(car.CurrentLapMs),12} | {car.DriverStatus,3} | {string.Join(",", flags)}");
+                $"{car.CarIndex,3} | {FormatMs(car.LastLapMs),12} | {FormatMs(car.CurrentLapMs),12} | {car.DriverStatus,3} | {string.Join(',', flags)}");
         }
 
         return sb.ToString().TrimEnd();
     }
 
-    private static string BuildTimeTrialText(TelemetryDebugSnapshot s)
-    {
-        return $"""
-                session best (brut) : {s.TimeTrialSessionBestMs} ms ({FormatMs(s.TimeTrialSessionBestMs)})
-                personal best (brut) : {s.TimeTrialPersonalBestMs} ms ({FormatMs(s.TimeTrialPersonalBestMs)})
-                """;
-    }
+    private static string BuildTimeTrialText(TelemetryDebugSnapshot s) =>
+        $"""
+        session best (brut) : {s.TimeTrialSessionBestMs} ms ({FormatMs(s.TimeTrialSessionBestMs)})
+        personal best (brut) : {s.TimeTrialPersonalBestMs} ms ({FormatMs(s.TimeTrialPersonalBestMs)})
+        """;
 
-    private static string BuildEventsText(TelemetryDebugSnapshot s)
-    {
-        return $"""
-                dernier event : {s.LastEventCode}
-                lapCompleted : {BoolLabel(s.LastLapCompleted)}
-                completedLapMs : {FormatNullableMs(s.LastCompletedLapMs)}
-                sessionStarted : {BoolLabel(s.LastSessionStarted)}
-                sessionEnded : {BoolLabel(s.LastSessionEnded)}
-                trackChanged : {BoolLabel(s.LastTrackChanged)}
-                """;
-    }
+    private static string BuildEventsText(TelemetryDebugSnapshot s) =>
+        $"""
+        dernier event : {s.LastEventCode}
+        lapCompleted : {BoolLabel(s.LastLapCompleted)}
+        completedLapMs : {FormatNullableMs(s.LastCompletedLapMs)}
+        sessionStarted : {BoolLabel(s.LastSessionStarted)}
+        sessionEnded : {BoolLabel(s.LastSessionEnded)}
+        trackChanged : {BoolLabel(s.LastTrackChanged)}
+        """;
 
-    private static string BuildParsedStateText(TelemetryDebugSnapshot s)
-    {
-        return $"""
-                sessionBest : {FormatNullableMs(s.ParsedSessionBestMs)}
-                personalBest : {FormatNullableMs(s.ParsedPersonalBestMs)}
-                currentLastLap : {FormatNullableMs(s.ParsedCurrentLastLapMs)}
-                currentLap : {FormatNullableMs(s.ParsedCurrentLapMs)}
-                """;
-    }
+    private static string BuildParsedStateText(TelemetryDebugSnapshot s) =>
+        $"""
+        sessionBest : {FormatNullableMs(s.ParsedSessionBestMs)}
+        personalBest : {FormatNullableMs(s.ParsedPersonalBestMs)}
+        currentLastLap : {FormatNullableMs(s.ParsedCurrentLastLapMs)}
+        currentLap : {FormatNullableMs(s.ParsedCurrentLapMs)}
+        """;
 
     private static string BuildStoreText(TelemetryDebugSnapshot s)
     {
@@ -186,9 +181,8 @@ public partial class DebugWindow : Window
 
         return $"""
                 session active : oui
-                nom : {store.ActiveSessionName}
                 circuit : {store.ActiveTrackId} ({store.ActiveTrackName})
-                bestLapMs : {FormatNullableMs(store.ActiveBestLapMs)}
+                dernier tour : {FormatNullableMs(store.ActiveBestLapMs)}
                 fichier : {store.SessionsFilePath}
                 total sessions : {store.TotalSessions} ({store.ScoredSessions} avec chrono)
                 """;
@@ -228,35 +222,13 @@ public partial class DebugWindow : Window
         content.AppendLine("=== MT_F1Chronos Debug UDP ===");
         content.AppendLine($"Exporté le {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         content.AppendLine();
-        content.AppendLine("[Connexion]");
-        content.AppendLine(BuildConnectionText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[Session]");
-        content.AppendLine(BuildSessionText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[Voiture active]");
-        content.AppendLine(BuildActiveCarText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[Lap Data — voitures]");
-        content.AppendLine(BuildCarsText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[Time Trial]");
-        content.AppendLine(BuildTimeTrialText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[Événements]");
-        content.AppendLine(BuildEventsText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[État parsé]");
-        content.AppendLine(BuildParsedStateText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[SessionStore]");
-        content.AppendLine(BuildStoreText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[Compteurs]");
-        content.AppendLine(BuildPacketCountsText(snapshot));
-        content.AppendLine();
-        content.AppendLine("[Log 20 derniers paquets]");
-        content.AppendLine(BuildPacketLogText(snapshot));
+
+        foreach (var (title, builder) in Sections)
+        {
+            content.AppendLine($"[{title}]");
+            content.AppendLine(builder(snapshot));
+            content.AppendLine();
+        }
 
         var path = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
