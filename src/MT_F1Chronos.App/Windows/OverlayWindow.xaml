@@ -12,107 +12,120 @@
         Focusable="True"
         ShowActivated="True">
     <Border x:Name="RootBorder"
-            CornerRadius="4"
+            CornerRadius="2"
             BorderThickness="1"
-            Padding="10,8"
-            Opacity="0.92">
+            Opacity="0.96">
         <Border.Background>
-            <SolidColorBrush Color="#CC0A0A0F"/>
+            <SolidColorBrush Color="#F00D1117"/>
         </Border.Background>
         <Border.BorderBrush>
-            <SolidColorBrush Color="#55FFFFFF"/>
+            <SolidColorBrush Color="#22FFFFFF"/>
         </Border.BorderBrush>
-        <StackPanel>
-            <Grid Margin="0,0,0,6" MouseLeftButtonDown="OnHeaderDrag">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="TrackText"
-                           Grid.Column="0"
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- F1 accent bar -->
+            <Border Grid.Column="0"
+                    Background="#FFE10600"
+                    CornerRadius="2,0,0,2"/>
+
+            <StackPanel Grid.Column="1" Margin="12,10,10,10">
+                <Grid Margin="0,0,0,8" MouseLeftButtonDown="OnHeaderDrag">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TrackText"
+                               Grid.Column="0"
+                               FontFamily="Segoe UI"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Foreground="#FFC5CAD3"
+                               VerticalAlignment="Center"/>
+                    <Button x:Name="MenuButton"
+                            Grid.Column="1"
+                            Content="☰"
+                            Width="28"
+                            Height="24"
+                            FontSize="14"
+                            Padding="0"
+                            Margin="8,0,0,0"
+                            Background="#FF161B22"
+                            Foreground="#FFC5CAD3"
+                            BorderBrush="#33FFFFFF"
+                            Cursor="Hand"
+                            Click="OnMenuButtonClick">
+                        <Button.ContextMenu>
+                            <ContextMenu Background="#FF161B22" Foreground="White" BorderBrush="#33FFFFFF">
+                                <MenuItem Header="Changer le nom du joueur" Click="OnRenameClick"/>
+                                <MenuItem Header="Scores par circuit" Click="OnScoresClick"/>
+                                <MenuItem Header="Taille de l'overlay">
+                                    <MenuItem Header="Petit" Click="OnSizeSmallClick"/>
+                                    <MenuItem Header="Moyen" Click="OnSizeMediumClick"/>
+                                    <MenuItem Header="Grand" Click="OnSizeLargeClick"/>
+                                </MenuItem>
+                                <MenuItem Header="Format UDP">
+                                    <MenuItem Header="2025 (F1 25)" Click="OnFormat2025Click"/>
+                                    <MenuItem Header="2026" Click="OnFormat2026Click"/>
+                                </MenuItem>
+                                <MenuItem Header="Debug UDP" Click="OnDebugClick"/>
+                                <Separator/>
+                                <MenuItem Header="Quitter" Click="OnQuitClick"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                </Grid>
+
+                <TextBlock Text="TOP 5"
                            FontFamily="Segoe UI"
                            FontSize="11"
-                           FontWeight="SemiBold"
-                           Foreground="#FFB0B8C8"
-                           VerticalAlignment="Center"/>
-                <Button x:Name="MenuButton"
-                        Grid.Column="1"
-                        Content="☰"
-                        Width="26"
-                        Height="22"
-                        FontSize="13"
-                        Padding="0"
-                        Margin="6,0,0,0"
-                        Background="#FF1A1A24"
-                        Foreground="White"
-                        BorderBrush="#44FFFFFF"
-                        Cursor="Hand"
-                        Click="OnMenuButtonClick">
-                    <Button.ContextMenu>
-                        <ContextMenu Background="#FF1A1A24" Foreground="White" BorderBrush="#44FFFFFF">
-                            <MenuItem Header="Changer le nom du joueur" Click="OnRenameClick"/>
-                            <MenuItem Header="Scores par circuit" Click="OnScoresClick"/>
-                            <MenuItem Header="Taille de l'overlay">
-                                <MenuItem Header="Petit" Click="OnSizeSmallClick"/>
-                                <MenuItem Header="Moyen" Click="OnSizeMediumClick"/>
-                                <MenuItem Header="Grand" Click="OnSizeLargeClick"/>
-                            </MenuItem>
-                            <MenuItem Header="Format UDP">
-                                <MenuItem Header="2025 (F1 25)" Click="OnFormat2025Click"/>
-                                <MenuItem Header="2026" Click="OnFormat2026Click"/>
-                            </MenuItem>
-                            <MenuItem Header="Debug UDP" Click="OnDebugClick"/>
-                            <Separator/>
-                            <MenuItem Header="Quitter" Click="OnQuitClick"/>
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
-            </Grid>
+                           FontWeight="Bold"
+                           Foreground="#FFE10600"
+                           Margin="0,0,0,6"/>
 
-            <TextBlock Text="TOP 5"
-                       FontFamily="Segoe UI"
-                       FontSize="10"
-                       FontWeight="Bold"
-                       Foreground="#FFE10600"
-                       Margin="0,0,0,4"/>
+                <StackPanel x:Name="TopFivePanel" Margin="0,0,0,10"/>
 
-            <StackPanel x:Name="TopFivePanel" Margin="0,0,0,8"/>
+                <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,0,0,10"/>
 
-            <Rectangle Height="1" Fill="#33FFFFFF" Margin="0,0,0,8"/>
-
-            <TextBlock Text="TOUR EN COURS"
-                       FontFamily="Segoe UI"
-                       FontSize="10"
-                       FontWeight="Bold"
-                       Foreground="#FF5E8BFF"
-                       Margin="0,0,0,4"/>
-
-            <Grid Margin="0,0,0,4">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="PlayerNameText"
-                           Grid.Column="0"
+                <TextBlock Text="TOUR EN COURS"
                            FontFamily="Segoe UI"
-                           FontSize="12"
-                           Foreground="White"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock x:Name="CurrentLapText"
-                           Grid.Column="1"
-                           FontFamily="Consolas"
-                           FontSize="14"
+                           FontSize="11"
                            FontWeight="Bold"
                            Foreground="#FF5E8BFF"
-                           Margin="12,0,0,0"/>
-            </Grid>
+                           Margin="0,0,0,6"/>
 
-            <TextBlock x:Name="StatusText"
-                       FontFamily="Segoe UI"
-                       FontSize="9"
-                       Foreground="#66FFFFFF"
-                       Margin="0,4,0,0"
-                       Text="En attente de F1…"/>
-        </StackPanel>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="PlayerNameText"
+                               Grid.Column="0"
+                               FontFamily="Segoe UI"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#FFFFFFFF"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="CurrentLapText"
+                               Grid.Column="1"
+                               FontFamily="Consolas"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="#FF5E8BFF"
+                               Margin="12,0,0,0"
+                               VerticalAlignment="Center"/>
+                </Grid>
+
+                <TextBlock x:Name="StatusText"
+                           FontFamily="Segoe UI"
+                           FontSize="10"
+                           Foreground="#66FFFFFF"
+                           Text="En attente de F1…"/>
+            </StackPanel>
+        </Grid>
     </Border>
 </Window>

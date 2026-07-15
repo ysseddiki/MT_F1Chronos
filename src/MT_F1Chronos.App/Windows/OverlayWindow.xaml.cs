@@ -120,40 +120,45 @@ public partial class OverlayWindow : Window
 
     private static UIElement CreateRow(string rank, string name, string time, bool hasData)
     {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 3) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var rankColor = hasData ? "#FFE10600" : "#66FFFFFF";
-        var nameColor = hasData ? "#FFFFFFFF" : "#88FFFFFF";
-        var timeColor = hasData ? "#FFFFD700" : "#66FFFFFF";
+        var rankColor = hasData ? "#FFE10600" : "#55FFFFFF";
+        var nameColor = hasData ? "#FFFFFFFF" : "#77FFFFFF";
+        var timeColor = hasData ? "#FFFFD700" : "#55FFFFFF";
 
         var rankBlock = new TextBlock
         {
             Text = rank,
             FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 11,
+            FontSize = 13,
             FontWeight = FontWeights.Bold,
             Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(rankColor)!),
+            VerticalAlignment = VerticalAlignment.Center,
         };
 
         var nameBlock = new TextBlock
         {
             Text = name,
             FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 11,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
             Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(nameColor)!),
             TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
         };
 
         var timeBlock = new TextBlock
         {
             Text = time,
             FontFamily = new FontFamily("Consolas"),
-            FontSize = 11,
+            FontSize = 13,
+            FontWeight = FontWeights.Bold,
             Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(timeColor)!),
-            Margin = new Thickness(8, 0, 0, 0),
+            Margin = new Thickness(10, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
         };
 
         Grid.SetColumn(rankBlock, 0);
