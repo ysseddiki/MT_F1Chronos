@@ -45,7 +45,12 @@ cd MT_F1Chronos
 .\build.ps1
 ```
 
-Ou :
+Ce script :
+1. Compile en Release vers `dist\MT_F1Chronos.exe`
+2. Crée / met à jour le raccourci **Bureau** `F1 Chronos`
+3. Crée / met à jour le raccourci **Démarrage Windows** `F1 Chronos`
+
+Ou build seul :
 
 ```powershell
 dotnet build -c Release
@@ -147,6 +152,9 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
 ## Notes de version
+
+### v0.8.0
+- `build.ps1` crée les raccourcis Bureau et Démarrage Windows vers `dist\MT_F1Chronos.exe`
 
 ### v0.7.1
 - Conserve le branding **F1 Chronos** (nom + icône)
