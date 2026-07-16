@@ -113,9 +113,7 @@ public partial class OverlayWindow : Window
                 TopFivePanel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true));
         }
 
-        StatusText.Text = snapshot.IsConnected
-            ? (snapshot.IsTimeTrial ? "Chrono actif" : snapshot.HasCurrentLap ? "Tour en cours" : "Connecté")
-            : "En attente de F1…";
+        UpdateStatusBar(snapshot);
     }
 
     private static UIElement CreateRow(string rank, string name, string time, bool hasData)
@@ -127,7 +125,7 @@ public partial class OverlayWindow : Window
 
         var rankColor = hasData ? "#FFE10600" : "#55FFFFFF";
         var nameColor = hasData ? "#FFFFFFFF" : "#77FFFFFF";
-        var timeColor = hasData ? "#FFFFD700" : "#55FFFFFF";
+        var timeColor = hasData ? "#FF5E8BFF" : "#55FFFFFF";
 
         var rankBlock = new TextBlock
         {
@@ -171,4 +169,34 @@ public partial class OverlayWindow : Window
 
         return grid;
     }
+
+    private void UpdateStatusBar(OverlaySnapshot snapshot)
+    {
+        if (!snapshot.IsConnected)
+        {
+            SetStatusStyle("En attente de F1…", "▱", "#FFEA9A00", "#FFC5CAD3", "#66EA9A00");
+            return;
+        }
+
+        if (snapshot.IsTimeTrial || snapshot.HasCurrentLap)
+        {
+            SetStatusStyle("Tour en cours", "◉", "#FF5E8BFF", "#FF7FA4FF", "#665E8BFF");
+            return;
+        }
+
+        SetStatusStyle("Connecté", "▮▮▮", "#FF00D26A", "#FF77E3A8", "#6600D26A");
+    }
+
+    private void SetStatusStyle(string text, string icon, string accentColor, string textColor, string borderColor)
+    {
+        StatusText.Text = text;
+        StatusIconText.Text = icon;
+        StatusDot.Fill = ToBrush(accentColor);
+        StatusText.Foreground = ToBrush(textColor);
+        StatusIconText.Foreground = ToBrush(accentColor);
+        StatusBorder.BorderBrush = ToBrush(borderColor);
+    }
+
+    private static SolidColorBrush ToBrush(string color) =>
+        new((Color)ColorConverter.ConvertFromString(color)!);
 }

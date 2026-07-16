@@ -20,6 +20,20 @@
             <SolidColorBrush Color="#22FFFFFF"/>
         </Border.BorderBrush>
         <Grid>
+            <Grid.Resources>
+                <Style TargetType="Button">
+                    <Setter Property="Background" Value="#FF161B22"/>
+                    <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                    <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="BorderBrush" Value="#88E10600"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Resources>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3"/>
                 <ColumnDefinition Width="*"/>

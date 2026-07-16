@@ -152,11 +152,48 @@
                                VerticalAlignment="Center"/>
                 </Grid>
 
-                <TextBlock x:Name="StatusText"
-                           FontFamily="Segoe UI"
-                           FontSize="10"
-                           Foreground="#66FFFFFF"
-                           Text="En attente de F1…"/>
+                <Border x:Name="StatusBorder"
+                        Margin="0,2,0,0"
+                        Padding="8,5"
+                        Background="#B2161B22"
+                        BorderBrush="#22FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Ellipse x:Name="StatusDot"
+                                 Grid.Column="0"
+                                 Width="8"
+                                 Height="8"
+                                 Fill="#FFEA9A00"
+                                 VerticalAlignment="Center"/>
+
+                        <TextBlock x:Name="StatusText"
+                                   Grid.Column="1"
+                                   Margin="8,0,0,0"
+                                   FontFamily="Segoe UI"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#FFC5CAD3"
+                                   VerticalAlignment="Center"
+                                   Text="En attente de F1…"/>
+
+                        <TextBlock x:Name="StatusIconText"
+                                   Grid.Column="2"
+                                   Margin="10,0,0,0"
+                                   FontFamily="Segoe UI"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="#FFEA9A00"
+                                   VerticalAlignment="Center"
+                                   Text="▱"/>
+                    </Grid>
+                </Border>
             </StackPanel>
         </Grid>
     </Border>
