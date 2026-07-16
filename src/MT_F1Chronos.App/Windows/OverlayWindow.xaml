@@ -59,24 +59,23 @@
                             Cursor="Hand"
                             Click="OnMenuButtonClick">
                         <Button.ContextMenu>
-                            <ContextMenu Background="#FF161B22"
-                                         Foreground="#FFFFFFFF"
-                                         BorderBrush="#33FFFFFF"
+                            <ContextMenu Background="White"
+                                         Foreground="Black"
+                                         BorderBrush="#FFCCCCCC"
                                          BorderThickness="1"
                                          Padding="2">
                                 <ContextMenu.Resources>
-                                    <!-- Force dark submenu popups (WPF defaults to white) -->
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#FF161B22"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="#FF161B22"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF161B22"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#FFFFFFFF"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0D1117"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFFFF"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="White"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="White"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="White"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="Black"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FFE8E8E8"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="Black"/>
 
                                     <Style TargetType="{x:Type ContextMenu}">
-                                        <Setter Property="Background" Value="#FF161B22"/>
-                                        <Setter Property="Foreground" Value="#FFFFFFFF"/>
-                                        <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                                        <Setter Property="Background" Value="White"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="BorderBrush" Value="#FFCCCCCC"/>
                                         <Setter Property="BorderThickness" Value="1"/>
                                     </Style>
                                     <Style TargetType="{x:Type MenuItem}">
@@ -84,25 +83,23 @@
                                         <Setter Property="FontSize" Value="12"/>
                                         <Setter Property="Padding" Value="10,6"/>
                                         <Setter Property="Margin" Value="2,1"/>
-                                        <Setter Property="Background" Value="#FF161B22"/>
-                                        <Setter Property="Foreground" Value="#FFFFFFFF"/>
-                                        <Setter Property="BorderThickness" Value="1"/>
-                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                        <Setter Property="Background" Value="White"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
                                         <Setter Property="Cursor" Value="Hand"/>
                                         <Style.Triggers>
                                             <Trigger Property="IsHighlighted" Value="True">
-                                                <Setter Property="Background" Value="#FF0D1117"/>
-                                                <Setter Property="BorderBrush" Value="#55E10600"/>
-                                                <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                                                <Setter Property="Background" Value="#FFE8E8E8"/>
+                                                <Setter Property="Foreground" Value="Black"/>
                                             </Trigger>
                                             <Trigger Property="IsEnabled" Value="False">
-                                                <Setter Property="Foreground" Value="#66FFFFFF"/>
+                                                <Setter Property="Foreground" Value="#FF999999"/>
                                             </Trigger>
                                         </Style.Triggers>
                                     </Style>
                                     <Style TargetType="{x:Type Separator}">
                                         <Setter Property="Margin" Value="6,6"/>
-                                        <Setter Property="Background" Value="#22FFFFFF"/>
+                                        <Setter Property="Background" Value="#FFDDDDDD"/>
                                         <Setter Property="Height" Value="1"/>
                                     </Style>
                                 </ContextMenu.Resources>
