@@ -2,7 +2,7 @@
 
 Overlay PC pour **EA Sports F1 25/26** (format UDP **2025/2026**) : **TOP 5** par circuit, tour en cours, meilleur tour.
 
-![Placement overlay](docs/overlay-preview.jpg)
+![Placement overlay](docs/overlay-preview-v0.4.2.jpg)
 
 ## Fonctionnalités
 
