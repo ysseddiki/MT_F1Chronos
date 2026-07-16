@@ -60,7 +60,7 @@
                     CornerRadius="8,0,0,8"/>
 
             <StackPanel Grid.Column="1" Margin="14,16,14,16">
-                <TextBlock Text="Bienvenue sur MT_F1Chronos"
+                <TextBlock Text="Bienvenue sur F1 Chronos"
                            FontFamily="Segoe UI"
                            FontSize="16"
                            FontWeight="Bold"
