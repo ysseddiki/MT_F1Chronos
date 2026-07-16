@@ -102,7 +102,7 @@ public partial class ScoresWindow : Window
         {
             Text = text,
             FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 12,
+            FontSize = 13,
             Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#88FFFFFF")!),
             Margin = new Thickness(0, 8, 0, 0),
         };
@@ -110,9 +110,9 @@ public partial class ScoresWindow : Window
     private static UIElement CreateHeader()
     {
         var grid = CreateGrid();
-        AddCell(grid, 0, "#FFB0B8C8", "Rang", FontWeights.Bold);
-        AddCell(grid, 1, "#FFB0B8C8", "Nom", FontWeights.Bold);
-        AddCell(grid, 2, "#FFB0B8C8", "Temps", FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
+        AddCell(grid, 0, "#FFC5CAD3", "Rang", FontWeights.Bold);
+        AddCell(grid, 1, "#FFC5CAD3", "Nom", FontWeights.Bold);
+        AddCell(grid, 2, "#FFC5CAD3", "Temps", FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
         return grid;
     }
 
@@ -120,17 +120,17 @@ public partial class ScoresWindow : Window
     {
         var grid = CreateGrid();
         AddCell(grid, 0, "#FFE10600", $"{score.Rank}.", FontWeights.Bold);
-        AddCell(grid, 1, "#FFFFFFFF", score.Name, FontWeights.Normal);
+        AddCell(grid, 1, "#FFFFFFFF", score.Name, FontWeights.SemiBold);
         AddCell(grid, 2, "#FFFFD700", score.FormattedTime, FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
         return grid;
     }
 
     private static Grid CreateGrid()
     {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
         return grid;
     }
 
@@ -146,7 +146,7 @@ public partial class ScoresWindow : Window
         {
             Text = text,
             FontFamily = new FontFamily(column == 2 ? "Consolas" : "Segoe UI"),
-            FontSize = 11,
+            FontSize = 13,
             FontWeight = weight,
             Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)!),
             TextTrimming = TextTrimming.CharacterEllipsis,

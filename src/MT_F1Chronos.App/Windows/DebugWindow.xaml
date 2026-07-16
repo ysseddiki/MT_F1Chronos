@@ -10,54 +10,78 @@
         Width="560"
         Height="640"
         ShowInTaskbar="False">
-    <Border CornerRadius="6"
+    <Border CornerRadius="2"
             BorderThickness="1"
-            Padding="14">
+            Opacity="0.98">
         <Border.Background>
-            <SolidColorBrush Color="#F0101018"/>
+            <SolidColorBrush Color="#F50D1117"/>
         </Border.Background>
         <Border.BorderBrush>
-            <SolidColorBrush Color="#FFE10600"/>
+            <SolidColorBrush Color="#22FFFFFF"/>
         </Border.BorderBrush>
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Row="0"
-                       Text="Debug UDP"
-                       FontFamily="Segoe UI"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Foreground="White"
-                       Margin="0,0,0,10"/>
+            <!-- F1 accent bar -->
+            <Border Grid.Column="0"
+                    Background="#FFE10600"
+                    CornerRadius="2,0,0,2"/>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="SectionsPanel"/>
-            </ScrollViewer>
+            <Grid Grid.Column="1" Margin="14,14,14,14">
+                <Grid.Resources>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#FF161B22"/>
+                        <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                        <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="FontFamily" Value="Segoe UI"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#88E10600"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Resources>
 
-            <StackPanel Grid.Row="2"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Margin="0,12,0,0">
-                <Button Content="Exporter log"
-                        Width="110"
-                        Height="32"
-                        Margin="0,0,8,0"
-                        Click="OnExportClick"
-                        Background="#FF2A2A34"
-                        Foreground="White"
-                        BorderBrush="#44FFFFFF"/>
-                <Button Content="Fermer"
-                        Width="90"
-                        Height="32"
-                        Click="OnCloseClick"
-                        Background="#FF2A2A34"
-                        Foreground="White"
-                        BorderBrush="#44FFFFFF"/>
-            </StackPanel>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Debug UDP"
+                           FontFamily="Segoe UI"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           Margin="0,0,0,10"/>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="SectionsPanel"/>
+                </ScrollViewer>
+
+                <StackPanel Grid.Row="2"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Margin="0,12,0,0">
+                    <Button Content="Exporter log"
+                            Width="110"
+                            Height="32"
+                            FontSize="12"
+                            Margin="0,0,8,0"
+                            Click="OnExportClick"/>
+                    <Button Content="Fermer"
+                            Width="90"
+                            Height="32"
+                            FontSize="12"
+                            Click="OnCloseClick"/>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>

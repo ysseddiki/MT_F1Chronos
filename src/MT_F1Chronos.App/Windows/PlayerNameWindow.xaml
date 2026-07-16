@@ -10,54 +10,68 @@
         Width="340"
         SizeToContent="Height"
         ShowInTaskbar="False">
-    <Border CornerRadius="6"
+    <Border CornerRadius="2"
             BorderThickness="1"
-            Padding="16">
+            Opacity="0.98">
         <Border.Background>
-            <SolidColorBrush Color="#F0101018"/>
+            <SolidColorBrush Color="#F50D1117"/>
         </Border.Background>
         <Border.BorderBrush>
-            <SolidColorBrush Color="#FFE10600"/>
+            <SolidColorBrush Color="#22FFFFFF"/>
         </Border.BorderBrush>
-        <StackPanel>
-            <TextBlock Text="Bienvenue sur MT_F1Chronos"
-                       FontFamily="Segoe UI"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Foreground="White"
-                       Margin="0,0,0,4"/>
-            <TextBlock Text="Choisis ton nom de joueur. Il sera utilisé pour tous tes chronos."
-                       FontFamily="Segoe UI"
-                       FontSize="11"
-                       Foreground="#FFB0B8C8"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,12"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <TextBlock Text="Nom du joueur"
-                       FontFamily="Segoe UI"
-                       FontSize="11"
-                       Foreground="#FFB0B8C8"
-                       Margin="0,0,0,4"/>
-            <TextBox x:Name="NameBox"
-                     FontFamily="Segoe UI"
-                     FontSize="14"
-                     Padding="8,6"
-                     Background="#FF1A1A24"
-                     Foreground="White"
-                     BorderBrush="#44FFFFFF"
-                     CaretBrush="White"
-                     Margin="0,0,0,14"/>
+            <!-- F1 accent bar -->
+            <Border Grid.Column="0"
+                    Background="#FFE10600"
+                    CornerRadius="2,0,0,2"/>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Valider"
-                        Width="90"
-                        Height="32"
-                        Click="OnConfirmClick"
-                        Background="#FFE10600"
-                        Foreground="White"
-                        BorderBrush="#FFE10600"
-                        IsDefault="True"/>
+            <StackPanel Grid.Column="1" Margin="14,16,14,16">
+                <TextBlock Text="Bienvenue sur MT_F1Chronos"
+                           FontFamily="Segoe UI"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           Margin="0,0,0,4"/>
+                <TextBlock Text="Choisis ton nom de joueur. Il sera utilisé pour tous tes chronos."
+                           FontFamily="Segoe UI"
+                           FontSize="11"
+                           Foreground="#FFC5CAD3"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,12"/>
+
+                <TextBlock Text="Nom du joueur"
+                           FontFamily="Segoe UI"
+                           FontSize="11"
+                           Foreground="#FFC5CAD3"
+                           Margin="0,0,0,4"/>
+                <TextBox x:Name="NameBox"
+                         FontFamily="Segoe UI"
+                         FontSize="14"
+                         Padding="8,6"
+                         Background="#FF161B22"
+                         Foreground="White"
+                         BorderBrush="#33FFFFFF"
+                         CaretBrush="#FFE10600"
+                         Margin="0,0,0,14"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Valider"
+                            Width="90"
+                            Height="32"
+                            FontFamily="Segoe UI"
+                            Click="OnConfirmClick"
+                            Background="#FFE10600"
+                            Foreground="White"
+                            BorderBrush="#FFE10600"
+                            Cursor="Hand"
+                            IsDefault="True"/>
+                </StackPanel>
             </StackPanel>
-        </StackPanel>
+        </Grid>
     </Border>
 </Window>

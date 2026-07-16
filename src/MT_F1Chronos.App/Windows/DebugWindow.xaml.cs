@@ -60,10 +60,10 @@ public partial class DebugWindow : Window
         {
             Margin = new Thickness(0, 0, 0, 10),
             Padding = new Thickness(10, 8, 10, 8),
-            Background = new SolidColorBrush(Color.FromArgb(0x44, 0x1A, 0x1A, 0x24)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(0x44, 0xFF, 0xFF, 0xFF)),
+            Background = new SolidColorBrush(Color.FromArgb(0x99, 0x16, 0x1B, 0x22)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF)),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
+            CornerRadius = new CornerRadius(2),
         };
 
         var panel = new StackPanel();
@@ -72,8 +72,8 @@ public partial class DebugWindow : Window
             Text = title,
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brushes.White,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xC5, 0xCA, 0xD3)),
             Margin = new Thickness(0, 0, 0, 6),
         });
 

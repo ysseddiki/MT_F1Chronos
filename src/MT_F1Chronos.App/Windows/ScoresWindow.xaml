@@ -10,92 +10,117 @@
         Width="400"
         Height="480"
         ShowInTaskbar="False">
-    <Border CornerRadius="6"
+    <Border CornerRadius="2"
             BorderThickness="1"
-            Padding="16">
+            Opacity="0.98">
         <Border.Background>
-            <SolidColorBrush Color="#F0101018"/>
+            <SolidColorBrush Color="#F50D1117"/>
         </Border.Background>
         <Border.BorderBrush>
-            <SolidColorBrush Color="#FFE10600"/>
+            <SolidColorBrush Color="#22FFFFFF"/>
         </Border.BorderBrush>
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Row="0"
-                       Text="Scores par circuit"
-                       FontFamily="Segoe UI"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Foreground="White"
-                       Margin="0,0,0,12"/>
+            <!-- F1 accent bar -->
+            <Border Grid.Column="0"
+                    Background="#FFE10600"
+                    CornerRadius="2,0,0,2"/>
 
-            <Grid Grid.Row="1" Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" Margin="14,14,14,14">
+                <Grid.Resources>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#FF161B22"/>
+                        <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                        <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="FontFamily" Value="Segoe UI"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#88E10600"/>
+                                <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#44FFFFFF"/>
+                                <Setter Property="BorderBrush" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Resources>
 
-                <Button x:Name="PrevTrackButton"
-                        Grid.Column="0"
-                        Content="◀"
-                        Width="32"
-                        Height="28"
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Scores par circuit"
+                           FontFamily="Segoe UI"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           Margin="0,0,0,12"/>
+
+                <Grid Grid.Row="1" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button x:Name="PrevTrackButton"
+                            Grid.Column="0"
+                            Content="◀"
+                            Width="32"
+                            Height="28"
+                            FontSize="12"
+                            Click="OnPrevTrackClick"/>
+
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center" Margin="8,0">
+                        <TextBlock x:Name="TrackTitleText"
+                                   FontFamily="Segoe UI"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="TrackIndexText"
+                                   FontFamily="Segoe UI"
+                                   FontSize="10"
+                                   Foreground="#FFC5CAD3"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <Button x:Name="NextTrackButton"
+                            Grid.Column="2"
+                            Content="▶"
+                            Width="32"
+                            Height="28"
+                            FontSize="12"
+                            Click="OnNextTrackClick"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="ScoresPanel"/>
+                </ScrollViewer>
+
+                <Button Grid.Row="3"
+                        Content="Fermer"
+                        Width="90"
+                        Height="32"
                         FontSize="12"
-                        Click="OnPrevTrackClick"
-                        Background="#FF2A2A34"
-                        Foreground="White"
-                        BorderBrush="#44FFFFFF"/>
-
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Margin="8,0">
-                    <TextBlock x:Name="TrackTitleText"
-                               FontFamily="Segoe UI"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="White"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center"
-                               TextTrimming="CharacterEllipsis"/>
-                    <TextBlock x:Name="TrackIndexText"
-                               FontFamily="Segoe UI"
-                               FontSize="10"
-                               Foreground="#88FFFFFF"
-                               HorizontalAlignment="Center"
-                               Margin="0,2,0,0"/>
-                </StackPanel>
-
-                <Button x:Name="NextTrackButton"
-                        Grid.Column="2"
-                        Content="▶"
-                        Width="32"
-                        Height="28"
-                        FontSize="12"
-                        Click="OnNextTrackClick"
-                        Background="#FF2A2A34"
-                        Foreground="White"
-                        BorderBrush="#44FFFFFF"/>
+                        Margin="0,14,0,0"
+                        HorizontalAlignment="Right"
+                        Click="OnCloseClick"/>
             </Grid>
-
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="ScoresPanel"/>
-            </ScrollViewer>
-
-            <Button Grid.Row="3"
-                    Content="Fermer"
-                    Width="90"
-                    Height="32"
-                    Margin="0,14,0,0"
-                    HorizontalAlignment="Right"
-                    Click="OnCloseClick"
-                    Background="#FF2A2A34"
-                    Foreground="White"
-                    BorderBrush="#44FFFFFF"/>
         </Grid>
     </Border>
 </Window>
