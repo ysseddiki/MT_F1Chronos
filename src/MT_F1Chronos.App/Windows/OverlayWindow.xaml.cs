@@ -23,9 +23,6 @@ public partial class OverlayWindow : Window
         InitializeComponent();
         Width = settings.OverlayWidth;
         Topmost = true;
-        ResetScoresMenu.Visibility = settings.EnableScoreReset
-            ? Visibility.Visible
-            : Visibility.Collapsed;
 
         ApplyOpacity(settings.OverlayOpacity);
         SyncLeaderboardMenu(settings.LeaderboardSize);

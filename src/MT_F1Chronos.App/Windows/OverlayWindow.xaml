@@ -112,8 +112,7 @@
                                     <MenuItem Header="HTML" Click="OnExportHtmlClick"/>
                                 </MenuItem>
                                 <MenuItem x:Name="ResetScoresMenu"
-                                          Header="Réinitialiser les scores"
-                                          Visibility="Collapsed">
+                                          Header="Réinitialiser les scores">
                                     <MenuItem Header="Circuit affiché…" Click="OnResetCurrentTrackClick"/>
                                     <MenuItem Header="Tous les circuits…" Click="OnResetAllClick"/>
                                 </MenuItem>

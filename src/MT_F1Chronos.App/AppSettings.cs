@@ -10,10 +10,4 @@ public sealed class AppSettings
     public double OverlayOpacity { get; set; } = 0.96;
     public int LeaderboardSize { get; set; } = 5;
     public string PlayerName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// When true, shows score reset actions in the burger menu (password required).
-    /// Enable via settings.json: "enableScoreReset": true
-    /// </summary>
-    public bool EnableScoreReset { get; set; }
 }

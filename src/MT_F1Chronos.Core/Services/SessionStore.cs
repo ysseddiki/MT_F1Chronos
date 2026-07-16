@@ -191,30 +191,19 @@ public sealed class SessionStore
     }
 
     /// <summary>
-    /// Prefer a track that actually has scores so TOP 5 stays populated after restart.
-    /// Live track wins only when it already has persisted laps.
+    /// Live telemetry track always wins once known.
+    /// Fall back to last scored track only at startup (no UDP yet).
     /// </summary>
     private int ResolveOverlayTrackId(TelemetryState state)
     {
-        if (state.TrackId >= 0 && HasScoresForTrack(state.TrackId))
-            return state.TrackId;
-
-        if (_liveTrackId >= 0 && HasScoresForTrack(_liveTrackId))
-            return _liveTrackId;
-
-        var mostRecent = MostRecentScoredTrackId();
-        if (mostRecent >= 0)
-            return mostRecent;
-
-        // No scores yet: keep live track (empty TOP 5 until first lap).
         if (state.TrackId >= 0)
             return state.TrackId;
 
-        return _liveTrackId;
-    }
+        if (_liveTrackId >= 0)
+            return _liveTrackId;
 
-    private bool HasScoresForTrack(int trackId) =>
-        trackId >= 0 && _database.Sessions.Any(s => s.TrackId == trackId && s.BestLapMs is > 0);
+        return MostRecentScoredTrackId();
+    }
 
     private int MostRecentScoredTrackId() =>
         _database.Sessions

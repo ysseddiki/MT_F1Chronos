@@ -12,7 +12,7 @@ namespace MT_F1Chronos.App.Services;
 
 public sealed class AppController : IDisposable
 {
-    private const string ScoreResetPassword = "chronos";
+    private const string ScoreResetPassword = "ys-reset-mt26";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -217,7 +217,7 @@ public sealed class AppController : IDisposable
 
     public void ResetCurrentTrackScores()
     {
-        if (_overlay is null || !_settings.EnableScoreReset)
+        if (_overlay is null)
             return;
 
         if (!ConfirmResetPassword("Réinitialiser le circuit", "Mot de passe requis pour effacer les scores du circuit affiché."))
@@ -247,7 +247,7 @@ public sealed class AppController : IDisposable
 
     public void ResetAllScores()
     {
-        if (_overlay is null || !_settings.EnableScoreReset)
+        if (_overlay is null)
             return;
 
         if (!ConfirmResetPassword("Réinitialiser tout", "Mot de passe requis pour effacer TOUS les scores."))

@@ -22,6 +22,7 @@ public sealed class F1UdpPacketParser
     private uint _timeTrialSessionBestMs;
     private uint _timeTrialPersonalBestMs;
     private byte _previousCurrentLapInvalid;
+    private bool _seedLastLapWithoutRecording;
     private CarLapDebugRow[] _carRows = [];
     private TelemetryUpdate? _lastUpdate;
 
@@ -42,6 +43,7 @@ public sealed class F1UdpPacketParser
     public void SetFormat(ushort format)
     {
         Profile = UdpFormatProfile.For(format);
+        _seedLastLapWithoutRecording = true;
     }
 
     public bool TryParse(ReadOnlySpan<byte> buffer, TelemetryState state, out TelemetryUpdate? update)
@@ -71,10 +73,7 @@ public sealed class F1UdpPacketParser
 
         var sessionChanged = state.SessionUid != 0 && sessionUid != state.SessionUid;
         if (sessionChanged)
-        {
-            state.ResetLapData();
-            _previousCurrentLapInvalid = 0;
-        }
+            BeginNewSession(state);
 
         var previousTrackId = state.TrackId;
         state.SessionUid = sessionUid;
@@ -341,6 +340,23 @@ public sealed class F1UdpPacketParser
         if (_rawCurrentLapMs > 0)
             state.CurrentLapTimeMs = _rawCurrentLapMs;
 
+        if (_seedLastLapWithoutRecording)
+        {
+            _seedLastLapWithoutRecording = false;
+
+            // If the game still broadcasts the previous last lap right after a restart,
+            // adopt it without recording. If lastLap is already 0, this is a fresh session
+            // and the next real completion must be recorded.
+            if (_rawLastLapMs > 0)
+            {
+                state.CurrentLastLapMs = _rawLastLapMs;
+                if (!state.SessionBestLapMs.HasValue || _rawLastLapMs < state.SessionBestLapMs)
+                    state.SessionBestLapMs = _rawLastLapMs;
+                _previousCurrentLapInvalid = state.CurrentLapInvalid;
+                return;
+            }
+        }
+
         if (_rawLastLapMs == 0)
         {
             _previousCurrentLapInvalid = state.CurrentLapInvalid;
@@ -360,6 +376,13 @@ public sealed class F1UdpPacketParser
         }
 
         _previousCurrentLapInvalid = state.CurrentLapInvalid;
+    }
+
+    private void BeginNewSession(TelemetryState state)
+    {
+        state.ResetLapData();
+        _previousCurrentLapInvalid = 0;
+        _seedLastLapWithoutRecording = true;
     }
 
     private void UpdateCarRows(ReadOnlySpan<byte> buffer, TelemetryState state)
@@ -400,6 +423,9 @@ public sealed class F1UdpPacketParser
 
         sessionStarted = code == "SSTA";
         sessionEnded = code == "SEND";
+
+        if (sessionStarted)
+            BeginNewSession(state);
     }
 
     private void ParseTimeTrialPacket(ReadOnlySpan<byte> buffer, TelemetryState state)

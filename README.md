@@ -15,7 +15,7 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - **Export** CSV / JSON / HTML
 - Position mémorisée après déplacement + **opacité** réglable (60–100 %)
 - Debug UDP intégré
-- Réinitialisation des scores (optionnelle, feature flag + mot de passe)
+- Réinitialisation des scores (mot de passe requis)
 
 ## Prérequis
 
@@ -77,7 +77,7 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Changer le nom du joueur | Pseudo pour les **prochains** tours |
 | Scores par circuit | Liste complète, navigation ◀ ▶ |
 | Exporter les scores | CSV / JSON / HTML |
-| Réinitialiser les scores | Visible seulement si `enableScoreReset: true` |
+| Réinitialiser les scores | Effacer circuit / tous (mdp requis) |
 | Classement | TOP 5 ou TOP 10 |
 | Taille de l’overlay | Petit / Moyen / Grand |
 | Opacité | Slider 60–100 % |
@@ -105,8 +105,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "overlayWidth": 288,
   "overlayOpacity": 0.96,
   "leaderboardSize": 5,
-  "playerName": "TonNom",
-  "enableScoreReset": false
+  "playerName": "TonNom"
 }
 ```
 
@@ -118,9 +117,8 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `overlayOpacity` | `0.6` → `1.0` |
 | `leaderboardSize` | `5` ou `10` |
 | `playerName` | Pseudo des prochains tours |
-| `enableScoreReset` | Affiche le menu de reset (`true` / `false`) |
 
-Mot de passe reset (si activé) : `chronos`
+Mot de passe reset : `ys-reset-mt26`
 
 ## Données
 
@@ -147,6 +145,11 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
 ## Notes de version
+
+### v0.6.1
+- Fix doublon de chrono au redémarrage de session
+- Affichage immédiat du nouveau circuit (plus besoin d’attendre un tour)
+- Reset scores toujours disponible (mdp `ys-reset-mt26`)
 
 ### v0.6
 - Suppression du delta live vs P1
