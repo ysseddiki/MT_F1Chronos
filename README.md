@@ -2,14 +2,12 @@
 
 Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local par circuit, tour en cours live, export des scores.
 
-**Version actuelle : v0.7.0**
-
 ![Overlay preview](docs/overlay-preview-v0.4.2.jpg)
 
 ## Fonctionnalités
 
 - Overlay always-on-top (mode **Fenêtré** / **Borderless**)
-- Nom affiché / barre des tâches : **F1 Chronos**
+- Nom d’affichage / icône : **F1 Chronos**
 - **Nom du joueur** au premier lancement (modifiable ensuite, sans réécrire l’historique)
 - **TOP 5** ou **TOP 10** des meilleurs chronos du circuit
 - Mise en évidence du **joueur courant** dans le classement
@@ -19,17 +17,12 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - Position mémorisée après déplacement + **opacité** réglable (60–100 %)
 - Debug UDP intégré
 - Réinitialisation des scores (mot de passe requis)
-- Installateur Windows avec **mise à jour in-place**, raccourci Bureau et **démarrage automatique**
 
 ## Prérequis
 
-### Utilisateur final
-- Windows 10/11 x64
-- F1 25 ou F1 26 en **Fenêtré** ou **Borderless** (recommandé)
-
-### Développeur (build)
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [Inno Setup 6](https://jrsoftware.org/isinfo.php) (pour générer le setup)
+- Windows 10/11
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (pour compiler)
+- F1 25 ou F1 26 en **Fenêtré** ou **Borderless** (recommandé). Le plein écran exclusif peut masquer l’overlay.
 
 ## Configuration F1 25/26
 
@@ -45,45 +38,27 @@ Dans le jeu : **Settings → Telemetry Settings**
 
 > Le format dans le jeu et dans l’overlay (menu ☰ → **Format UDP**) doivent correspondre.
 
-## Installation (utilisateur)
-
-1. Lancer `artifacts\F1Chronos-Setup-0.7.0.exe`
-2. Cocher si besoin : raccourci Bureau + lancement au démarrage Windows
-3. Lancer **F1 Chronos**
-
-Les versions suivantes du setup **mettent à jour** l’install existante (mêmes `settings.json` / `sessions.json` dans `%LOCALAPPDATA%\MT_F1Chronos`).
-
-## Compilation / packaging (dev)
+## Compilation
 
 ```powershell
 cd MT_F1Chronos
 .\build.ps1
 ```
 
-Ce script :
-1. Publie l’app **self-contained** win-x64 dans `publish\`
-2. Compile l’installateur Inno Setup vers `artifacts\F1Chronos-Setup-<version>.exe` (si ISCC est installé)
-
-Build rapide sans installer (framework-dependent) :
+Ou :
 
 ```powershell
 dotnet build -c Release
 ```
 
-Sortie : `dist\MT_F1Chronos.exe`
-
-### Bump de version (rappel obligatoire à chaque release)
-
-1. `Directory.Build.props` → `Version` / `AssemblyVersion` / `FileVersion` / `InformationalVersion`
-2. `installer\MT_F1Chronos.iss` → `#define MyAppVersion`
-3. Entrée dans **Notes de version** ci-dessous
+Exécutable : `dist\MT_F1Chronos.exe`
 
 ## Utilisation
 
-1. Lancer **F1 Chronos** (raccourci ou setup)
+1. Lancer `dist\MT_F1Chronos.exe`
 2. Saisir le **nom du joueur** (première ouverture)
 3. Lancer F1 en Borderless / Fenêtré et démarrer une session chrono
-4. L’overlay affiche le circuit, le TOP, le tour en cours, le statut et la version
+4. L’overlay affiche le circuit, le TOP, le tour en cours et l’état de connexion
 
 Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du tour**.
 
@@ -95,7 +70,6 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | TOP 5 / TOP 10 | Meilleurs chronos du circuit (joueur courant surligné) |
 | Tour en cours | Chrono live `00:00.000` + pseudo |
 | Statut | Connexion télémétrie |
-| Bas | Version (`v0.7.0`) |
 
 ### Menu burger (☰)
 
@@ -110,7 +84,6 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Opacité | Slider 60–100 % |
 | Format UDP | 2025 ou 2026 |
 | Debug UDP | Fenêtre de diagnostic |
-| Version | Affichage `vX.Y.Z` |
 | Quitter | Ferme l’application |
 
 ### Raccourcis
@@ -150,8 +123,7 @@ Mot de passe reset : `ys-reset-mt26`
 
 ## Données
 
-Scores : `%LOCALAPPDATA%\MT_F1Chronos\sessions.json`  
-Install app (setup) : `%LOCALAPPDATA%\Programs\F1Chronos\`
+Scores : `%LOCALAPPDATA%\MT_F1Chronos\sessions.json`
 
 Persistance à chaque tour terminé et à la fermeture. Toutes les entrées sont conservées ; le TOP n’est qu’un filtre d’affichage.
 
@@ -160,8 +132,7 @@ Persistance à chaque tour terminé et à la fermeture. Toutes les entrées sont
 ```
 MT_F1Chronos.Core   → UDP F1 2025/2026, parsing, stockage, export
 MT_F1Chronos.App    → Overlay WPF, menus, hotkeys
-installer/          → Script Inno Setup
-assets/             → Icône app (app.ico)
+assets/             → Icône F1 Chronos (app.ico)
 ```
 
 ## Debug UDP
@@ -177,12 +148,13 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 
 ## Notes de version
 
+### v0.7.1
+- Conserve le branding **F1 Chronos** (nom + icône)
+- Retire l’installateur Inno Setup, le publish self-contained, le démarrage auto et l’affichage de version
+
 ### v0.7.0
-- Installateur Inno Setup avec upgrade in-place
-- Raccourci Bureau + option démarrage Windows
-- Version visible dans l’overlay / menu (`v0.7.0`)
-- Nom d’affichage **F1 Chronos** + icône app
-- Publish self-contained win-x64 via `build.ps1`
+- (partiellement revert) Installateur / update / démarrage Windows / version UI — retiré en v0.7.1
+- Branding F1 Chronos + icône conservés
 
 ### v0.6.1
 - Fix doublon de chrono au redémarrage de session

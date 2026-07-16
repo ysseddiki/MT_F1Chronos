@@ -26,8 +26,6 @@ public partial class OverlayWindow : Window
 
         ApplyOpacity(settings.OverlayOpacity);
         SyncLeaderboardMenu(settings.LeaderboardSize);
-        VersionText.Text = AppVersion.Label;
-        VersionMenuItem.Header = AppVersion.Label;
 
         SourceInitialized += OnSourceInitialized;
         Activated += (_, _) => AssertTopMost();

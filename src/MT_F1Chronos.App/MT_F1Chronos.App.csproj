@@ -9,10 +9,11 @@
     <RootNamespace>MT_F1Chronos.App</RootNamespace>
     <AssemblyName>MT_F1Chronos</AssemblyName>
     <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
-    <ApplicationTitle>F1 Chronos</ApplicationTitle>
+    <Product>F1 Chronos</Product>
+    <AssemblyTitle>F1 Chronos</AssemblyTitle>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(RuntimeIdentifier)' == ''">
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <OutputPath>$(MSBuildThisFileDirectory)..\..\dist\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>

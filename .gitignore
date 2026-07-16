@@ -4,7 +4,6 @@ obj/
 publish/
 out/
 dist/
-artifacts/
 
 # Large icon source (keep assets/app.ico + app-icon-256.png)
 assets/app-icon-source.png
