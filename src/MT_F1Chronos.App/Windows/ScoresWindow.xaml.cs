@@ -121,7 +121,7 @@ public partial class ScoresWindow : Window
         var grid = CreateGrid();
         AddCell(grid, 0, "#FFE10600", $"{score.Rank}.", FontWeights.Bold);
         AddCell(grid, 1, "#FFFFFFFF", score.Name, FontWeights.SemiBold);
-        AddCell(grid, 2, "#FF5E8BFF", score.FormattedTime, FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
+        AddCell(grid, 2, "#FFFFFFFF", score.FormattedTime, FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
         return grid;
     }
 

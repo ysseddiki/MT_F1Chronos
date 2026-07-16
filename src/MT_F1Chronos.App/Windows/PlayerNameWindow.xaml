@@ -10,7 +10,7 @@
         Width="340"
         SizeToContent="Height"
         ShowInTaskbar="False">
-    <Border CornerRadius="2"
+    <Border CornerRadius="8"
             BorderThickness="1"
             Opacity="0.98">
         <Border.Background>
@@ -27,6 +27,21 @@
                     <Setter Property="BorderBrush" Value="#33FFFFFF"/>
                     <Setter Property="BorderThickness" Value="1"/>
                     <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="4"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                     <Style.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="BorderBrush" Value="#88E10600"/>
@@ -42,7 +57,7 @@
             <!-- F1 accent bar -->
             <Border Grid.Column="0"
                     Background="#FFE10600"
-                    CornerRadius="2,0,0,2"/>
+                    CornerRadius="8,0,0,8"/>
 
             <StackPanel Grid.Column="1" Margin="14,16,14,16">
                 <TextBlock Text="Bienvenue sur MT_F1Chronos"

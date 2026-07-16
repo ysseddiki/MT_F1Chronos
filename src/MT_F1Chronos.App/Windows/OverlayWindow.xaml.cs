@@ -125,7 +125,7 @@ public partial class OverlayWindow : Window
 
         var rankColor = hasData ? "#FFE10600" : "#55FFFFFF";
         var nameColor = hasData ? "#FFFFFFFF" : "#77FFFFFF";
-        var timeColor = hasData ? "#FF5E8BFF" : "#55FFFFFF";
+        var timeColor = hasData ? "#FFFFFFFF" : "#55FFFFFF";
 
         var rankBlock = new TextBlock
         {
