@@ -153,6 +153,9 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 
 ## Notes de version
 
+### v0.9
+- Nettoyage et optimisation interne du code (aucun changement fonctionnel)
+
 ### v0.8.0
 - `build.ps1` crée les raccourcis Bureau et Démarrage Windows vers `dist\MT_F1Chronos.exe`
 

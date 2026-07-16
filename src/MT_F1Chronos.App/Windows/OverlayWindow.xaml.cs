@@ -103,8 +103,8 @@ public partial class OverlayWindow : Window
     private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
     private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
     private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
-    private void OnTop5Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(5);
-    private void OnTop10Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(10);
+    private void OnTop5Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(LeaderboardSizes.Default);
+    private void OnTop10Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(LeaderboardSizes.Extended);
     private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
     private void OnFormat2025Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2025);
     private void OnFormat2026Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2026);
@@ -115,14 +115,14 @@ public partial class OverlayWindow : Window
         if (!_opacityReady)
             return;
 
-        var opacity = Math.Clamp(e.NewValue / 100.0, 0.6, 1.0);
+        var opacity = Math.Clamp(e.NewValue / 100.0, AppSettings.MinOpacity, AppSettings.MaxOpacity);
         ApplyOpacity(opacity);
         _controller.SetOverlayOpacity(opacity);
     }
 
     public void ApplyOpacity(double opacity)
     {
-        var clamped = Math.Clamp(opacity, 0.6, 1.0);
+        var clamped = Math.Clamp(opacity, AppSettings.MinOpacity, AppSettings.MaxOpacity);
         RootBorder.Opacity = clamped;
 
         var percent = (int)Math.Round(clamped * 100);
@@ -134,7 +134,7 @@ public partial class OverlayWindow : Window
 
     public void SyncLeaderboardMenu(int size)
     {
-        var isTop10 = size == 10;
+        var isTop10 = size == LeaderboardSizes.Extended;
         Top5MenuItem.IsChecked = !isTop10;
         Top10MenuItem.IsChecked = isTop10;
         LeaderboardTitleText.Text = isTop10 ? "TOP 10" : "TOP 5";
@@ -145,7 +145,7 @@ public partial class OverlayWindow : Window
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
-        LeaderboardTitleText.Text = snapshot.LeaderboardSize == 10 ? "TOP 10" : "TOP 5";
+        LeaderboardTitleText.Text = snapshot.LeaderboardSize == LeaderboardSizes.Extended ? "TOP 10" : "TOP 5";
 
         TopFivePanel.Children.Clear();
 
@@ -200,7 +200,7 @@ public partial class OverlayWindow : Window
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 13,
             FontWeight = FontWeights.Bold,
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(rankColor)!),
+            Foreground = UiBrushes.FromHex(rankColor),
             VerticalAlignment = VerticalAlignment.Center,
         };
 
@@ -210,7 +210,7 @@ public partial class OverlayWindow : Window
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 13,
             FontWeight = isCurrentPlayer ? FontWeights.Bold : FontWeights.SemiBold,
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(nameColor)!),
+            Foreground = UiBrushes.FromHex(nameColor),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -221,7 +221,7 @@ public partial class OverlayWindow : Window
             FontFamily = new FontFamily("Consolas"),
             FontSize = 13,
             FontWeight = FontWeights.Bold,
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(timeColor)!),
+            Foreground = UiBrushes.FromHex(timeColor),
             Margin = new Thickness(10, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -258,12 +258,9 @@ public partial class OverlayWindow : Window
     {
         StatusText.Text = text;
         StatusIconText.Text = icon;
-        StatusDot.Fill = ToBrush(accentColor);
-        StatusText.Foreground = ToBrush(textColor);
-        StatusIconText.Foreground = ToBrush(accentColor);
-        StatusBorder.BorderBrush = ToBrush(borderColor);
+        StatusDot.Fill = UiBrushes.FromHex(accentColor);
+        StatusText.Foreground = UiBrushes.FromHex(textColor);
+        StatusIconText.Foreground = UiBrushes.FromHex(accentColor);
+        StatusBorder.BorderBrush = UiBrushes.FromHex(borderColor);
     }
-
-    private static SolidColorBrush ToBrush(string color) =>
-        new((Color)ColorConverter.ConvertFromString(color)!);
 }

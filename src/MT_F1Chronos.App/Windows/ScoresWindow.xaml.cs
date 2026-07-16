@@ -103,7 +103,7 @@ public partial class ScoresWindow : Window
             Text = text,
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 13,
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#88FFFFFF")!),
+            Foreground = UiBrushes.FromHex("#88FFFFFF"),
             Margin = new Thickness(0, 8, 0, 0),
         };
 
@@ -148,7 +148,7 @@ public partial class ScoresWindow : Window
             FontFamily = new FontFamily(column == 2 ? "Consolas" : "Segoe UI"),
             FontSize = 13,
             FontWeight = weight,
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)!),
+            Foreground = UiBrushes.FromHex(color),
             TextTrimming = TextTrimming.CharacterEllipsis,
             HorizontalAlignment = horizontalAlignment,
         };

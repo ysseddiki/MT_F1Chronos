@@ -9,7 +9,6 @@ public sealed class ChronoEntry
     public uint? BestLapMs { get; set; }
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
     public DateTime? EndedAt { get; set; }
-    public bool IsActive { get; set; }
 }
 
 public sealed class ChronoDatabase
@@ -38,8 +37,17 @@ public sealed class OverlaySnapshot
     public string PlayerName { get; init; } = "Joueur";
     public string CurrentLapFormatted { get; init; } = "--:--.---";
     public bool HasCurrentLap { get; init; }
-    public int LeaderboardSize { get; init; } = 5;
+    public int LeaderboardSize { get; init; } = LeaderboardSizes.Default;
     public IReadOnlyList<LeaderboardRow> Leaderboard { get; init; } = [];
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }
+}
+
+/// <summary>Centralizes the two supported leaderboard sizes (TOP 5 / TOP 10) to avoid scattering the "is 10 ? 10 : 5" check.</summary>
+public static class LeaderboardSizes
+{
+    public const int Default = 5;
+    public const int Extended = 10;
+
+    public static int Normalize(int size) => size == Extended ? Extended : Default;
 }

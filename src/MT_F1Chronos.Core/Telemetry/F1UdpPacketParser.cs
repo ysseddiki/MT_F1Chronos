@@ -82,37 +82,27 @@ public sealed class F1UdpPacketParser
         var sessionEnded = false;
         var lapCompleted = false;
         uint? completedLapMs = null;
-        var packetSummary = $"pkt={packetId} len={buffer.Length}";
 
         switch (packetId)
         {
             case F1UdpConstants.PacketSession:
                 ParseSessionPacket(buffer, state);
-                packetSummary = $"session rawTrk={_rawTrackId} trk={state.TrackId} len={state.TrackLengthMeters}m type={state.SessionType} mode={state.GameMode}";
                 break;
 
             case F1UdpConstants.PacketLapData:
                 ParseLapDataPacket(buffer, state, ref lapCompleted, ref completedLapMs);
-                packetSummary = $"lap player={state.PlayerCarIndex} last={_rawLastLapMs} cur={_rawCurrentLapMs} drv={state.DriverStatus} inv={state.CurrentLapInvalid}";
                 break;
 
             case F1UdpConstants.PacketEvent:
                 ParseEventPacket(buffer, state, ref sessionStarted, ref sessionEnded);
-                packetSummary = $"event {state.LastEventCode}";
                 break;
 
             case F1UdpConstants.PacketTimeTrial:
                 ParseTimeTrialPacket(buffer, state);
-                packetSummary = $"tt best={_timeTrialSessionBestMs} personal={_timeTrialPersonalBestMs}";
                 break;
 
             case F1UdpConstants.PacketSessionHistory:
                 ParseSessionHistoryPacket(buffer, state);
-                packetSummary = $"history car={buffer[Profile.HeaderSize]} laps={buffer[Profile.HeaderSize + 1]}";
-                break;
-
-            default:
-                packetSummary = $"unknown pkt={packetId}";
                 break;
         }
 
@@ -132,25 +122,29 @@ public sealed class F1UdpPacketParser
         };
 
         _lastUpdate = update;
-        AppendPacketLog(packetId, buffer.Length, packetSummary);
+
+        // Only build the human-readable summary (and log it) while the Debug window is
+        // open — the string interpolation below is otherwise wasted work on every packet.
+        if (CaptureVerboseDebug)
+            AppendPacketLog(packetId, buffer.Length, BuildPacketSummary(packetId, buffer, state));
 
         return true;
     }
 
-    public TelemetryDiagnostics BuildDiagnostics(TelemetryState state) =>
-        new()
+    private string BuildPacketSummary(byte packetId, ReadOnlySpan<byte> buffer, TelemetryState state) =>
+        packetId switch
         {
-            ConfiguredFormat = state.ConfiguredFormat,
-            PacketFormat = state.PacketFormat,
-            LastPacketId = state.LastPacketId,
-            LastLapDataPacketId = _lastLapDataPacketId,
-            ResolvedCarIndex = state.ResolvedCarIndex,
-            TrackId = state.TrackId,
-            TrackLengthMeters = state.TrackLengthMeters,
-            DriverStatus = state.DriverStatus,
-            CurrentLapMs = state.CurrentLapTimeMs ?? 0,
-            SessionBestMs = state.SessionBestLapMs ?? 0,
-            PacketsPerSecond = PacketsPerSecond,
+            F1UdpConstants.PacketSession =>
+                $"session rawTrk={_rawTrackId} trk={state.TrackId} len={state.TrackLengthMeters}m type={state.SessionType} mode={state.GameMode}",
+            F1UdpConstants.PacketLapData =>
+                $"lap player={state.PlayerCarIndex} last={_rawLastLapMs} cur={_rawCurrentLapMs} drv={state.DriverStatus} inv={state.CurrentLapInvalid}",
+            F1UdpConstants.PacketEvent =>
+                $"event {state.LastEventCode}",
+            F1UdpConstants.PacketTimeTrial =>
+                $"tt best={_timeTrialSessionBestMs} personal={_timeTrialPersonalBestMs}",
+            F1UdpConstants.PacketSessionHistory =>
+                $"history car={buffer[Profile.HeaderSize]} laps={buffer[Profile.HeaderSize + 1]}",
+            _ => $"unknown pkt={packetId} len={buffer.Length}",
         };
 
     public TelemetryDebugSnapshot BuildDebugSnapshot(TelemetryState state, SessionStoreDebugInfo storeInfo)
@@ -225,16 +219,17 @@ public sealed class F1UdpPacketParser
             _packetLogCount++;
     }
 
+    /// <summary>Returns the packet log newest-first, without the extra allocation of a LINQ Reverse().</summary>
     private IReadOnlyList<PacketLogEntry> GetPacketLog()
     {
         var entries = new PacketLogEntry[_packetLogCount];
         for (var i = 0; i < _packetLogCount; i++)
         {
-            var index = (_packetLogHead - _packetLogCount + i + PacketLogCapacity) % PacketLogCapacity;
+            var index = (_packetLogHead - 1 - i + PacketLogCapacity) % PacketLogCapacity;
             entries[i] = _packetLog[index];
         }
 
-        return entries.Reverse().ToArray();
+        return entries;
     }
 
     private void TrackPacketRate()

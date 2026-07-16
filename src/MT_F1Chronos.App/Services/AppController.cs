@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using MT_F1Chronos.App.Windows;
+using MT_F1Chronos.Core.Models;
 using MT_F1Chronos.Core.Services;
 using MT_F1Chronos.Core.Telemetry;
 
@@ -97,14 +98,14 @@ public sealed class AppController : IDisposable
 
     public void SetOverlayOpacity(double opacity)
     {
-        _settings.OverlayOpacity = Math.Clamp(opacity, 0.6, 1.0);
+        _settings.OverlayOpacity = Math.Clamp(opacity, AppSettings.MinOpacity, AppSettings.MaxOpacity);
         SaveSettings();
         _overlay?.ApplyOpacity(_settings.OverlayOpacity);
     }
 
     public void SetLeaderboardSize(int size)
     {
-        _settings.LeaderboardSize = size is 10 ? 10 : 5;
+        _settings.LeaderboardSize = LeaderboardSizes.Normalize(size);
         SaveSettings();
         _overlay?.SyncLeaderboardMenu(_settings.LeaderboardSize);
         RefreshOverlay();
@@ -388,8 +389,11 @@ public sealed class AppController : IDisposable
         {
             var json = File.ReadAllText(SettingsPath);
             var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
-            settings.OverlayOpacity = Math.Clamp(settings.OverlayOpacity <= 0 ? 0.96 : settings.OverlayOpacity, 0.6, 1.0);
-            settings.LeaderboardSize = settings.LeaderboardSize is 10 ? 10 : 5;
+            settings.OverlayOpacity = Math.Clamp(
+                settings.OverlayOpacity <= 0 ? 0.96 : settings.OverlayOpacity,
+                AppSettings.MinOpacity,
+                AppSettings.MaxOpacity);
+            settings.LeaderboardSize = LeaderboardSizes.Normalize(settings.LeaderboardSize);
             return settings;
         }
         catch

@@ -53,17 +53,6 @@ public sealed class SessionStore
 
         var json = File.ReadAllText(_filePath);
         _database = JsonSerializer.Deserialize<ChronoDatabase>(json, JsonOptions) ?? new ChronoDatabase();
-
-        var dirty = false;
-        foreach (var session in _database.Sessions.Where(s => s.IsActive))
-        {
-            session.IsActive = false;
-            session.EndedAt ??= DateTime.UtcNow;
-            dirty = true;
-        }
-
-        if (dirty)
-            Save();
     }
 
     public void Save()
@@ -114,7 +103,7 @@ public sealed class SessionStore
         _liveLastLapMs = null;
     }
 
-    public IReadOnlyList<LeaderboardRow> GetLeaderboard(int trackId, int count = 5) =>
+    public IReadOnlyList<LeaderboardRow> GetLeaderboard(int trackId, int count = LeaderboardSizes.Default) =>
         RankedLaps(trackId).Take(count).ToList();
 
     public IReadOnlyList<TrackSummary> GetTracksWithScores() =>
@@ -167,10 +156,10 @@ public sealed class SessionStore
         return removed;
     }
 
-    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName, int leaderboardSize = 5)
+    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName, int leaderboardSize = LeaderboardSizes.Default)
     {
         var trackId = ResolveOverlayTrackId(state);
-        var size = leaderboardSize is 10 ? 10 : 5;
+        var size = LeaderboardSizes.Normalize(leaderboardSize);
         var leaderboard = trackId >= 0 ? GetLeaderboard(trackId, size) : [];
         var currentLap = state.CurrentLapTimeMs;
 
@@ -217,7 +206,7 @@ public sealed class SessionStore
         if (trackId < 0)
             return "—";
 
-        // If live telemetry matches the TOP 5 track, use live name.
+        // If live telemetry matches the displayed leaderboard track, use the live name.
         if (state.TrackId == trackId)
             return state.TrackName;
 
