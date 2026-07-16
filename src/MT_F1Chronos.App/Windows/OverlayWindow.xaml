@@ -106,6 +106,17 @@
 
                                 <MenuItem Header="Changer le nom du joueur" Click="OnRenameClick"/>
                                 <MenuItem Header="Scores par circuit" Click="OnScoresClick"/>
+                                <MenuItem Header="Exporter les scores">
+                                    <MenuItem Header="CSV" Click="OnExportCsvClick"/>
+                                    <MenuItem Header="JSON" Click="OnExportJsonClick"/>
+                                    <MenuItem Header="HTML" Click="OnExportHtmlClick"/>
+                                </MenuItem>
+                                <MenuItem x:Name="ResetScoresMenu"
+                                          Header="Réinitialiser les scores"
+                                          Visibility="Collapsed">
+                                    <MenuItem Header="Circuit affiché…" Click="OnResetCurrentTrackClick"/>
+                                    <MenuItem Header="Tous les circuits…" Click="OnResetAllClick"/>
+                                </MenuItem>
                                 <MenuItem Header="Taille de l'overlay">
                                     <MenuItem Header="Petit" Click="OnSizeSmallClick"/>
                                     <MenuItem Header="Moyen" Click="OnSizeMediumClick"/>
@@ -145,6 +156,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="PlayerNameText"
                                Grid.Column="0"
@@ -162,6 +174,15 @@
                                Foreground="#FFFFFFFF"
                                Margin="12,0,0,0"
                                VerticalAlignment="Center"/>
+                    <TextBlock x:Name="DeltaText"
+                               Grid.Column="2"
+                               FontFamily="Consolas"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Foreground="#FFC5CAD3"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Visibility="Collapsed"/>
                 </Grid>
 
                 <Border x:Name="StatusBorder"

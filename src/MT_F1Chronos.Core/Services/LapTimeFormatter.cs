@@ -15,4 +15,12 @@ public static class LapTimeFormatter
             ? $"{minutes}:{seconds:00.000}"
             : $"{seconds:0.000}";
     }
+
+    /// <summary>Formats delta vs P1: negative = ahead, positive = behind.</summary>
+    public static string FormatDelta(int deltaMs)
+    {
+        var sign = deltaMs > 0 ? "+" : deltaMs < 0 ? "-" : "";
+        var abs = Math.Abs(deltaMs) / 1000.0;
+        return $"{sign}{abs:0.000}";
+    }
 }

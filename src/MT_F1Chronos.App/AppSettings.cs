@@ -8,4 +8,10 @@ public sealed class AppSettings
     public double OverlayRight { get; set; } = 12;
     public double OverlayWidth { get; set; } = 288;
     public string PlayerName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When true, shows score reset actions in the burger menu (password required).
+    /// Enable via settings.json: "enableScoreReset": true
+    /// </summary>
+    public bool EnableScoreReset { get; set; }
 }

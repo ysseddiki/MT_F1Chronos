@@ -137,11 +137,52 @@ public sealed class SessionStore
     public IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId) =>
         RankedLaps(trackId).ToList();
 
+    public IReadOnlyList<ChronoEntry> GetAllScoredEntries() =>
+        _database.Sessions
+            .Where(s => s.BestLapMs is > 0)
+            .OrderBy(s => s.TrackName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.BestLapMs)
+            .ThenBy(s => s.StartedAt)
+            .ToList();
+
+    public int ClearScoresForTrack(int trackId)
+    {
+        if (trackId < 0)
+            return 0;
+
+        var removed = _database.Sessions.RemoveAll(s => s.TrackId == trackId);
+        if (removed > 0)
+            Save();
+        return removed;
+    }
+
+    public int ClearAllScores()
+    {
+        var removed = _database.Sessions.Count;
+        if (removed == 0)
+            return 0;
+
+        _database.Sessions.Clear();
+        Save();
+        return removed;
+    }
+
     public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName)
     {
         var trackId = ResolveOverlayTrackId(state);
         var topFive = trackId >= 0 ? GetLeaderboard(trackId) : [];
         var currentLap = state.CurrentLapTimeMs;
+
+        uint? p1Ms = null;
+        if (trackId >= 0)
+        {
+            // Prefer live track P1 when driving; otherwise use overlay track leaderboard.
+            var p1TrackId = state.TrackId >= 0 ? state.TrackId : trackId;
+            p1Ms = RankedLaps(p1TrackId).Select(r => (uint?)r.BestLapMs).FirstOrDefault();
+        }
+
+        var hasDelta = currentLap is > 0 && p1Ms is > 0;
+        var deltaMs = hasDelta ? (int)currentLap!.Value - (int)p1Ms!.Value : 0;
 
         return new OverlaySnapshot
         {
@@ -151,6 +192,9 @@ public sealed class SessionStore
                 ? LapTimeFormatter.Format(currentLap.Value)
                 : "--:--.---",
             HasCurrentLap = currentLap is > 0,
+            HasDelta = hasDelta,
+            DeltaFormatted = hasDelta ? LapTimeFormatter.FormatDelta(deltaMs) : string.Empty,
+            IsAheadOfP1 = hasDelta && deltaMs < 0,
             TopFive = topFive,
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,

@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using MT_F1Chronos.App.Windows;
 using MT_F1Chronos.Core.Services;
 using MT_F1Chronos.Core.Telemetry;
@@ -10,6 +12,8 @@ namespace MT_F1Chronos.App.Services;
 
 public sealed class AppController : IDisposable
 {
+    private const string ScoreResetPassword = "chronos";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -118,6 +122,152 @@ public sealed class AppController : IDisposable
             Owner = _overlay,
         };
         window.ShowDialog();
+    }
+
+    public void ExportScores(string format)
+    {
+        if (_overlay is null)
+            return;
+
+        var entries = _store.GetAllScoredEntries();
+        if (entries.Count == 0)
+        {
+            MessageBox.Show(_overlay, "Aucun score à exporter.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var dialog = new SaveFileDialog
+        {
+            Title = "Exporter les scores",
+            FileName = $"MT_F1Chronos-scores-{stamp}",
+            Filter = format switch
+            {
+                "csv" => "CSV (*.csv)|*.csv",
+                "json" => "JSON (*.json)|*.json",
+                _ => "HTML (*.html)|*.html",
+            },
+            DefaultExt = format,
+            AddExtension = true,
+        };
+
+        if (dialog.ShowDialog(_overlay) != true)
+            return;
+
+        try
+        {
+            switch (format)
+            {
+                case "csv":
+                    ScoreExporter.ExportCsv(entries, dialog.FileName);
+                    break;
+                case "json":
+                    ScoreExporter.ExportJson(entries, dialog.FileName);
+                    break;
+                default:
+                    ScoreExporter.ExportHtml(entries, dialog.FileName);
+                    break;
+            }
+
+            var open = MessageBox.Show(
+                _overlay,
+                $"Export terminé :\n{dialog.FileName}\n\nOuvrir le fichier ?",
+                "Export",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (open == MessageBoxResult.Yes)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = dialog.FileName,
+                    UseShellExecute = true,
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(_overlay, $"Échec de l'export :\n{ex.Message}", "Export", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    public void ResetCurrentTrackScores()
+    {
+        if (_overlay is null || !_settings.EnableScoreReset)
+            return;
+
+        if (!ConfirmResetPassword("Réinitialiser le circuit", "Mot de passe requis pour effacer les scores du circuit affiché."))
+            return;
+
+        var trackId = ResolveResetTrackId();
+        if (trackId < 0)
+        {
+            MessageBox.Show(_overlay, "Aucun circuit à réinitialiser.", "Scores", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            _overlay,
+            "Effacer tous les scores de ce circuit ? Cette action est irréversible.",
+            "Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        var removed = _store.ClearScoresForTrack(trackId);
+        RefreshOverlay();
+        MessageBox.Show(_overlay, $"{removed} score(s) supprimé(s).", "Scores", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    public void ResetAllScores()
+    {
+        if (_overlay is null || !_settings.EnableScoreReset)
+            return;
+
+        if (!ConfirmResetPassword("Réinitialiser tout", "Mot de passe requis pour effacer TOUS les scores."))
+            return;
+
+        var confirm = MessageBox.Show(
+            _overlay,
+            "Effacer tous les scores de tous les circuits ? Cette action est irréversible.",
+            "Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        var removed = _store.ClearAllScores();
+        RefreshOverlay();
+        MessageBox.Show(_overlay, $"{removed} score(s) supprimé(s).", "Scores", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private bool ConfirmResetPassword(string title, string message)
+    {
+        if (_overlay is null)
+            return false;
+
+        var prompt = new PasswordPromptWindow(title, message) { Owner = _overlay };
+        if (prompt.ShowDialog() != true)
+            return false;
+
+        if (!string.Equals(prompt.Password, ScoreResetPassword, StringComparison.Ordinal))
+        {
+            MessageBox.Show(_overlay, "Mot de passe incorrect.", "Scores", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        return true;
+    }
+
+    private int ResolveResetTrackId()
+    {
+        if (_listener.State.TrackId >= 0)
+            return _listener.State.TrackId;
+
+        return _store.GetTracksWithScores().FirstOrDefault()?.TrackId ?? -1;
     }
 
     public void ShowDebugWindow()

@@ -22,6 +22,9 @@ public partial class OverlayWindow : Window
         InitializeComponent();
         Width = settings.OverlayWidth;
         Topmost = true;
+        ResetScoresMenu.Visibility = settings.EnableScoreReset
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         SourceInitialized += OnSourceInitialized;
         Activated += (_, _) => AssertTopMost();
@@ -87,6 +90,11 @@ public partial class OverlayWindow : Window
 
     private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.PromptPlayerName();
     private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
+    private void OnExportCsvClick(object sender, RoutedEventArgs e) => _controller.ExportScores("csv");
+    private void OnExportJsonClick(object sender, RoutedEventArgs e) => _controller.ExportScores("json");
+    private void OnExportHtmlClick(object sender, RoutedEventArgs e) => _controller.ExportScores("html");
+    private void OnResetCurrentTrackClick(object sender, RoutedEventArgs e) => _controller.ResetCurrentTrackScores();
+    private void OnResetAllClick(object sender, RoutedEventArgs e) => _controller.ResetAllScores();
     private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
     private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
     private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
@@ -100,6 +108,18 @@ public partial class OverlayWindow : Window
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
+
+        if (snapshot.HasDelta)
+        {
+            DeltaText.Text = snapshot.DeltaFormatted;
+            DeltaText.Visibility = Visibility.Visible;
+            DeltaText.Foreground = ToBrush(snapshot.IsAheadOfP1 ? "#FF00D26A" : "#FFE10600");
+        }
+        else
+        {
+            DeltaText.Text = string.Empty;
+            DeltaText.Visibility = Visibility.Collapsed;
+        }
 
         TopFivePanel.Children.Clear();
 
