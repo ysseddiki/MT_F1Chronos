@@ -11,6 +11,11 @@
     <AssemblyName>MT_F1Chronos</AssemblyName>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputPath>$(MSBuildThisFileDirectory)..\..\dist\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\MT_F1Chronos.Core\MT_F1Chronos.Core.csproj" />
   </ItemGroup>

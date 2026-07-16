@@ -49,7 +49,7 @@ Ou avec le script fourni :
 ```
 
 L'exécutable se trouve dans :
-`src\MT_F1Chronos.App\bin\Release\net8.0-windows\MT_F1Chronos.exe`
+`dist\MT_F1Chronos.exe`
 
 ## Utilisation
 
