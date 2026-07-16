@@ -117,10 +117,37 @@
                                     <MenuItem Header="Circuit affiché…" Click="OnResetCurrentTrackClick"/>
                                     <MenuItem Header="Tous les circuits…" Click="OnResetAllClick"/>
                                 </MenuItem>
+                                <MenuItem Header="Classement">
+                                    <MenuItem x:Name="Top5MenuItem" Header="TOP 5" IsCheckable="True" Click="OnTop5Click"/>
+                                    <MenuItem x:Name="Top10MenuItem" Header="TOP 10" IsCheckable="True" Click="OnTop10Click"/>
+                                </MenuItem>
                                 <MenuItem Header="Taille de l'overlay">
                                     <MenuItem Header="Petit" Click="OnSizeSmallClick"/>
                                     <MenuItem Header="Moyen" Click="OnSizeMediumClick"/>
                                     <MenuItem Header="Grand" Click="OnSizeLargeClick"/>
+                                </MenuItem>
+                                <MenuItem Header="Opacité" StaysOpenOnClick="True">
+                                    <MenuItem StaysOpenOnClick="True">
+                                        <MenuItem.Header>
+                                            <DockPanel Width="180" Margin="4,2">
+                                                <TextBlock x:Name="OpacityValueText"
+                                                           DockPanel.Dock="Right"
+                                                           Width="40"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Right"
+                                                           Foreground="Black"
+                                                           Text="96%"/>
+                                                <Slider x:Name="OpacitySlider"
+                                                        Minimum="60"
+                                                        Maximum="100"
+                                                        Value="96"
+                                                        TickFrequency="5"
+                                                        IsSnapToTickEnabled="True"
+                                                        VerticalAlignment="Center"
+                                                        ValueChanged="OnOpacitySliderChanged"/>
+                                            </DockPanel>
+                                        </MenuItem.Header>
+                                    </MenuItem>
                                 </MenuItem>
                                 <MenuItem Header="Format UDP">
                                     <MenuItem Header="2025 (F1 25)" Click="OnFormat2025Click"/>
@@ -134,7 +161,8 @@
                     </Button>
                 </Grid>
 
-                <TextBlock Text="TOP 5"
+                <TextBlock x:Name="LeaderboardTitleText"
+                           Text="TOP 5"
                            FontFamily="Segoe UI"
                            FontSize="11"
                            FontWeight="Bold"
@@ -156,7 +184,6 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="PlayerNameText"
                                Grid.Column="0"
@@ -174,15 +201,6 @@
                                Foreground="#FFFFFFFF"
                                Margin="12,0,0,0"
                                VerticalAlignment="Center"/>
-                    <TextBlock x:Name="DeltaText"
-                               Grid.Column="2"
-                               FontFamily="Consolas"
-                               FontSize="13"
-                               FontWeight="Bold"
-                               Foreground="#FFC5CAD3"
-                               Margin="8,0,0,0"
-                               VerticalAlignment="Center"
-                               Visibility="Collapsed"/>
                 </Grid>
 
                 <Border x:Name="StatusBorder"

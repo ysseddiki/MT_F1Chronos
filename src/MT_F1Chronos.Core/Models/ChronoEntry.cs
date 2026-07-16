@@ -38,11 +38,8 @@ public sealed class OverlaySnapshot
     public string PlayerName { get; init; } = "Joueur";
     public string CurrentLapFormatted { get; init; } = "--:--.---";
     public bool HasCurrentLap { get; init; }
-    public string DeltaFormatted { get; init; } = string.Empty;
-    public bool HasDelta { get; init; }
-    /// <summary>True when current lap is ahead of P1 (negative delta).</summary>
-    public bool IsAheadOfP1 { get; init; }
-    public IReadOnlyList<LeaderboardRow> TopFive { get; init; } = [];
+    public int LeaderboardSize { get; init; } = 5;
+    public IReadOnlyList<LeaderboardRow> Leaderboard { get; init; } = [];
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }
 }

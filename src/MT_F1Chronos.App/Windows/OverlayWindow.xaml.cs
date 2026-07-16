@@ -15,6 +15,7 @@ public partial class OverlayWindow : Window
     private readonly AppController _controller;
     private HwndSource? _hwndSource;
     private readonly DispatcherTimer _topMostTimer;
+    private bool _opacityReady;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
@@ -26,6 +27,9 @@ public partial class OverlayWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        ApplyOpacity(settings.OverlayOpacity);
+        SyncLeaderboardMenu(settings.LeaderboardSize);
+
         SourceInitialized += OnSourceInitialized;
         Activated += (_, _) => AssertTopMost();
         Deactivated += (_, _) => AssertTopMost();
@@ -34,6 +38,7 @@ public partial class OverlayWindow : Window
         _topMostTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _topMostTimer.Tick += (_, _) => AssertTopMost();
         _topMostTimer.Start();
+        _opacityReady = true;
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -75,8 +80,11 @@ public partial class OverlayWindow : Window
 
     private void OnHeaderDrag(object sender, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed)
-            DragMove();
+        if (e.LeftButton != MouseButtonState.Pressed)
+            return;
+
+        DragMove();
+        _controller.SaveOverlayPosition(Left, Top, Width);
     }
 
     private void OnMenuButtonClick(object sender, RoutedEventArgs e)
@@ -98,54 +106,96 @@ public partial class OverlayWindow : Window
     private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
     private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
     private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
+    private void OnTop5Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(5);
+    private void OnTop10Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(10);
     private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
     private void OnFormat2025Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2025);
     private void OnFormat2026Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2026);
     private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
+
+    private void OnOpacitySliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!_opacityReady)
+            return;
+
+        var opacity = Math.Clamp(e.NewValue / 100.0, 0.6, 1.0);
+        ApplyOpacity(opacity);
+        _controller.SetOverlayOpacity(opacity);
+    }
+
+    public void ApplyOpacity(double opacity)
+    {
+        var clamped = Math.Clamp(opacity, 0.6, 1.0);
+        RootBorder.Opacity = clamped;
+
+        var percent = (int)Math.Round(clamped * 100);
+        if (OpacitySlider is not null)
+            OpacitySlider.Value = percent;
+        if (OpacityValueText is not null)
+            OpacityValueText.Text = $"{percent}%";
+    }
+
+    public void SyncLeaderboardMenu(int size)
+    {
+        var isTop10 = size == 10;
+        Top5MenuItem.IsChecked = !isTop10;
+        Top10MenuItem.IsChecked = isTop10;
+        LeaderboardTitleText.Text = isTop10 ? "TOP 10" : "TOP 5";
+    }
 
     public void UpdateSnapshot(OverlaySnapshot snapshot)
     {
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
-
-        if (snapshot.HasDelta)
-        {
-            DeltaText.Text = snapshot.DeltaFormatted;
-            DeltaText.Visibility = Visibility.Visible;
-            DeltaText.Foreground = ToBrush(snapshot.IsAheadOfP1 ? "#FF00D26A" : "#FFE10600");
-        }
-        else
-        {
-            DeltaText.Text = string.Empty;
-            DeltaText.Visibility = Visibility.Collapsed;
-        }
+        LeaderboardTitleText.Text = snapshot.LeaderboardSize == 10 ? "TOP 10" : "TOP 5";
 
         TopFivePanel.Children.Clear();
 
-        if (snapshot.TopFive.Count == 0)
+        if (snapshot.Leaderboard.Count == 0)
         {
-            TopFivePanel.Children.Add(CreateRow("—", "Aucun chrono", "--:--.---", false));
+            TopFivePanel.Children.Add(CreateRow("—", "Aucun chrono", "--:--.---", false, false));
         }
         else
         {
-            foreach (var row in snapshot.TopFive)
-                TopFivePanel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true));
+            foreach (var row in snapshot.Leaderboard)
+            {
+                var isCurrent = string.Equals(row.Name, snapshot.PlayerName, StringComparison.OrdinalIgnoreCase);
+                TopFivePanel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true, isCurrent));
+            }
         }
 
         UpdateStatusBar(snapshot);
     }
 
-    private static UIElement CreateRow(string rank, string name, string time, bool hasData)
+    private static UIElement CreateRow(string rank, string name, string time, bool hasData, bool isCurrentPlayer)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var rankColor = hasData ? "#FFE10600" : "#55FFFFFF";
-        var nameColor = hasData ? "#FFFFFFFF" : "#77FFFFFF";
+        var nameColor = hasData
+            ? (isCurrentPlayer ? "#FFFFD700" : "#FFFFFFFF")
+            : "#77FFFFFF";
         var timeColor = hasData ? "#FFFFFFFF" : "#55FFFFFF";
+
+        UIElement content = grid;
+
+        if (isCurrentPlayer && hasData)
+        {
+            var highlight = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(0x33, 0xE1, 0x06, 0x00)),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(4, 2, 4, 2),
+                Child = grid,
+                Margin = new Thickness(0, 0, 0, 2),
+            };
+            content = highlight;
+            grid.Margin = new Thickness(0);
+        }
 
         var rankBlock = new TextBlock
         {
@@ -162,7 +212,7 @@ public partial class OverlayWindow : Window
             Text = name,
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
+            FontWeight = isCurrentPlayer ? FontWeights.Bold : FontWeights.SemiBold,
             Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(nameColor)!),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
@@ -187,7 +237,7 @@ public partial class OverlayWindow : Window
         grid.Children.Add(nameBlock);
         grid.Children.Add(timeBlock);
 
-        return grid;
+        return content;
     }
 
     private void UpdateStatusBar(OverlaySnapshot snapshot)

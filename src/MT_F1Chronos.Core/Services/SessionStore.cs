@@ -167,22 +167,12 @@ public sealed class SessionStore
         return removed;
     }
 
-    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName)
+    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName, int leaderboardSize = 5)
     {
         var trackId = ResolveOverlayTrackId(state);
-        var topFive = trackId >= 0 ? GetLeaderboard(trackId) : [];
+        var size = leaderboardSize is 10 ? 10 : 5;
+        var leaderboard = trackId >= 0 ? GetLeaderboard(trackId, size) : [];
         var currentLap = state.CurrentLapTimeMs;
-
-        uint? p1Ms = null;
-        if (trackId >= 0)
-        {
-            // Prefer live track P1 when driving; otherwise use overlay track leaderboard.
-            var p1TrackId = state.TrackId >= 0 ? state.TrackId : trackId;
-            p1Ms = RankedLaps(p1TrackId).Select(r => (uint?)r.BestLapMs).FirstOrDefault();
-        }
-
-        var hasDelta = currentLap is > 0 && p1Ms is > 0;
-        var deltaMs = hasDelta ? (int)currentLap!.Value - (int)p1Ms!.Value : 0;
 
         return new OverlaySnapshot
         {
@@ -192,10 +182,8 @@ public sealed class SessionStore
                 ? LapTimeFormatter.Format(currentLap.Value)
                 : "--:--.---",
             HasCurrentLap = currentLap is > 0,
-            HasDelta = hasDelta,
-            DeltaFormatted = hasDelta ? LapTimeFormatter.FormatDelta(deltaMs) : string.Empty,
-            IsAheadOfP1 = hasDelta && deltaMs < 0,
-            TopFive = topFive,
+            LeaderboardSize = size,
+            Leaderboard = leaderboard,
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,
             IsTimeTrial = state.IsTimeTrial,

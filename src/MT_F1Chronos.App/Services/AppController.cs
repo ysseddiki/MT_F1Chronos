@@ -86,6 +86,30 @@ public sealed class AppController : IDisposable
             _overlay.Width = width;
     }
 
+    public void SaveOverlayPosition(double left, double top, double width)
+    {
+        var workArea = SystemParameters.WorkArea;
+        _settings.OverlayTop = Math.Max(0, top - workArea.Top);
+        _settings.OverlayRight = Math.Max(0, workArea.Right - left - width);
+        _settings.OverlayWidth = width;
+        SaveSettings();
+    }
+
+    public void SetOverlayOpacity(double opacity)
+    {
+        _settings.OverlayOpacity = Math.Clamp(opacity, 0.6, 1.0);
+        SaveSettings();
+        _overlay?.ApplyOpacity(_settings.OverlayOpacity);
+    }
+
+    public void SetLeaderboardSize(int size)
+    {
+        _settings.LeaderboardSize = size is 10 ? 10 : 5;
+        SaveSettings();
+        _overlay?.SyncLeaderboardMenu(_settings.LeaderboardSize);
+        RefreshOverlay();
+    }
+
     public void PromptPlayerName(bool required = false)
     {
         if (_promptOpen)
@@ -345,7 +369,8 @@ public sealed class AppController : IDisposable
 
         _overlay.UpdateSnapshot(_store.BuildSnapshot(
             _listener.State,
-            _settings.PlayerName));
+            _settings.PlayerName,
+            _settings.LeaderboardSize));
     }
 
     private static string SettingsPath =>
@@ -362,7 +387,10 @@ public sealed class AppController : IDisposable
         try
         {
             var json = File.ReadAllText(SettingsPath);
-            return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            settings.OverlayOpacity = Math.Clamp(settings.OverlayOpacity <= 0 ? 0.96 : settings.OverlayOpacity, 0.6, 1.0);
+            settings.LeaderboardSize = settings.LeaderboardSize is 10 ? 10 : 5;
+            return settings;
         }
         catch
         {

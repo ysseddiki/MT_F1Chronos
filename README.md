@@ -1,25 +1,27 @@
 # MT_F1Chronos
 
-Overlay PC pour **EA Sports F1 25/26** (format UDP **2025/2026**) : **TOP 5** par circuit, tour en cours, meilleur tour.
+Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local par circuit, tour en cours live, export des scores.
 
-![Placement overlay](docs/overlay-preview-v0.4.2.jpg)
+![Overlay preview](docs/overlay-preview-v0.4.2.jpg)
 
 ## Fonctionnalités
 
-- Overlay visible dans la **barre des tâches** (fenêtre principale, pas d'icône tray)
-- **Nom du joueur** demandé une seule fois au premier lancement
-- **TOP 5** des meilleurs chronos du circuit en cours
-- **Tour en cours** synchronisé en direct via télémétrie UDP
-- **Meilleur tour** de la session active
-- **Menu burger (☰)** cliquable avec options complètes
-- **Scores par circuit** avec navigation ◀ ▶ entre les circuits
-- Déplacement de l'overlay par **glisser-déposer** sur l'en-tête
+- Overlay always-on-top (mode **Fenêtré** / **Borderless**)
+- **Nom du joueur** au premier lancement (modifiable ensuite, sans réécrire l’historique)
+- **TOP 5** ou **TOP 10** des meilleurs chronos du circuit
+- Mise en évidence du **joueur courant** dans le classement
+- **Tour en cours** synchronisé via télémétrie UDP (format `00:00.000`)
+- **Scores par circuit** avec navigation ◀ ▶
+- **Export** CSV / JSON / HTML
+- Position mémorisée après déplacement + **opacité** réglable (60–100 %)
+- Debug UDP intégré
+- Réinitialisation des scores (optionnelle, feature flag + mot de passe)
 
 ## Prérequis
 
 - Windows 10/11
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- F1 25 ou F1 26 en mode **Fenêtré** ou **Borderless** (**recommandé**). Le **plein écran exclusif** peut passer au-dessus de l'overlay ; Borderless reste la config fiable.
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (pour compiler)
+- F1 25 ou F1 26 en **Fenêtré** ou **Borderless** (recommandé). Le plein écran exclusif peut masquer l’overlay.
 
 ## Configuration F1 25/26
 
@@ -30,67 +32,65 @@ Dans le jeu : **Settings → Telemetry Settings**
 | UDP Telemetry | **On** |
 | UDP IP Address | `127.0.0.1` |
 | UDP Port | `20777` |
-| UDP Format | **`2025`** pour F1 25, **`2026`** pour F1 26 |
+| UDP Format | **`2025`** (F1 25) ou **`2026`** (F1 26) |
 | UDP Send Rate | 20–60 Hz |
 
-> Le format dans le jeu et dans l'overlay (menu ☰ → **Format UDP**) doivent correspondre.
+> Le format dans le jeu et dans l’overlay (menu ☰ → **Format UDP**) doivent correspondre.
 
 ## Compilation
 
 ```powershell
 cd MT_F1Chronos
-dotnet build -c Release
-```
-
-Ou avec le script fourni :
-
-```powershell
 .\build.ps1
 ```
 
-L'exécutable se trouve dans :
-`dist\MT_F1Chronos.exe`
+Ou :
+
+```powershell
+dotnet build -c Release
+```
+
+Exécutable : `dist\MT_F1Chronos.exe`
 
 ## Utilisation
 
-1. Lancer `MT_F1Chronos.exe`
-2. Saisir ton **nom de joueur** à la première ouverture (modifiable ensuite)
-3. L'overlay apparaît en haut-droite de l'écran
-4. Lancer F1 et démarrer une session **Chrono / Time Trial**
-5. L'overlay affiche automatiquement :
-   - le **circuit détecté**
-   - le **tour en cours** (chrono live)
-   - ton **meilleur tour**
-   - le **TOP 5** du circuit
+1. Lancer `dist\MT_F1Chronos.exe`
+2. Saisir le **nom du joueur** (première ouverture)
+3. Lancer F1 en Borderless / Fenêtré et démarrer une session chrono
+4. L’overlay affiche le circuit, le TOP, le tour en cours et l’état de connexion
 
-Aucune popup ne s'affiche à chaque session — le nom du joueur est réutilisé automatiquement.
+Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du tour**.
 
 ### Affichage overlay
 
 | Zone | Contenu |
 |---|---|
 | En-tête | Nom du circuit + menu ☰ |
-| TOP 5 | 5 meilleurs chronos du circuit en cours |
-| Tour en cours | Chrono live du tour actuel |
-| Meilleur tour | Meilleur temps enregistré cette session |
+| TOP 5 / TOP 10 | Meilleurs chronos du circuit (joueur courant surligné) |
+| Tour en cours | Chrono live `00:00.000` + pseudo |
+| Statut | Connexion télémétrie |
 
 ### Menu burger (☰)
 
 | Action | Description |
 |---|---|
-| Changer le nom du joueur | Modifie le pseudo pour les **prochains** tours (l'historique conserve les anciens noms) |
-| Scores par circuit | Tous les scores du circuit, navigation ◀ ▶ |
-| Taille de l'overlay | Petit (220 px) / Moyen (268 px) / Grand (340 px) |
-| Format UDP | **2025** (F1 25) ou **2026** |
-| Diagnostic UDP | Ligne technique de debug |
-| Quitter | Ferme l'application |
+| Changer le nom du joueur | Pseudo pour les **prochains** tours |
+| Scores par circuit | Liste complète, navigation ◀ ▶ |
+| Exporter les scores | CSV / JSON / HTML |
+| Réinitialiser les scores | Visible seulement si `enableScoreReset: true` |
+| Classement | TOP 5 ou TOP 10 |
+| Taille de l’overlay | Petit / Moyen / Grand |
+| Opacité | Slider 60–100 % |
+| Format UDP | 2025 ou 2026 |
+| Debug UDP | Fenêtre de diagnostic |
+| Quitter | Ferme l’application |
 
 ### Raccourcis
 
 | Action | Raccourci |
 |---|---|
 | Changer le nom du joueur | `Ctrl+Shift+N` |
-| Déplacer l'overlay | Glisser l'en-tête (nom du circuit) |
+| Déplacer l’overlay | Glisser l’en-tête (position sauvegardée) |
 
 ## Personnalisation
 
@@ -102,64 +102,65 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "udpPort": 20777,
   "overlayTop": 195,
   "overlayRight": 12,
-  "overlayWidth": 268,
-  "playerName": "TonNom"
+  "overlayWidth": 288,
+  "overlayOpacity": 0.96,
+  "leaderboardSize": 5,
+  "playerName": "TonNom",
+  "enableScoreReset": false
 }
 ```
 
 | Clé | Description |
 |---|---|
-| `udpFormat` | Format parser : **2025** ou **2026** (défaut 2025) |
-| `overlayTop` | Distance depuis le haut de l'écran (px) |
-| `overlayRight` | Distance depuis le bord droit (px) |
-| `overlayWidth` | Largeur de l'overlay (px) |
-| `playerName` | Pseudo utilisé pour les **prochains** tours enregistrés |
+| `udpFormat` | `2025` ou `2026` |
+| `overlayTop` / `overlayRight` | Position (aussi mise à jour au drag) |
+| `overlayWidth` | Largeur (px) |
+| `overlayOpacity` | `0.6` → `1.0` |
+| `leaderboardSize` | `5` ou `10` |
+| `playerName` | Pseudo des prochains tours |
+| `enableScoreReset` | Affiche le menu de reset (`true` / `false`) |
 
-Ajuste `overlayTop` / `overlayRight` pour caler l'overlay sous le panneau de chrono du jeu.
+Mot de passe reset (si activé) : `chronos`
 
 ## Données
 
-Les chronos sont sauvegardés dans :
-`%LOCALAPPDATA%\MT_F1Chronos\sessions.json`
+Scores : `%LOCALAPPDATA%\MT_F1Chronos\sessions.json`
 
-Le fichier est lu au démarrage et réécrit à chaque tour terminé (et à la fermeture). Les scores **survivent** à la fermeture / réouverture de l'exe.
-
-Chaque **tour terminé** crée une entrée `{ nom du moment, circuit, temps, date }`. Toutes les entrées sont conservées ; le **TOP 5** n'est qu'un filtre d'affichage (les 5 meilleurs du circuit). Changer le pseudo ne renomme pas l'historique.
+Persistance à chaque tour terminé et à la fermeture. Toutes les entrées sont conservées ; le TOP n’est qu’un filtre d’affichage.
 
 ## Architecture
 
 ```
-MT_F1Chronos.Core   → Télémétrie UDP F1 2025/2026, parsing paquets, stockage JSON
-MT_F1Chronos.App    → Overlay WPF, fenêtre nom joueur, menu burger, hotkeys
+MT_F1Chronos.Core   → UDP F1 2025/2026, parsing, stockage, export
+MT_F1Chronos.App    → Overlay WPF, menus, hotkeys
 ```
 
-### Diagnostic UDP
+## Debug UDP
 
-Active le mode diagnostic via le menu ☰ → **Diagnostic UDP**. Une ligne technique s'affiche sous le statut :
-
-```
-cfg 2025 · rx 2025 · pkt 2 · lapPkt 2 · car 0 · trk 2 (Shanghai) · lap 45.230 / best 44.891 · drv 1 · 18 pkt/s
-```
-
-| Valeur | Signification | Valeur attendue |
-|---|---|---|
-| `cfg 2025` | Format configuré dans l'overlay | doit = format jeu |
-| `rx 2025` | Format reçu du jeu | **2025** ou **2026** |
-| `pkt 2` | Dernier paquet reçu | varie |
-| `lapPkt 2` | Dernier paquet Lap Data | **2** en roulant |
-| `car 0` | Voiture détectée | 0 en solo |
-| `trk 2 (Shanghai)` | Circuit (ID + nom) | doit correspondre |
-| `lap …` | Tour en cours | augmente en roulant |
-| `best …` | Meilleur tour | se remplit après un tour |
-| `drv 1` | Statut pilote | 1, 2, 3 ou 4 en roulant |
-| `pkt/s` | Débit UDP | > 10 si connecté |
-
-Si `cfg` ≠ `rx`, change le **Format UDP** dans le menu. Si `lapPkt` reste 0 en roulant, vérifie le format.
+Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionStore, log des paquets.
 
 ## Limites
 
-- Ne modifie pas l'UI native du jeu (overlay externe uniquement)
-- Nécessite la télémétrie UDP activée (format **2025** ou **2026** selon le jeu)
-- L'overlay couvre une petite zone de l'écran (boutons cliquables, non click-through)
-- Le TOP 5 affiche les 5 meilleurs tours enregistrés sur le circuit en cours (tous les tours restent en base)
-- L'overlay est forcé au premier plan (`HWND_TOPMOST`) en fenêtré / **Borderless** ; le **plein écran exclusif** du jeu peut tout de même le masquer
+- Overlay externe uniquement (ne modifie pas l’UI du jeu)
+- Nécessite la télémétrie UDP active
+- Boutons de l’overlay cliquables (pas click-through)
+- Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
+
+## Notes de version
+
+### v0.6
+- Suppression du delta live vs P1
+- Format chrono toujours `00:00.000` (point décimal invariant)
+- Position mémorisée après drag
+- Opacité réglable 60–100 %
+- Toggle TOP 5 / TOP 10
+- Highlight du joueur courant dans le classement
+- README réécrit
+
+### v0.5
+- Delta live vs P1 (retiré en v0.6)
+- Export CSV / JSON / HTML
+- Reset scores derrière feature flag + mot de passe
+
+### v0.4.x
+- Style F1 timing tower, menus alignés, barre de statut graphique

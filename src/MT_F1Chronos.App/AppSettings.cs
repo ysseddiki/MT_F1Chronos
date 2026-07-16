@@ -7,6 +7,8 @@ public sealed class AppSettings
     public double OverlayTop { get; set; } = 195;
     public double OverlayRight { get; set; } = 12;
     public double OverlayWidth { get; set; } = 288;
+    public double OverlayOpacity { get; set; } = 0.96;
+    public int LeaderboardSize { get; set; } = 5;
     public string PlayerName { get; set; } = string.Empty;
 
     /// <summary>
