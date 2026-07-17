@@ -2,7 +2,7 @@ namespace MT_F1Chronos.App;
 
 public sealed class AppSettings
 {
-    public int UdpPort { get; set; } = 20777;
+    public int UdpPort { get; set; } = 20888;
     public int UdpFormat { get; set; } = 2025;
     public double OverlayTop { get; set; } = 195;
     public double OverlayRight { get; set; } = 12;

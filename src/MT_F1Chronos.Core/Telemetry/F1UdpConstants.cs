@@ -2,7 +2,7 @@ namespace MT_F1Chronos.Core.Telemetry;
 
 public static class F1UdpConstants
 {
-    public const int DefaultPort = 20777;
+    public const int DefaultPort = 20888;
 
     public const byte PacketSession = 1;
     public const byte PacketLapData = 2;

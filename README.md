@@ -33,7 +33,7 @@ Dans le jeu : **Settings → Telemetry Settings**
 |---|---|
 | UDP Telemetry | **On** |
 | UDP IP Address | `127.0.0.1` |
-| UDP Port | `20777` |
+| UDP Port | `20888` |
 | UDP Format | **`2025`** (F1 25) ou **`2026`** (F1 26) |
 | UDP Send Rate | 20–60 Hz |
 
@@ -111,7 +111,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 ```json
 {
   "udpFormat": 2025,
-  "udpPort": 20777,
+  "udpPort": 20888,
   "overlayTop": 195,
   "overlayRight": 12,
   "overlayWidth": 288,
@@ -123,7 +123,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | Clé | Description |
 |---|---|
 | `udpFormat` | `2025` ou `2026` (à aligner avec le jeu) |
-| `udpPort` | Port UDP (défaut `20777`) |
+| `udpPort` | Port UDP (défaut `20888`) |
 | `overlayTop` / `overlayRight` | Position (aussi mise à jour au drag) |
 | `overlayWidth` | Largeur (px) |
 | `leaderboardSize` | `5` ou `10` |
