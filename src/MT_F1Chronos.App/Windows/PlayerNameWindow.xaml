@@ -86,7 +86,52 @@
                          Foreground="White"
                          BorderBrush="#33FFFFFF"
                          CaretBrush="#FFE10600"
-                         Margin="0,0,0,14"/>
+                         Margin="0,0,0,8"/>
+
+                <!-- Recent player names (populated from code-behind) -->
+                <ItemsControl x:Name="RecentPanel" Margin="0,0,0,14" Visibility="Collapsed">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding}"
+                                    Margin="0,4,6,0"
+                                    Padding="8,4"
+                                    FontFamily="Segoe UI"
+                                    FontSize="12"
+                                    Background="#FF1C222B"
+                                    Foreground="#FFC5CAD3"
+                                    BorderBrush="#33FFFFFF"
+                                    BorderThickness="1"
+                                    Cursor="Hand"
+                                    Click="OnRecentNameClick">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="12"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#FF252D3B"/>
+                                                <Setter Property="BorderBrush" Value="#88E10600"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Valider"

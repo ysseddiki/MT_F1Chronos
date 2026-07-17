@@ -184,6 +184,22 @@ public sealed class SessionStore : IDisposable
     public IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId) =>
         RankedLaps(trackId).ToList();
 
+    /// <summary>Returns up to <paramref name="max"/> distinct player names ordered by most recently recorded.</summary>
+    public IReadOnlyList<string> GetRecentPlayerNames(int max = 10)
+    {
+        lock (_gate)
+        {
+            return _byTrack.Values
+                .SelectMany(list => list)
+                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                .OrderByDescending(s => s.StartedAt)
+                .Select(s => s.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(max)
+                .ToList();
+        }
+    }
+
     public IReadOnlyList<ChronoEntry> GetAllScoredEntries()
     {
         lock (_gate)

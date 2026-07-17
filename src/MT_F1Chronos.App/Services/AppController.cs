@@ -111,7 +111,8 @@ public sealed class AppController : IDisposable
 
         _promptOpen = true;
 
-        var prompt = new PlayerNameWindow(_settings.PlayerName);
+        var recentNames = _store.GetRecentPlayerNames();
+        var prompt = new PlayerNameWindow(_settings.PlayerName, recentNames);
         var accepted = prompt.ShowDialog() == true;
 
         if (accepted && !string.IsNullOrWhiteSpace(prompt.PlayerName))
