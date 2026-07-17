@@ -15,6 +15,7 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - **Scores par circuit** avec navigation ◀ ▶
 - **Export** CSV / JSON / HTML
 - Position mémorisée après déplacement
+- **Fenêtre d’administration** (scores, reset, export, affichage, debug)
 - Debug UDP intégré
 - Réinitialisation des scores (mot de passe requis)
 
@@ -81,13 +82,20 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Action | Description |
 |---|---|
 | Changer le nom du joueur | Pseudo pour les **prochains** tours |
-| Scores par circuit | Liste complète, navigation ◀ ▶ |
-| Exporter les scores | CSV / JSON / HTML |
-| Réinitialiser les scores | Effacer circuit / tous (mdp requis) |
-| Classement | TOP 5 ou TOP 10 |
-| Taille de l’overlay | Petit / Moyen / Grand |
-| Debug UDP | Fenêtre de diagnostic |
+| Administration | Fenêtre centralisée (scores, export, reset, affichage, debug) |
 | Quitter | Ferme l’application |
+
+### Administration
+
+Menu ☰ → **Administration** :
+
+| Section | Contenu |
+|---|---|
+| Scores globaux | Voir par circuit, reset circuit / tous (mdp requis) |
+| Exportation | CSV / JSON / HTML |
+| Affichage overlay | TOP 5 / TOP 10, taille Petit / Moyen / Grand |
+| Concours | *À venir* (tableaux parallèles) |
+| Diagnostic | Debug UDP |
 
 ### Raccourcis
 
@@ -133,6 +141,7 @@ Le TOP 5 / TOP 10 n’est qu’un filtre d’affichage sur ces données.
 
 ## Améliorations à venir
 
+- **Concours** : tableaux de scores parallèles (créer / démarrer / arrêter / exporter) sans toucher au classement global
 - Mode classement **meilleur tour / joueur / circuit** (une entrée par pseudo et par piste, au lieu de conserver tous les tours valides jusqu’au plafond)
 
 ## Architecture
@@ -145,7 +154,7 @@ assets/             → Icône F1 Chronos (app.ico)
 
 ## Debug UDP
 
-Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionStore, log des paquets.
+Administration → **Ouvrir Debug UDP** : connexion, session, Lap Data, Time Trial, SessionStore, log des paquets.
 
 ## Limites
 
@@ -155,6 +164,11 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
 ## Notes de version
+
+### v0.10
+- Fenêtre **Administration** (scores, reset, export, affichage overlay, debug)
+- Menu burger allégé : pseudo / Administration / Quitter
+- Placeholder concours (implémentation prévue ensuite)
 
 ### v0.9.2
 - Saisie du nom de joueur à **chaque** ouverture (prérempli)

@@ -23,8 +23,6 @@ public partial class OverlayWindow : Window
         Width = settings.OverlayWidth;
         Topmost = true;
 
-        SyncLeaderboardMenu(settings.LeaderboardSize);
-
         SourceInitialized += OnSourceInitialized;
         Activated += (_, _) => AssertTopMost();
         Deactivated += (_, _) => AssertTopMost();
@@ -91,27 +89,8 @@ public partial class OverlayWindow : Window
     }
 
     private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.PromptPlayerName();
-    private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
-    private void OnExportCsvClick(object sender, RoutedEventArgs e) => _controller.ExportScores("csv");
-    private void OnExportJsonClick(object sender, RoutedEventArgs e) => _controller.ExportScores("json");
-    private void OnExportHtmlClick(object sender, RoutedEventArgs e) => _controller.ExportScores("html");
-    private void OnResetCurrentTrackClick(object sender, RoutedEventArgs e) => _controller.ResetCurrentTrackScores();
-    private void OnResetAllClick(object sender, RoutedEventArgs e) => _controller.ResetAllScores();
-    private void OnSizeSmallClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Small);
-    private void OnSizeMediumClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Medium);
-    private void OnSizeLargeClick(object sender, RoutedEventArgs e) => _controller.SetOverlayWidth(OverlaySizes.Large);
-    private void OnTop5Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(LeaderboardSizes.Default);
-    private void OnTop10Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(LeaderboardSizes.Extended);
-    private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
+    private void OnAdminClick(object sender, RoutedEventArgs e) => _controller.ShowAdminWindow();
     private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
-
-    public void SyncLeaderboardMenu(int size)
-    {
-        var isTop10 = size == LeaderboardSizes.Extended;
-        Top5MenuItem.IsChecked = !isTop10;
-        Top10MenuItem.IsChecked = isTop10;
-        LeaderboardTitleText.Text = isTop10 ? "TOP 10" : "TOP 5";
-    }
 
     public void UpdateSnapshot(OverlaySnapshot snapshot)
     {

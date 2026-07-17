@@ -105,27 +105,7 @@
                                 </ContextMenu.Resources>
 
                                 <MenuItem Header="Changer le nom du joueur" Click="OnRenameClick"/>
-                                <MenuItem Header="Scores par circuit" Click="OnScoresClick"/>
-                                <MenuItem Header="Exporter les scores">
-                                    <MenuItem Header="CSV" Click="OnExportCsvClick"/>
-                                    <MenuItem Header="JSON" Click="OnExportJsonClick"/>
-                                    <MenuItem Header="HTML" Click="OnExportHtmlClick"/>
-                                </MenuItem>
-                                <MenuItem x:Name="ResetScoresMenu"
-                                          Header="Réinitialiser les scores">
-                                    <MenuItem Header="Circuit affiché…" Click="OnResetCurrentTrackClick"/>
-                                    <MenuItem Header="Tous les circuits…" Click="OnResetAllClick"/>
-                                </MenuItem>
-                                <MenuItem Header="Classement">
-                                    <MenuItem x:Name="Top5MenuItem" Header="TOP 5" IsCheckable="True" Click="OnTop5Click"/>
-                                    <MenuItem x:Name="Top10MenuItem" Header="TOP 10" IsCheckable="True" Click="OnTop10Click"/>
-                                </MenuItem>
-                                <MenuItem Header="Taille de l'overlay">
-                                    <MenuItem Header="Petit" Click="OnSizeSmallClick"/>
-                                    <MenuItem Header="Moyen" Click="OnSizeMediumClick"/>
-                                    <MenuItem Header="Grand" Click="OnSizeLargeClick"/>
-                                </MenuItem>
-                                <MenuItem Header="Debug UDP" Click="OnDebugClick"/>
+                                <MenuItem Header="Administration" Click="OnAdminClick"/>
                                 <Separator/>
                                 <MenuItem Header="Quitter" Click="OnQuitClick"/>
                             </ContextMenu>

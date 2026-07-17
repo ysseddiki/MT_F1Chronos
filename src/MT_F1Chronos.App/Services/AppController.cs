@@ -100,7 +100,6 @@ public sealed class AppController : IDisposable
     {
         _settings.LeaderboardSize = LeaderboardSizes.Normalize(size);
         SaveSettings();
-        _overlay?.SyncLeaderboardMenu(_settings.LeaderboardSize);
         RefreshOverlay();
     }
 
@@ -128,6 +127,15 @@ public sealed class AppController : IDisposable
 
         _promptOpen = false;
         RefreshOverlay();
+    }
+
+    public void ShowAdminWindow()
+    {
+        if (_overlay is null)
+            return;
+
+        var window = new AdminWindow(this, _settings) { Owner = _overlay };
+        window.ShowDialog();
     }
 
     public void ShowAllScores()
