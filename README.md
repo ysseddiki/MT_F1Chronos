@@ -124,8 +124,6 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `leaderboardSize` | `5` ou `10` |
 | `playerName` | Pseudo des prochains tours |
 
-Mot de passe reset : `ys-reset-mt26`
-
 ## Données
 
 Scores : `%LOCALAPPDATA%\MT_F1Chronos\sessions\track-{id}.json` (un fichier par circuit)
