@@ -412,7 +412,7 @@ public sealed class AppController : IDisposable
     {
         _refreshTimer.Stop();
         _store.CloseActiveSession();
-        _store.Save();
+        _store.Dispose();
         _listener.Dispose();
         _debugWindow?.Close();
         _overlay?.Close();

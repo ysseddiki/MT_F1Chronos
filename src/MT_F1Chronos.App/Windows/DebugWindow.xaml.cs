@@ -174,7 +174,7 @@ public partial class DebugWindow : Window
         {
             return $"""
                     session active : non
-                    fichier : {store.SessionsFilePath}
+                    dossier : {store.SessionsFilePath}
                     total sessions : {store.TotalSessions} ({store.ScoredSessions} avec chrono)
                     """;
         }
@@ -183,7 +183,7 @@ public partial class DebugWindow : Window
                 session active : oui
                 circuit : {store.ActiveTrackId} ({store.ActiveTrackName})
                 dernier tour : {FormatNullableMs(store.ActiveBestLapMs)}
-                fichier : {store.SessionsFilePath}
+                dossier : {store.SessionsFilePath}
                 total sessions : {store.TotalSessions} ({store.ScoredSessions} avec chrono)
                 """;
     }

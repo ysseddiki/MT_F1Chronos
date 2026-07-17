@@ -128,9 +128,17 @@ Mot de passe reset : `ys-reset-mt26`
 
 ## Données
 
-Scores : `%LOCALAPPDATA%\MT_F1Chronos\sessions.json`
+Scores : `%LOCALAPPDATA%\MT_F1Chronos\sessions\track-{id}.json` (un fichier par circuit)
 
-Persistance à chaque tour terminé et à la fermeture. Toutes les entrées sont conservées ; le TOP n’est qu’un filtre d’affichage.
+- Écriture atomique (`.tmp` → replace) et sauvegarde différée (~2 s), flush à la fermeture
+- Au plus **5000** meilleurs tours conservés par circuit
+- Migration automatique depuis l’ancien `sessions.json` (renommé en `sessions.json.bak`)
+
+Le TOP 5 / TOP 10 n’est qu’un filtre d’affichage sur ces données.
+
+## Améliorations à venir
+
+- Mode classement **meilleur tour / joueur / circuit** (une entrée par pseudo et par piste, au lieu de conserver tous les tours valides jusqu’au plafond)
 
 ## Architecture
 
@@ -152,6 +160,12 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
 ## Notes de version
+
+### v0.9.1
+- Stockage des scores par circuit (`sessions/track-{id}.json`)
+- Écriture atomique + sauvegarde différée (~2 s)
+- Plafond de 5000 meilleurs tours par circuit
+- Migration depuis `sessions.json`
 
 ### v0.9
 - Nettoyage et optimisation interne du code (aucun changement fonctionnel)
