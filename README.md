@@ -8,13 +8,13 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 
 - Overlay always-on-top (mode **Fenêtré** / **Borderless**)
 - Nom d’affichage / icône : **F1 Chronos**
-- **Nom du joueur** au premier lancement (modifiable ensuite, sans réécrire l’historique)
+- **Nom du joueur** demandé à **chaque ouverture** (prérempli, sans réécrire l’historique)
 - **TOP 5** ou **TOP 10** des meilleurs chronos du circuit
 - Mise en évidence du **joueur courant** dans le classement
 - **Tour en cours** synchronisé via télémétrie UDP (format `00:00.000`)
 - **Scores par circuit** avec navigation ◀ ▶
 - **Export** CSV / JSON / HTML
-- Position mémorisée après déplacement + **opacité** réglable (60–100 %)
+- Position mémorisée après déplacement
 - Debug UDP intégré
 - Réinitialisation des scores (mot de passe requis)
 
@@ -36,7 +36,7 @@ Dans le jeu : **Settings → Telemetry Settings**
 | UDP Format | **`2025`** (F1 25) ou **`2026`** (F1 26) |
 | UDP Send Rate | 20–60 Hz |
 
-> Le format dans le jeu et dans l’overlay (menu ☰ → **Format UDP**) doivent correspondre.
+> Le format UDP dans le jeu et dans `settings.json` (`udpFormat`) doivent correspondre.
 
 ## Compilation
 
@@ -61,7 +61,7 @@ Exécutable : `dist\MT_F1Chronos.exe`
 ## Utilisation
 
 1. Lancer `dist\MT_F1Chronos.exe`
-2. Saisir le **nom du joueur** (première ouverture)
+2. Saisir / confirmer le **nom du joueur** (à chaque ouverture)
 3. Lancer F1 en Borderless / Fenêtré et démarrer une session chrono
 4. L’overlay affiche le circuit, le TOP, le tour en cours et l’état de connexion
 
@@ -86,8 +86,6 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Réinitialiser les scores | Effacer circuit / tous (mdp requis) |
 | Classement | TOP 5 ou TOP 10 |
 | Taille de l’overlay | Petit / Moyen / Grand |
-| Opacité | Slider 60–100 % |
-| Format UDP | 2025 ou 2026 |
 | Debug UDP | Fenêtre de diagnostic |
 | Quitter | Ferme l’application |
 
@@ -109,7 +107,6 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "overlayTop": 195,
   "overlayRight": 12,
   "overlayWidth": 288,
-  "overlayOpacity": 0.96,
   "leaderboardSize": 5,
   "playerName": "TonNom"
 }
@@ -117,12 +114,12 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 
 | Clé | Description |
 |---|---|
-| `udpFormat` | `2025` ou `2026` |
+| `udpFormat` | `2025` ou `2026` (à aligner avec le jeu) |
+| `udpPort` | Port UDP (défaut `20777`) |
 | `overlayTop` / `overlayRight` | Position (aussi mise à jour au drag) |
 | `overlayWidth` | Largeur (px) |
-| `overlayOpacity` | `0.6` → `1.0` |
 | `leaderboardSize` | `5` ou `10` |
-| `playerName` | Pseudo des prochains tours |
+| `playerName` | Dernier pseudo confirmé à l’ouverture |
 
 ## Données
 
@@ -158,6 +155,11 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
 ## Notes de version
+
+### v0.9.2
+- Saisie du nom de joueur à **chaque** ouverture (prérempli)
+- Suppression du slider d’opacité (opacité fixe)
+- Format UDP configurable uniquement via `settings.json` (plus de menu)
 
 ### v0.9.1
 - Stockage des scores par circuit (`sessions/track-{id}.json`)

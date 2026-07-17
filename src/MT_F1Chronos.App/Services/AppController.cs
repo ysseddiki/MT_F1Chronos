@@ -57,8 +57,8 @@ public sealed class AppController : IDisposable
         _overlay.Show();
         PositionOverlay();
 
-        if (string.IsNullOrWhiteSpace(_settings.PlayerName))
-            PromptPlayerName(required: true);
+        // Ask for the player name on every launch (pre-filled with the last used name).
+        PromptPlayerName(required: true);
 
         // Show persisted TOP 5 immediately (before UDP track id is known).
         RefreshOverlay();
@@ -94,13 +94,6 @@ public sealed class AppController : IDisposable
         _settings.OverlayRight = Math.Max(0, workArea.Right - left - width);
         _settings.OverlayWidth = width;
         SaveSettings();
-    }
-
-    public void SetOverlayOpacity(double opacity)
-    {
-        _settings.OverlayOpacity = Math.Clamp(opacity, AppSettings.MinOpacity, AppSettings.MaxOpacity);
-        SaveSettings();
-        _overlay?.ApplyOpacity(_settings.OverlayOpacity);
     }
 
     public void SetLeaderboardSize(int size)
@@ -319,15 +312,6 @@ public sealed class AppController : IDisposable
     public TelemetryDebugSnapshot BuildDebugSnapshot() =>
         _listener.Parser.BuildDebugSnapshot(_listener.State, _store.BuildDebugInfo());
 
-    public void SetUdpFormat(int format)
-    {
-        _settings.UdpFormat = format is 2026 ? 2026 : 2025;
-        _listener.SetFormat((ushort)_settings.UdpFormat);
-        _listener.State.ResetLapData();
-        SaveSettings();
-        RefreshOverlay();
-    }
-
     private void OnTelemetryUpdate(TelemetryUpdate update)
     {
         _dispatcher.BeginInvoke(() =>
@@ -389,10 +373,7 @@ public sealed class AppController : IDisposable
         {
             var json = File.ReadAllText(SettingsPath);
             var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
-            settings.OverlayOpacity = Math.Clamp(
-                settings.OverlayOpacity <= 0 ? 0.96 : settings.OverlayOpacity,
-                AppSettings.MinOpacity,
-                AppSettings.MaxOpacity);
+            settings.UdpFormat = settings.UdpFormat is 2026 ? 2026 : 2025;
             settings.LeaderboardSize = LeaderboardSizes.Normalize(settings.LeaderboardSize);
             return settings;
         }

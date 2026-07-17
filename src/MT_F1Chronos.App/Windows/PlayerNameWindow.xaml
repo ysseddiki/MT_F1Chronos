@@ -66,7 +66,7 @@
                            FontWeight="Bold"
                            Foreground="White"
                            Margin="0,0,0,4"/>
-                <TextBlock Text="Choisis ton nom de joueur. Il sera utilisé pour tous tes chronos."
+                <TextBlock Text="Indique le nom du joueur pour cette session. Il sera utilisé pour les prochains chronos."
                            FontFamily="Segoe UI"
                            FontSize="11"
                            Foreground="#FFC5CAD3"

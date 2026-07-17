@@ -15,7 +15,6 @@ public partial class OverlayWindow : Window
     private readonly AppController _controller;
     private HwndSource? _hwndSource;
     private readonly DispatcherTimer _topMostTimer;
-    private bool _opacityReady;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
@@ -24,7 +23,6 @@ public partial class OverlayWindow : Window
         Width = settings.OverlayWidth;
         Topmost = true;
 
-        ApplyOpacity(settings.OverlayOpacity);
         SyncLeaderboardMenu(settings.LeaderboardSize);
 
         SourceInitialized += OnSourceInitialized;
@@ -35,7 +33,6 @@ public partial class OverlayWindow : Window
         _topMostTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _topMostTimer.Tick += (_, _) => AssertTopMost();
         _topMostTimer.Start();
-        _opacityReady = true;
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -106,31 +103,7 @@ public partial class OverlayWindow : Window
     private void OnTop5Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(LeaderboardSizes.Default);
     private void OnTop10Click(object sender, RoutedEventArgs e) => _controller.SetLeaderboardSize(LeaderboardSizes.Extended);
     private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
-    private void OnFormat2025Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2025);
-    private void OnFormat2026Click(object sender, RoutedEventArgs e) => _controller.SetUdpFormat(2026);
     private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
-
-    private void OnOpacitySliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (!_opacityReady)
-            return;
-
-        var opacity = Math.Clamp(e.NewValue / 100.0, AppSettings.MinOpacity, AppSettings.MaxOpacity);
-        ApplyOpacity(opacity);
-        _controller.SetOverlayOpacity(opacity);
-    }
-
-    public void ApplyOpacity(double opacity)
-    {
-        var clamped = Math.Clamp(opacity, AppSettings.MinOpacity, AppSettings.MaxOpacity);
-        RootBorder.Opacity = clamped;
-
-        var percent = (int)Math.Round(clamped * 100);
-        if (OpacitySlider is not null)
-            OpacitySlider.Value = percent;
-        if (OpacityValueText is not null)
-            OpacityValueText.Text = $"{percent}%";
-    }
 
     public void SyncLeaderboardMenu(int size)
     {
