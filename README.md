@@ -184,7 +184,7 @@ Menu ☰ → **Debug UDP** : connexion, session, Lap Data, Time Trial, SessionSt
 ### v0.6.1
 - Fix doublon de chrono au redémarrage de session
 - Affichage immédiat du nouveau circuit (plus besoin d’attendre un tour)
-- Reset scores toujours disponible (mdp `ys-reset-mt26`)
+- Reset scores toujours disponible
 
 ### v0.6
 - Suppression du delta live vs P1
