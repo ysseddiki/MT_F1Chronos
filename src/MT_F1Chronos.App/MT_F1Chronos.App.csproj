@@ -11,6 +11,8 @@
     <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
     <Product>F1 Chronos</Product>
     <AssemblyTitle>F1 Chronos</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <InformationalVersion>1.0</InformationalVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

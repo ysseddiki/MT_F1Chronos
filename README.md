@@ -9,14 +9,14 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - Overlay always-on-top (mode **Fenêtré** / **Borderless**)
 - Nom d’affichage / icône : **F1 Chronos**
 - **Nom du joueur** demandé à **chaque ouverture** (prérempli, sans réécrire l’historique)
-- **TOP 5** ou **TOP 10** des meilleurs chronos du circuit
-- Mise en évidence du **joueur courant** dans le classement
+- **TOP 3** / **TOP 5** / **TOP 10** des meilleurs chronos du circuit
+- Mise en évidence du **joueur courant** dans le classement (fond rouge)
 - **Tour en cours** synchronisé via télémétrie UDP (format `00:00.000`)
 - **Scores par circuit** avec navigation ◀ ▶
 - **Export** CSV / JSON / HTML
 - Position mémorisée après déplacement
 - **Fenêtre d’administration** protégée par mot de passe (reset, export, affichage, concours, debug)
-- **Concours** : tableaux de scores parallèles (créer / démarrer / arrêter / exporter)
+- **Concours** : tableaux de scores parallèles (créer / démarrer / arrêter / exporter) ; global limité au TOP 3 quand le concours est affiché
 - Debug UDP intégré
 - Réinitialisation des scores depuis l’administration
 
@@ -74,8 +74,8 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Zone | Contenu |
 |---|---|
 | En-tête | Nom du circuit + menu ☰ |
-| TOP 5 / TOP 10 · GLOBAL | Meilleurs chronos du circuit (joueur courant surligné) |
-| TOP 5/10 · CONCOURS | Optionnel : classement du concours lié |
+| TOP 3 / 5 / 10 · GLOBAL | Meilleurs chronos du circuit (joueur courant surligné) |
+| TOP 3 / 5 / 10 · CONCOURS | Optionnel : classement du concours lié |
 | Tour en cours | Chrono live `00:00.000` + pseudo |
 | Statut | Connexion télémétrie |
 
@@ -96,8 +96,8 @@ Menu ☰ → **Administration** (mot de passe requis) :
 |---|---|
 | Scores globaux | Reset circuit / tous (confirmation) |
 | Exportation | CSV / JSON / HTML du classement **global** |
-| Affichage overlay | TOP 5 / TOP 10 **global**, taille Petit / Moyen / Grand |
-| Concours | Contenu overlay (Global+Concours / Concours seul / Global seul), TOP 5/10, créer / gérer |
+| Affichage overlay | TOP 3 / 5 / 10 **global** (largeur auto) |
+| Concours | Contenu overlay (Global+Concours / Concours seul / Global seul), TOP 3/5/10, créer / gérer |
 | Diagnostic | Debug UDP |
 
 Chaque tour valide alimente le **global** et **tous les concours actifs**.  
@@ -155,7 +155,7 @@ Concours : `%LOCALAPPDATA%\MT_F1Chronos\contests\`
 - Au plus **5000** meilleurs tours conservés par circuit (global et par concours)
 - Migration automatique depuis l’ancien `sessions.json` (renommé en `sessions.json.bak`)
 
-Le TOP 5 / TOP 10 n’est qu’un filtre d’affichage sur ces données.
+Le TOP 3 / 5 / 10 n’est qu’un filtre d’affichage sur ces données.
 
 ## Améliorations à venir
 
@@ -190,6 +190,13 @@ Idées techniques / produit à reprendre quand on voudra durcir ou enrichir l’
 - Installateur avec mise à jour (suite v0.7 partiellement retirée)
 
 ## Notes de version
+
+### v1.0
+- **Première version stable** de F1 Chronos
+- Overlay brand (carbon / rouge) : typographie circuit, cartouches TOP, liseré blanc, coins arrondis
+- Classements **TOP 3 / 5 / 10** ; avec concours affiché, le global passe en TOP 3
+- Pseudo limité à 20 caractères ; largeur d’overlay auto (compacte, s’étend si besoin)
+- Surbrillance joueur courant par fond uniquement ; rangs P1–P3 en couleur de texte
 
 ### v0.15
 - Overlay : TOP prioritaire, médailles P1–P3, status télémétrie (carré bas droite), feedback léger à l’enregistrement
