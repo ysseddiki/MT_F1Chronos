@@ -28,8 +28,6 @@ public partial class AdminWindow : Window
         _controller = controller;
         _settings = settings;
         InitializeComponent();
-        ShowContestCheckBox.IsChecked = _settings.ShowContestOnOverlay;
-        HideGlobalWhenContestCheckBox.IsChecked = _settings.HideGlobalWhenContest;
         SyncDisplayButtons();
         RefreshContestList();
     }
@@ -48,7 +46,10 @@ public partial class AdminWindow : Window
         Highlight(SizeMediumButton, Math.Abs(_settings.OverlayWidth - OverlaySizes.Medium) < 0.5);
         Highlight(SizeLargeButton, Math.Abs(_settings.OverlayWidth - OverlaySizes.Large) < 0.5);
 
-        Highlight(GlobalSourceButton, string.IsNullOrWhiteSpace(_settings.OverlayContestId));
+        var mode = _controller.GetOverlayDisplayMode();
+        Highlight(ModeGlobalAndContestButton, mode == OverlayDisplayMode.GlobalAndContest);
+        Highlight(ModeContestOnlyButton, mode == OverlayDisplayMode.ContestOnly);
+        Highlight(ModeGlobalOnlyButton, mode == OverlayDisplayMode.GlobalOnly);
     }
 
     private void RefreshContestList()
@@ -109,11 +110,11 @@ public partial class AdminWindow : Window
         stack.Children.Add(header);
 
         var count = _controller.GetContestEntryCount(contest.Id);
-        var showing = string.Equals(_settings.OverlayContestId, contest.Id, StringComparison.Ordinal);
+        var isPrincipal = string.Equals(_settings.OverlayContestId, contest.Id, StringComparison.Ordinal);
         stack.Children.Add(new TextBlock
         {
-            Text = showing
-                ? $"{count} chrono(s) · lié à l’overlay"
+            Text = isPrincipal
+                ? $"{count} chrono(s) · principal"
                 : $"{count} chrono(s)",
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 10,
@@ -137,16 +138,11 @@ public partial class AdminWindow : Window
                 RefreshContestList();
             }));
 
-        actions.Children.Add(MakeAction(showing ? "Sur overlay ✓" : "Afficher", () =>
+        actions.Children.Add(MakeAction(isPrincipal ? "Principal ✓" : "Principal", () =>
         {
             _controller.SetOverlayContest(contest.Id);
-            if (!_settings.ShowContestOnOverlay)
-            {
-                ShowContestCheckBox.IsChecked = true;
-                _controller.SetShowContestOnOverlay(true);
-            }
             RefreshContestList();
-        }, highlight: showing));
+        }, highlight: isPrincipal));
 
         actions.Children.Add(MakeAction("Voir", () => _controller.ShowContestScores(contest.Id)));
         actions.Children.Add(MakeAction("CSV", () => _controller.ExportContestScores(contest.Id, "csv")));
@@ -209,22 +205,23 @@ public partial class AdminWindow : Window
     private void OnExportJsonClick(object sender, RoutedEventArgs e) => _controller.ExportScores("json");
     private void OnExportHtmlClick(object sender, RoutedEventArgs e) => _controller.ExportScores("html");
     private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
-    private void OnShowGlobalClick(object sender, RoutedEventArgs e)
+
+    private void OnModeGlobalAndContestClick(object sender, RoutedEventArgs e)
     {
-        _controller.SetOverlayContest(null);
-        RefreshContestList();
+        _controller.SetOverlayDisplayMode(OverlayDisplayMode.GlobalAndContest);
+        SyncDisplayButtons();
     }
 
-    private void OnShowContestChecked(object sender, RoutedEventArgs e)
+    private void OnModeContestOnlyClick(object sender, RoutedEventArgs e)
     {
-        _controller.SetShowContestOnOverlay(ShowContestCheckBox.IsChecked == true);
-        RefreshContestList();
+        _controller.SetOverlayDisplayMode(OverlayDisplayMode.ContestOnly);
+        SyncDisplayButtons();
     }
 
-    private void OnHideGlobalWhenContestChecked(object sender, RoutedEventArgs e)
+    private void OnModeGlobalOnlyClick(object sender, RoutedEventArgs e)
     {
-        _controller.SetHideGlobalWhenContest(HideGlobalWhenContestCheckBox.IsChecked == true);
-        RefreshContestList();
+        _controller.SetOverlayDisplayMode(OverlayDisplayMode.GlobalOnly);
+        SyncDisplayButtons();
     }
 
     private void OnCreateContestClick(object sender, RoutedEventArgs e)
@@ -241,9 +238,8 @@ public partial class AdminWindow : Window
             return;
 
         NewContestNameBox.Text = string.Empty;
-        ShowContestCheckBox.IsChecked = true;
-        _controller.SetShowContestOnOverlay(true);
         _controller.SetOverlayContest(created.Id);
+        _controller.SetOverlayDisplayMode(OverlayDisplayMode.GlobalAndContest);
         RefreshContestList();
     }
 

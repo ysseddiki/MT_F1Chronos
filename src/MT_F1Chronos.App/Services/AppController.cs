@@ -288,9 +288,34 @@ public sealed class AppController : IDisposable
         RefreshOverlay();
     }
 
-    public void SetShowContestOnOverlay(bool show)
+    public OverlayDisplayMode GetOverlayDisplayMode()
     {
-        _settings.ShowContestOnOverlay = show;
+        if (!_settings.ShowContestOnOverlay)
+            return OverlayDisplayMode.GlobalOnly;
+
+        return _settings.HideGlobalWhenContest
+            ? OverlayDisplayMode.ContestOnly
+            : OverlayDisplayMode.GlobalAndContest;
+    }
+
+    public void SetOverlayDisplayMode(OverlayDisplayMode mode)
+    {
+        switch (mode)
+        {
+            case OverlayDisplayMode.ContestOnly:
+                _settings.ShowContestOnOverlay = true;
+                _settings.HideGlobalWhenContest = true;
+                break;
+            case OverlayDisplayMode.GlobalOnly:
+                _settings.ShowContestOnOverlay = false;
+                _settings.HideGlobalWhenContest = false;
+                break;
+            default:
+                _settings.ShowContestOnOverlay = true;
+                _settings.HideGlobalWhenContest = false;
+                break;
+        }
+
         SaveSettings();
         RefreshOverlay();
     }
@@ -298,13 +323,6 @@ public sealed class AppController : IDisposable
     public void SetContestLeaderboardSize(int size)
     {
         _settings.ContestLeaderboardSize = LeaderboardSizes.Normalize(size);
-        SaveSettings();
-        RefreshOverlay();
-    }
-
-    public void SetHideGlobalWhenContest(bool hide)
-    {
-        _settings.HideGlobalWhenContest = hide;
         SaveSettings();
         RefreshOverlay();
     }

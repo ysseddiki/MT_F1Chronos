@@ -97,11 +97,11 @@ Menu ☰ → **Administration** (mot de passe requis) :
 | Scores globaux | Reset circuit / tous (confirmation) |
 | Exportation | CSV / JSON / HTML du classement **global** |
 | Affichage overlay | TOP 5 / TOP 10 **global**, taille Petit / Moyen / Grand |
-| Concours | Paramètres overlay (afficher, masquer global, TOP 5/10), créer / gérer |
+| Concours | Contenu overlay (Global+Concours / Concours seul / Global seul), TOP 5/10, créer / gérer |
 | Diagnostic | Debug UDP |
 
 Chaque tour valide alimente le **global** et **tous les concours actifs**.  
-Sur l’overlay : **TOP global** (masquable si concours affiché) ; **TOP 5/10 concours** si l’option est cochée et qu’un concours est lié.
+Sur l’overlay : selon le mode choisi — **Global + Concours principal**, **Concours principal seul**, ou **Global seul**.
 
 ### Raccourcis
 
@@ -138,10 +138,10 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `overlayWidth` | Largeur (px) |
 | `leaderboardSize` | `5` ou `10` (classement **global**) |
 | `playerName` | Dernier pseudo confirmé à l’ouverture |
-| `overlayContestId` | Id du concours lié à l’overlay (vide = aucun) |
-| `showContestOnOverlay` | Afficher le concours sous le global |
+| `overlayContestId` | Id du concours **principal** (vide = aucun) |
+| `showContestOnOverlay` | Afficher le concours principal (`false` = mode Global seul) |
 | `contestLeaderboardSize` | `5` ou `10` (classement **concours**) |
-| `hideGlobalWhenContest` | Masquer le TOP global quand un concours est affiché |
+| `hideGlobalWhenContest` | Masquer le TOP global (`true` = mode Concours seul) |
 
 ## Données
 

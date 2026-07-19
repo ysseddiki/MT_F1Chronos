@@ -217,33 +217,37 @@
                                Foreground="#FFE10600"
                                Margin="0,0,0,8"/>
 
-                    <TextBlock Text="Paramètres overlay"
+                    <TextBlock Text="Contenu overlay"
                                FontFamily="Segoe UI"
                                FontSize="11"
                                Foreground="#FFC5CAD3"
                                Margin="0,0,0,6"/>
-                    <CheckBox x:Name="ShowContestCheckBox"
-                              Content="Afficher le concours sous le classement global"
-                              FontFamily="Segoe UI"
-                              FontSize="12"
-                              Foreground="#FFC5CAD3"
-                              Margin="0,0,0,8"
-                              Checked="OnShowContestChecked"
-                              Unchecked="OnShowContestChecked"/>
-                    <CheckBox x:Name="HideGlobalWhenContestCheckBox"
-                              Content="Masquer le TOP global quand un concours est affiché"
-                              FontFamily="Segoe UI"
-                              FontSize="12"
-                              Foreground="#FFC5CAD3"
-                              Margin="0,0,0,8"
-                              Checked="OnHideGlobalWhenContestChecked"
-                              Unchecked="OnHideGlobalWhenContestChecked"/>
+                    <Button x:Name="ModeGlobalAndContestButton"
+                            Content="Global + Concours principal"
+                            HorizontalContentAlignment="Center"
+                            Click="OnModeGlobalAndContestClick"/>
+                    <Button x:Name="ModeContestOnlyButton"
+                            Content="Concours principal seul"
+                            HorizontalContentAlignment="Center"
+                            Click="OnModeContestOnlyClick"/>
+                    <Button x:Name="ModeGlobalOnlyButton"
+                            Content="Global seul"
+                            HorizontalContentAlignment="Center"
+                            Margin="0,0,0,8"
+                            Click="OnModeGlobalOnlyClick"/>
+                    <TextBlock Text="Choisis le concours « Principal » dans la liste. Les 3 boutons ci-dessus définissent ce qui s’affiche."
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,10"
+                               TextWrapping="Wrap"/>
+
                     <TextBlock Text="Classement concours"
                                FontFamily="Segoe UI"
                                FontSize="11"
                                Foreground="#FFC5CAD3"
                                Margin="0,0,0,4"/>
-                    <Grid Margin="0,0,0,8">
+                    <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
@@ -261,16 +265,6 @@
                                 HorizontalContentAlignment="Center"
                                 Click="OnContestTop10Click"/>
                     </Grid>
-                    <Button x:Name="GlobalSourceButton"
-                            Content="Masquer le concours (global seul)"
-                            HorizontalContentAlignment="Center"
-                            Click="OnShowGlobalClick"/>
-                    <TextBlock Text="Choisis « Afficher » sur un concours pour le lier à l’overlay."
-                               FontFamily="Segoe UI"
-                               FontSize="10"
-                               Foreground="#FFC5CAD3"
-                               Margin="0,4,0,12"
-                               TextWrapping="Wrap"/>
 
                     <TextBlock Text="Nom du nouveau concours"
                                FontFamily="Segoe UI"
