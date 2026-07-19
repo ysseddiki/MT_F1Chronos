@@ -34,13 +34,15 @@ public partial class AdminWindow : Window
 
     private void SyncDisplayButtons()
     {
-        var isTop10 = _settings.LeaderboardSize == LeaderboardSizes.Extended;
-        Highlight(Top5Button, !isTop10);
-        Highlight(Top10Button, isTop10);
+        var globalSize = LeaderboardSizes.Normalize(_settings.LeaderboardSize);
+        Highlight(Top3Button, globalSize == LeaderboardSizes.Compact);
+        Highlight(Top5Button, globalSize == LeaderboardSizes.Default);
+        Highlight(Top10Button, globalSize == LeaderboardSizes.Extended);
 
-        var contestTop10 = _settings.ContestLeaderboardSize == LeaderboardSizes.Extended;
-        Highlight(ContestTop5Button, !contestTop10);
-        Highlight(ContestTop10Button, contestTop10);
+        var contestSize = LeaderboardSizes.Normalize(_settings.ContestLeaderboardSize);
+        Highlight(ContestTop3Button, contestSize == LeaderboardSizes.Compact);
+        Highlight(ContestTop5Button, contestSize == LeaderboardSizes.Default);
+        Highlight(ContestTop10Button, contestSize == LeaderboardSizes.Extended);
 
         var mode = _controller.GetOverlayDisplayMode();
         Highlight(ModeGlobalAndContestButton, mode == OverlayDisplayMode.GlobalAndContest);
@@ -309,6 +311,12 @@ public partial class AdminWindow : Window
         RefreshContestList();
     }
 
+    private void OnTop3Click(object sender, RoutedEventArgs e)
+    {
+        _controller.SetLeaderboardSize(LeaderboardSizes.Compact);
+        SyncDisplayButtons();
+    }
+
     private void OnTop5Click(object sender, RoutedEventArgs e)
     {
         _controller.SetLeaderboardSize(LeaderboardSizes.Default);
@@ -318,6 +326,12 @@ public partial class AdminWindow : Window
     private void OnTop10Click(object sender, RoutedEventArgs e)
     {
         _controller.SetLeaderboardSize(LeaderboardSizes.Extended);
+        SyncDisplayButtons();
+    }
+
+    private void OnContestTop3Click(object sender, RoutedEventArgs e)
+    {
+        _controller.SetContestLeaderboardSize(LeaderboardSizes.Compact);
         SyncDisplayButtons();
     }
 

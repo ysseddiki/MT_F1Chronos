@@ -81,7 +81,7 @@
                 <TextBox x:Name="NameBox"
                          FontFamily="Segoe UI"
                          FontSize="14"
-                         MaxLength="35"
+                         MaxLength="25"
                          Padding="8,6"
                          Background="#FF161B22"
                          Foreground="White"

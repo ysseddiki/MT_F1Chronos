@@ -134,9 +134,7 @@ public partial class OverlayWindow : Window
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
-        LeaderboardTitleText.Text = snapshot.LeaderboardSize == LeaderboardSizes.Extended
-            ? "TOP 10 · GLOBAL"
-            : "TOP 5 · GLOBAL";
+        LeaderboardTitleText.Text = $"{LeaderboardSizes.FormatLabel(snapshot.LeaderboardSize)} · GLOBAL";
 
         if (snapshot.ShowGlobalLeaderboard)
         {
@@ -156,9 +154,8 @@ public partial class OverlayWindow : Window
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             var label = string.IsNullOrWhiteSpace(snapshot.ContestLabel) ? "CONCOURS" : snapshot.ContestLabel;
-            ContestTitleText.Text = snapshot.ContestLeaderboardSize == LeaderboardSizes.Extended
-                ? $"TOP 10 · {label.ToUpperInvariant()}"
-                : $"TOP 5 · {label.ToUpperInvariant()}";
+            ContestTitleText.Text =
+                $"{LeaderboardSizes.FormatLabel(snapshot.ContestLeaderboardSize)} · {label.ToUpperInvariant()}";
             FillLeaderboardPanel(ContestPanel, snapshot.ContestLeaderboard, snapshot.PlayerName);
         }
         else
@@ -251,6 +248,8 @@ public partial class OverlayWindow : Window
 
     private static UIElement CreateRow(int rank, string name, string time, bool isCurrentPlayer)
     {
+        const double rowFont = 13.5; // ~10% under previous 15
+
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 5) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -265,7 +264,7 @@ public partial class OverlayWindow : Window
         {
             Text = $"{rank}.",
             FontFamily = new FontFamily(OverlayTheme.MonoFont),
-            FontSize = 15,
+            FontSize = rowFont,
             FontWeight = FontWeights.Bold,
             Foreground = UiBrushes.FromHex(rankColor),
             VerticalAlignment = VerticalAlignment.Center,
@@ -276,7 +275,7 @@ public partial class OverlayWindow : Window
         {
             Text = name,
             FontFamily = new FontFamily(OverlayTheme.BodyFont),
-            FontSize = 15,
+            FontSize = rowFont,
             FontWeight = isCurrentPlayer ? FontWeights.Bold : FontWeights.SemiBold,
             Foreground = UiBrushes.FromHex(nameColor),
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -288,7 +287,7 @@ public partial class OverlayWindow : Window
         {
             Text = time,
             FontFamily = new FontFamily(OverlayTheme.MonoFont),
-            FontSize = 15,
+            FontSize = rowFont,
             FontWeight = FontWeights.Bold,
             Foreground = UiBrushes.FromHex(timeColor),
             Margin = new Thickness(12, 0, 0, 0),
@@ -309,13 +308,15 @@ public partial class OverlayWindow : Window
             return grid;
         }
 
+        // No horizontal padding — it was inflating FitWidthToContent for the highlighted row.
+        grid.Margin = new Thickness(0);
         return new Border
         {
             Background = new SolidColorBrush(Color.FromArgb(0x33, 0xE1, 0x06, 0x00)),
             CornerRadius = new CornerRadius(2),
-            Padding = new Thickness(4, 4, 4, 4),
+            Padding = new Thickness(0, 2, 0, 2),
             Child = grid,
-            Margin = new Thickness(0, 0, 0, 2),
+            Margin = new Thickness(0, 0, 0, 5),
             Tag = name,
         };
     }

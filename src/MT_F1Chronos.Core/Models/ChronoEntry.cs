@@ -48,11 +48,19 @@ public sealed class OverlaySnapshot
     public bool IsTimeTrial { get; init; }
 }
 
-/// <summary>Centralizes the two supported leaderboard sizes (TOP 5 / TOP 10) to avoid scattering the "is 10 ? 10 : 5" check.</summary>
+/// <summary>Supported overlay leaderboard sizes (TOP 3 / 5 / 10).</summary>
 public static class LeaderboardSizes
 {
+    public const int Compact = 3;
     public const int Default = 5;
     public const int Extended = 10;
 
-    public static int Normalize(int size) => size == Extended ? Extended : Default;
+    public static int Normalize(int size) => size switch
+    {
+        Compact => Compact,
+        Extended => Extended,
+        _ => Default,
+    };
+
+    public static string FormatLabel(int size) => $"TOP {Normalize(size)}";
 }

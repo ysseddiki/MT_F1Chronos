@@ -162,15 +162,22 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="Top5Button"
+                        <Button x:Name="Top3Button"
                                 Grid.Column="0"
+                                Content="TOP 3"
+                                Margin="0,0,4,0"
+                                HorizontalContentAlignment="Center"
+                                Click="OnTop3Click"/>
+                        <Button x:Name="Top5Button"
+                                Grid.Column="1"
                                 Content="TOP 5"
                                 Margin="0,0,4,0"
                                 HorizontalContentAlignment="Center"
                                 Click="OnTop5Click"/>
                         <Button x:Name="Top10Button"
-                                Grid.Column="1"
+                                Grid.Column="2"
                                 Content="TOP 10"
                                 Margin="0"
                                 HorizontalContentAlignment="Center"
@@ -245,15 +252,22 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="ContestTop5Button"
+                        <Button x:Name="ContestTop3Button"
                                 Grid.Column="0"
+                                Content="TOP 3"
+                                Margin="0,0,4,0"
+                                HorizontalContentAlignment="Center"
+                                Click="OnContestTop3Click"/>
+                        <Button x:Name="ContestTop5Button"
+                                Grid.Column="1"
                                 Content="TOP 5"
                                 Margin="0,0,4,0"
                                 HorizontalContentAlignment="Center"
                                 Click="OnContestTop5Click"/>
                         <Button x:Name="ContestTop10Button"
-                                Grid.Column="1"
+                                Grid.Column="2"
                                 Content="TOP 10"
                                 Margin="0"
                                 HorizontalContentAlignment="Center"

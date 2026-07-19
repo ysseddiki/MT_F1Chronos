@@ -567,7 +567,7 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        var size = _settings.LeaderboardSize;
+        var size = LeaderboardSizes.Normalize(_settings.LeaderboardSize);
         var contestSize = LeaderboardSizes.Normalize(_settings.ContestLeaderboardSize);
         var showContest = false;
         var contestLabel = string.Empty;
@@ -600,6 +600,10 @@ public sealed class AppController : IDisposable
         // If the principal contest is stopped, fall back to showing global even
         // in "contest only" display mode so the overlay is never blank.
         var showGlobal = !(showContest && _settings.HideGlobalWhenContest);
+
+        // With an active contest on screen, keep global to TOP 3 to leave room.
+        if (showContest && showGlobal)
+            size = LeaderboardSizes.Compact;
 
         _overlay.UpdateSnapshot(_store.BuildSnapshot(
             _listener.State,

@@ -23,7 +23,7 @@ public sealed class AppSettings
     /// </summary>
     public bool ShowContestOnOverlay { get; set; } = true;
 
-    /// <summary>TOP 5 or TOP 10 for the contest panel on the overlay.</summary>
+    /// <summary>TOP 3 / 5 / 10 for the contest panel on the overlay.</summary>
     public int ContestLeaderboardSize { get; set; } = 10;
 
     /// <summary>When true, hide the global TOP while the contest panel is shown.</summary>
