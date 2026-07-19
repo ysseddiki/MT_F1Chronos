@@ -8,27 +8,69 @@ namespace MT_F1Chronos.App.Windows;
 
 public partial class ScoresWindow : Window
 {
-    private readonly IScoreBoardView _board;
-    private readonly IReadOnlyList<TrackSummary> _tracks;
+    private readonly SessionStore _globalStore;
+    private readonly ContestStore _contests;
+    private readonly int? _preferredTrackId;
+
+    private IScoreBoardView _board;
+    private IReadOnlyList<TrackSummary> _tracks = [];
     private int _currentIndex;
+    private bool _ready;
 
-    public ScoresWindow(SessionStore store, int? initialTrackId = null)
-        : this((IScoreBoardView)store, initialTrackId, title: null)
+    public ScoresWindow(
+        SessionStore globalStore,
+        ContestStore contests,
+        int? initialTrackId = null,
+        string? initialContestId = null)
     {
-    }
-
-    public ScoresWindow(IScoreBoardView board, int? initialTrackId = null, string? title = null)
-    {
-        _board = board;
-        _tracks = board.GetTracksWithScores();
-        _currentIndex = ResolveInitialIndex(initialTrackId);
+        _globalStore = globalStore;
+        _contests = contests;
+        _preferredTrackId = initialTrackId;
 
         InitializeComponent();
-        if (!string.IsNullOrWhiteSpace(title))
+        PopulateSources(initialContestId);
+        _ready = true;
+        ApplySelectedSource(keepTrackId: initialTrackId);
+    }
+
+    private void PopulateSources(string? initialContestId)
+    {
+        SourceCombo.Items.Clear();
+        SourceCombo.Items.Add(new SourceOption(null, "Global"));
+
+        var selectedIndex = 0;
+        var index = 1;
+        foreach (var contest in _contests.List())
         {
-            Title = title;
-            WindowTitleText.Text = title;
+            SourceCombo.Items.Add(new SourceOption(contest.Id, $"Concours — {contest.Name}"));
+            if (!string.IsNullOrWhiteSpace(initialContestId) &&
+                string.Equals(contest.Id, initialContestId, StringComparison.Ordinal))
+                selectedIndex = index;
+            index++;
         }
+
+        SourceCombo.DisplayMemberPath = nameof(SourceOption.Label);
+        SourceCombo.SelectedIndex = selectedIndex;
+    }
+
+    private void ApplySelectedSource(int? keepTrackId)
+    {
+        var option = SourceCombo.SelectedItem as SourceOption;
+        if (option?.ContestId is { Length: > 0 } contestId)
+        {
+            _board = _contests.AsScoreBoard(contestId);
+            WindowTitleText.Text = option.Label;
+            Title = option.Label;
+        }
+        else
+        {
+            _board = _globalStore;
+            WindowTitleText.Text = "Scores par circuit";
+            Title = "Scores par circuit";
+        }
+
+        _tracks = _board.GetTracksWithScores();
+        _currentIndex = ResolveInitialIndex(keepTrackId ?? _preferredTrackId);
         RefreshView();
     }
 
@@ -39,18 +81,11 @@ public partial class ScoresWindow : Window
 
         if (initialTrackId.HasValue)
         {
-            var index = -1;
             for (var i = 0; i < _tracks.Count; i++)
             {
                 if (_tracks[i].TrackId == initialTrackId.Value)
-                {
-                    index = i;
-                    break;
-                }
+                    return i;
             }
-
-            if (index >= 0)
-                return index;
         }
 
         return 0;
@@ -87,6 +122,15 @@ public partial class ScoresWindow : Window
 
         foreach (var score in scores)
             ScoresPanel.Children.Add(CreateRow(score));
+    }
+
+    private void OnSourceChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready)
+            return;
+
+        var keepTrackId = _tracks.Count > 0 ? _tracks[_currentIndex].TrackId : _preferredTrackId;
+        ApplySelectedSource(keepTrackId);
     }
 
     private void OnPrevTrackClick(object sender, RoutedEventArgs e)
@@ -167,4 +211,6 @@ public partial class ScoresWindow : Window
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    private sealed record SourceOption(string? ContestId, string Label);
 }

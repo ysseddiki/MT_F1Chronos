@@ -8,7 +8,7 @@
         Background="Transparent"
         Topmost="True"
         Width="400"
-        Height="480"
+        Height="520"
         ShowInTaskbar="False">
     <Border CornerRadius="8"
             BorderThickness="1"
@@ -74,6 +74,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -85,9 +86,25 @@
                            FontSize="16"
                            FontWeight="Bold"
                            Foreground="White"
-                           Margin="0,0,0,12"/>
+                           Margin="0,0,0,10"/>
 
-                <Grid Grid.Row="1" Margin="0,0,0,12">
+                <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                    <TextBlock Text="Source"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <ComboBox x:Name="SourceCombo"
+                              FontFamily="Segoe UI"
+                              FontSize="13"
+                              Padding="8,6"
+                              Background="#FF161B22"
+                              Foreground="White"
+                              BorderBrush="#33FFFFFF"
+                              SelectionChanged="OnSourceChanged"/>
+                </StackPanel>
+
+                <Grid Grid.Row="2" Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -128,11 +145,11 @@
                             Click="OnNextTrackClick"/>
                 </Grid>
 
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="ScoresPanel"/>
                 </ScrollViewer>
 
-                <Button Grid.Row="3"
+                <Button Grid.Row="4"
                         Content="Fermer"
                         Width="90"
                         Height="32"

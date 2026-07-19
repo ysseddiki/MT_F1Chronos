@@ -84,7 +84,7 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Action | Description |
 |---|---|
 | Changer le nom du joueur | Pseudo pour les **prochains** tours |
-| Scores par circuit | Liste complète, navigation ◀ ▶ |
+| Scores par circuit | Liste complète (choix Global / Concours), navigation ◀ ▶ |
 | Administration | Fenêtre centralisée (mdp requis) |
 | Quitter | Ferme l’application |
 
@@ -181,6 +181,11 @@ Administration (mdp) → **Ouvrir Debug UDP** : connexion, session, Lap Data, Ti
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
 ## Notes de version
+
+### v0.13
+- **Scores par circuit** : sélecteur de source Global / Concours
+- Overlay concours : TOP 5 ou TOP 10 + option pour masquer le TOP global
+- Administration protégée par mot de passe ; scores accessibles depuis le menu ☰
 
 ### v0.11
 - **Concours** : création, démarrage, arrêt, export, suppression

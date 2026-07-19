@@ -152,7 +152,13 @@ public sealed class AppController : IDisposable
             return;
 
         var currentTrackId = _listener.State.TrackId;
-        var window = new ScoresWindow(_store, currentTrackId >= 0 ? currentTrackId : null)
+        var window = new ScoresWindow(
+            _store,
+            _contests,
+            currentTrackId >= 0 ? currentTrackId : null,
+            initialContestId: string.IsNullOrWhiteSpace(_settings.OverlayContestId)
+                ? null
+                : _settings.OverlayContestId)
         {
             Owner = _overlay,
         };
@@ -164,8 +170,7 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        var contest = _contests.Get(contestId);
-        if (contest is null)
+        if (_contests.Get(contestId) is null)
         {
             MessageBox.Show(_overlay, "Concours introuvable.", "Concours", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
@@ -173,9 +178,10 @@ public sealed class AppController : IDisposable
 
         var currentTrackId = _listener.State.TrackId;
         var window = new ScoresWindow(
-            _contests.AsScoreBoard(contestId),
+            _store,
+            _contests,
             currentTrackId >= 0 ? currentTrackId : null,
-            title: $"Concours — {contest.Name}")
+            initialContestId: contestId)
         {
             Owner = _overlay,
         };
