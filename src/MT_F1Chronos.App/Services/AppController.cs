@@ -575,8 +575,15 @@ public sealed class AppController : IDisposable
         if (_settings.ShowContestOnOverlay && !string.IsNullOrWhiteSpace(_settings.OverlayContestId))
         {
             var contest = _contests.Get(_settings.OverlayContestId);
-            if (contest is not null)
+            if (contest is null)
             {
+                _settings.OverlayContestId = string.Empty;
+                SaveSettings();
+            }
+            else if (contest.Status == ContestStatus.Active)
+            {
+                // Stopped / draft contests stay selectable as principal and visible
+                // in Scores, but must not appear on the live overlay.
                 showContest = true;
                 contestLabel = contest.Name;
                 var trackId = _store.ResolveOverlayTrackId(_listener.State);
@@ -587,13 +594,10 @@ public sealed class AppController : IDisposable
                     ? _contests.GetLeaderboard(contest.Id, trackId, contestSize)
                     : [];
             }
-            else
-            {
-                _settings.OverlayContestId = string.Empty;
-                SaveSettings();
-            }
         }
 
+        // If the principal contest is stopped, fall back to showing global even
+        // in "contest only" display mode so the overlay is never blank.
         var showGlobal = !(showContest && _settings.HideGlobalWhenContest);
 
         _overlay.UpdateSnapshot(_store.BuildSnapshot(

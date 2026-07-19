@@ -33,30 +33,139 @@
                     CornerRadius="8,0,0,8"/>
 
             <StackPanel Grid.Column="1" Margin="12,10,10,10">
-                <Grid Margin="0,0,0,10" MouseLeftButtonDown="OnHeaderDrag">
+                <!-- Header: circuit (prominent) + live chrono -->
+                <Grid Margin="0,0,0,12" MouseLeftButtonDown="OnHeaderDrag">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="TrackText"
-                               Grid.Column="0"
-                               FontFamily="Segoe UI Semibold, Segoe UI"
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <TextBlock x:Name="TrackText"
+                                   FontFamily="Segoe UI"
+                                   FontSize="15"
+                                   FontWeight="Bold"
+                                   Foreground="#FFFFFFFF"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="PlayerNameText"
+                                   FontFamily="Segoe UI"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="#FFC5CAD3"
+                                   TextTrimming="CharacterEllipsis"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <TextBlock x:Name="CurrentLapText"
+                               Grid.Column="1"
+                               FontFamily="Consolas"
+                               FontSize="14"
+                               FontWeight="Bold"
+                               Foreground="#FFFFFFFF"
+                               VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- TOP = primary content -->
+                <StackPanel x:Name="GlobalSection">
+                    <TextBlock x:Name="LeaderboardTitleText"
+                               Text="TOP 5 · GLOBAL"
+                               FontFamily="Segoe UI"
                                FontSize="12"
                                FontWeight="Bold"
-                               Foreground="#FFC5CAD3"
-                               VerticalAlignment="Center"/>
+                               Foreground="#FFFFFFFF"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"/>
+                    <StackPanel x:Name="TopFivePanel" Margin="0,0,0,4"/>
+                </StackPanel>
+
+                <StackPanel x:Name="ContestSection" Visibility="Collapsed" Margin="0,0,0,4">
+                    <Rectangle x:Name="ContestDivider"
+                               Height="1"
+                               Fill="#22FFFFFF"
+                               Margin="0,6,0,10"/>
+                    <TextBlock x:Name="ContestTitleText"
+                               Text="TOP 10 · CONCOURS"
+                               FontFamily="Segoe UI"
+                               FontSize="12"
+                               FontWeight="Bold"
+                               Foreground="#FFFFFFFF"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"/>
+                    <StackPanel x:Name="ContestPanel"/>
+                </StackPanel>
+
+                <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,8"/>
+
+                <!-- Footer: status LED + burger -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Telemetry LED -->
+                    <Grid x:Name="StatusBadge"
+                          Grid.Column="1"
+                          Width="28"
+                          Height="28"
+                          ClipToBounds="False"
+                          VerticalAlignment="Center"
+                          Margin="0,0,4,0"
+                          ToolTip="Télémétrie">
+                        <Ellipse x:Name="StatusGlow"
+                                 Width="14"
+                                 Height="14"
+                                 Fill="#FFE10600"
+                                 Opacity="0.9"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 IsHitTestVisible="False">
+                            <Ellipse.Effect>
+                                <BlurEffect x:Name="StatusGlowBlur"
+                                            Radius="12"
+                                            KernelType="Gaussian"/>
+                            </Ellipse.Effect>
+                        </Ellipse>
+                        <Border x:Name="StatusRing"
+                                Width="11"
+                                Height="11"
+                                CornerRadius="2.5"
+                                BorderThickness="1.25"
+                                BorderBrush="#FFE10600"
+                                Background="#66000000"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        <Border x:Name="StatusCore"
+                                Width="5"
+                                Height="5"
+                                CornerRadius="1.5"
+                                Background="#FFE10600"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False">
+                            <Border.Effect>
+                                <DropShadowEffect x:Name="StatusCoreGlow"
+                                                  BlurRadius="10"
+                                                  ShadowDepth="0"
+                                                  Color="#FFE10600"
+                                                  Opacity="0.95"/>
+                            </Border.Effect>
+                        </Border>
+                    </Grid>
+
                     <Button x:Name="MenuButton"
-                            Grid.Column="1"
+                            Grid.Column="2"
                             Content="☰"
                             Width="28"
                             Height="24"
                             FontSize="14"
                             Padding="0"
-                            Margin="8,0,0,0"
                             Background="#FF161B22"
                             Foreground="#FFC5CAD3"
                             BorderBrush="#33FFFFFF"
                             Cursor="Hand"
+                            VerticalAlignment="Center"
                             Click="OnMenuButtonClick">
                         <Button.ContextMenu>
                             <ContextMenu Background="#FF161B22"
@@ -112,110 +221,6 @@
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
-                </Grid>
-
-                <!-- TOP = primary content -->
-                <StackPanel x:Name="GlobalSection">
-                    <TextBlock x:Name="LeaderboardTitleText"
-                               Text="TOP 5 · GLOBAL"
-                               FontFamily="Segoe UI"
-                               FontSize="12"
-                               FontWeight="Bold"
-                               Foreground="#FFE10600"
-                               Margin="0,0,0,8"/>
-                    <StackPanel x:Name="TopFivePanel" Margin="0,0,0,4"/>
-                </StackPanel>
-
-                <StackPanel x:Name="ContestSection" Visibility="Collapsed" Margin="0,0,0,4">
-                    <Rectangle x:Name="ContestDivider"
-                               Height="1"
-                               Fill="#22FFFFFF"
-                               Margin="0,6,0,10"/>
-                    <TextBlock x:Name="ContestTitleText"
-                               Text="TOP 10 · CONCOURS"
-                               FontFamily="Segoe UI"
-                               FontSize="12"
-                               FontWeight="Bold"
-                               Foreground="#FFE10600"
-                               Margin="0,0,0,8"/>
-                    <StackPanel x:Name="ContestPanel"/>
-                </StackPanel>
-
-                <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,8"/>
-
-                <!-- Secondary: player + live lap + telemetry square (bottom-right) -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
-                        <TextBlock x:Name="PlayerNameText"
-                                   FontFamily="Segoe UI"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Foreground="#FFC5CAD3"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock x:Name="CurrentLapText"
-                                   FontFamily="Consolas"
-                                   FontSize="14"
-                                   FontWeight="Bold"
-                                   Foreground="#FFFFFFFF"
-                                   Margin="0,2,0,0"/>
-                    </StackPanel>
-
-                    <!-- Telemetry LED: soft blurred glow + ring + core -->
-                    <Grid x:Name="StatusBadge"
-                          Grid.Column="1"
-                          Width="28"
-                          Height="28"
-                          ClipToBounds="False"
-                          VerticalAlignment="Bottom"
-                          Margin="0,0,-2,-2"
-                          ToolTip="Télémétrie">
-                        <!-- Soft dissipation (real Gaussian blur) -->
-                        <Ellipse x:Name="StatusGlow"
-                                 Width="14"
-                                 Height="14"
-                                 Fill="#FFE10600"
-                                 Opacity="0.9"
-                                 HorizontalAlignment="Center"
-                                 VerticalAlignment="Center"
-                                 IsHitTestVisible="False">
-                            <Ellipse.Effect>
-                                <BlurEffect x:Name="StatusGlowBlur"
-                                            Radius="12"
-                                            KernelType="Gaussian"/>
-                            </Ellipse.Effect>
-                        </Ellipse>
-                        <Border x:Name="StatusRing"
-                                Width="11"
-                                Height="11"
-                                CornerRadius="2.5"
-                                BorderThickness="1.25"
-                                BorderBrush="#FFE10600"
-                                Background="#66000000"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        <Border x:Name="StatusCore"
-                                Width="5"
-                                Height="5"
-                                CornerRadius="1.5"
-                                Background="#FFE10600"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                IsHitTestVisible="False">
-                            <Border.Effect>
-                                <DropShadowEffect x:Name="StatusCoreGlow"
-                                                  BlurRadius="10"
-                                                  ShadowDepth="0"
-                                                  Color="#FFE10600"
-                                                  Opacity="0.95"/>
-                            </Border.Effect>
-                        </Border>
-                    </Grid>
                 </Grid>
             </StackPanel>
         </Grid>
