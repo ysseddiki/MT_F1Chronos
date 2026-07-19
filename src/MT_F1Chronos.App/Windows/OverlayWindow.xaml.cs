@@ -31,6 +31,7 @@ public partial class OverlayWindow : Window
     private string _lastTrackName = string.Empty;
     private bool _leaderboardLayout;
     private bool _statusPulseActive;
+    private string _widthFitKey = string.Empty;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
@@ -170,26 +171,69 @@ public partial class OverlayWindow : Window
         if (trackChanged || layoutChanged)
             PlayContentFade();
 
-        FitWidthToContent();
+        // Only refit when width-relevant content changes — not every 250 ms refresh
+        // (that was making the overlay crawl left/right by itself).
+        var fitKey = BuildWidthFitKey(snapshot);
+        if (!string.Equals(fitKey, _widthFitKey, StringComparison.Ordinal))
+        {
+            _widthFitKey = fitKey;
+            FitWidthToContent();
+        }
     }
 
     /// <summary>
     /// Compact default width; grow up to Max when content (long track/names) needs it.
-    /// Keeps the right edge anchored.
+    /// Keeps the right edge anchored. Measures without toggling SizeToContent (no jitter).
     /// </summary>
     private void FitWidthToContent()
     {
-        var right = Left + (ActualWidth > 0 ? ActualWidth : Width);
-
         MinWidth = OverlaySizes.Default;
         MaxWidth = OverlaySizes.Max;
-        SizeToContent = SizeToContent.WidthAndHeight;
-        UpdateLayout();
-
-        var width = Math.Clamp(ActualWidth, OverlaySizes.Default, OverlaySizes.Max);
         SizeToContent = SizeToContent.Height;
+
+        RootBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var width = Math.Clamp(
+            Math.Ceiling(RootBorder.DesiredSize.Width),
+            OverlaySizes.Default,
+            OverlaySizes.Max);
+
+        if (Math.Abs(Width - width) < 1.0)
+            return;
+
+        var right = Left + Width;
         Width = width;
         Left = right - width;
+    }
+
+    private static string BuildWidthFitKey(OverlaySnapshot snapshot)
+    {
+        // Intentionally ignores live chrono / connection — those refresh often and
+        // must not move the window.
+        var sb = new System.Text.StringBuilder(128);
+        sb.Append(snapshot.TrackName).Append('|')
+          .Append(snapshot.PlayerName).Append('|')
+          .Append(snapshot.LeaderboardSize).Append('|')
+          .Append(snapshot.ContestLeaderboardSize).Append('|')
+          .Append(snapshot.ShowGlobalLeaderboard).Append('|')
+          .Append(snapshot.ShowContestLeaderboard).Append('|')
+          .Append(snapshot.ContestLabel).Append('|');
+
+        AppendBoardKey(sb, snapshot.Leaderboard);
+        sb.Append('#');
+        AppendBoardKey(sb, snapshot.ContestLeaderboard);
+        return sb.ToString();
+    }
+
+    private static void AppendBoardKey(
+        System.Text.StringBuilder sb,
+        IReadOnlyList<LeaderboardRow> rows)
+    {
+        foreach (var row in rows)
+        {
+            sb.Append(row.Rank).Append(':')
+              .Append(row.Name).Append(':')
+              .Append(row.FormattedTime).Append(';');
+        }
     }
 
     /// <summary>Brief highlight when a lap is recorded for the current player.</summary>

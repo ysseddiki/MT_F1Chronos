@@ -8,5 +8,5 @@ public static class OverlaySizes
     /// <summary>Upper bound when long names force a wider overlay.</summary>
     public const double Max = 440;
 
-    public const int MaxPlayerNameLength = 25;
+    public const int MaxPlayerNameLength = 20;
 }
