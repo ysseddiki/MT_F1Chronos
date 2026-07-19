@@ -174,9 +174,7 @@ public sealed class AppController : IDisposable
             _store,
             _contests,
             currentTrackId >= 0 ? currentTrackId : null,
-            initialContestId: string.IsNullOrWhiteSpace(_settings.OverlayContestId)
-                ? null
-                : _settings.OverlayContestId)
+            initialContestId: null)
         {
             Owner = _overlay,
         };

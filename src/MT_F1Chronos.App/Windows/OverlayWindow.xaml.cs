@@ -155,12 +155,12 @@ public partial class OverlayWindow : Window
             ContestTitleText.Text = snapshot.ContestLeaderboardSize == LeaderboardSizes.Extended
                 ? $"TOP 10 · {label.ToUpperInvariant()}"
                 : $"TOP 5 · {label.ToUpperInvariant()}";
-            // Same visual language as global (title color + row density).
             FillLeaderboardPanel(ContestPanel, snapshot.ContestLeaderboard, snapshot.PlayerName);
         }
         else
         {
             ContestSection.Visibility = Visibility.Collapsed;
+            ContestDivider.Visibility = Visibility.Collapsed;
             ContestPanel.Children.Clear();
         }
 
@@ -227,44 +227,46 @@ public partial class OverlayWindow : Window
     private static UIElement CreateRow(int rank, string name, string time, bool isCurrentPlayer)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 3) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var rankColor = RankColor(rank);
-        var nameColor = "#FFFFFFFF";
-        var timeColor = "#FFFFFFFF";
 
-        UIElement content = grid;
-
-        if (isCurrentPlayer)
+        // Rank cell: podium wash for P1–P3, unless this is the current player row.
+        UIElement rankElement;
+        if (!isCurrentPlayer && rank is >= 1 and <= 3)
         {
-            content = new Border
+            var (r, g, b) = RankWashRgb(rank);
+            rankElement = new Border
             {
-                // Soft wash so medal ranks and white time stay readable.
-                Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xE1, 0x06, 0x00)),
+                Background = new SolidColorBrush(Color.FromArgb(0x28, r, g, b)),
                 CornerRadius = new CornerRadius(3),
-                Padding = new Thickness(4, 3, 4, 3),
-                Child = grid,
-                Margin = new Thickness(0, 0, 0, 2),
-                Tag = name,
+                Padding = new Thickness(2, 1, 2, 1),
+                Child = new TextBlock
+                {
+                    Text = $"{rank}.",
+                    FontFamily = new FontFamily("Segoe UI"),
+                    FontSize = 14,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = UiBrushes.FromHex(rankColor),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
             };
-            grid.Margin = new Thickness(0);
         }
         else
         {
-            grid.Tag = name;
+            rankElement = new TextBlock
+            {
+                Text = $"{rank}.",
+                FontFamily = new FontFamily("Segoe UI"),
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                Foreground = UiBrushes.FromHex(rankColor),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
         }
-
-        var rankBlock = new TextBlock
-        {
-            Text = $"{rank}.",
-            FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 14,
-            FontWeight = FontWeights.Bold,
-            Foreground = UiBrushes.FromHex(rankColor),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
 
         var nameBlock = new TextBlock
         {
@@ -272,7 +274,7 @@ public partial class OverlayWindow : Window
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 14,
             FontWeight = isCurrentPlayer ? FontWeights.Bold : FontWeights.SemiBold,
-            Foreground = UiBrushes.FromHex(nameColor),
+            Foreground = UiBrushes.FromHex("#FFFFFFFF"),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -283,20 +285,35 @@ public partial class OverlayWindow : Window
             FontFamily = new FontFamily("Consolas"),
             FontSize = 14,
             FontWeight = FontWeights.Bold,
-            Foreground = UiBrushes.FromHex(timeColor),
+            Foreground = UiBrushes.FromHex("#FFFFFFFF"),
             Margin = new Thickness(10, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
 
-        Grid.SetColumn(rankBlock, 0);
+        Grid.SetColumn(rankElement, 0);
         Grid.SetColumn(nameBlock, 1);
         Grid.SetColumn(timeBlock, 2);
 
-        grid.Children.Add(rankBlock);
+        grid.Children.Add(rankElement);
         grid.Children.Add(nameBlock);
         grid.Children.Add(timeBlock);
 
-        return content;
+        if (!isCurrentPlayer)
+        {
+            grid.Tag = name;
+            return grid;
+        }
+
+        // Current player: red wash wins over podium wash.
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xE1, 0x06, 0x00)),
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(4, 3, 4, 3),
+            Child = grid,
+            Margin = new Thickness(0, 0, 0, 2),
+            Tag = name,
+        };
     }
 
     private static string RankColor(int rank) => rank switch
@@ -307,6 +324,13 @@ public partial class OverlayWindow : Window
         _ => RankDefault,
     };
 
+    private static (byte R, byte G, byte B) RankWashRgb(int rank) => rank switch
+    {
+        1 => (0xFF, 0xD7, 0x00),
+        2 => (0xC0, 0xC7, 0xD1),
+        3 => (0xE8, 0xA8, 0x7C),
+        _ => (0xE1, 0x06, 0x00),
+    };
     private void UpdateStatusSquare(OverlaySnapshot snapshot)
     {
         // Red = no telemetry · Blue = connected, waiting for CLM · Green = CLM running

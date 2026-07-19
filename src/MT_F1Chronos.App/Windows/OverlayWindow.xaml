@@ -64,34 +64,91 @@
                                VerticalAlignment="Center"/>
                 </Grid>
 
-                <!-- TOP = primary content -->
-                <StackPanel x:Name="GlobalSection">
-                    <TextBlock x:Name="LeaderboardTitleText"
-                               Text="TOP 5 · GLOBAL"
+                <!-- TOP Global cartouche -->
+                <Border x:Name="GlobalSection"
+                        Background="#B2161B22"
+                        BorderBrush="#33FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Margin="0,0,0,0"
+                        ClipToBounds="True">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0"
+                                Background="#FFE10600"
+                                CornerRadius="6,0,0,6"/>
+                        <StackPanel Grid.Column="1">
+                            <Border Background="#FF1C222B"
+                                    Padding="8,7"
+                                    CornerRadius="0,6,0,0">
+                                <TextBlock x:Name="LeaderboardTitleText"
+                                           Text="TOP 5 · GLOBAL"
+                                           FontFamily="Segoe UI"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="#FFFFFFFF"
+                                           HorizontalAlignment="Center"/>
+                            </Border>
+                            <Rectangle Height="1" Fill="#33FFFFFF"/>
+                            <StackPanel x:Name="TopFivePanel" Margin="8,8,8,8"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Separation between boards -->
+                <StackPanel x:Name="ContestDivider"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Margin="0,10,0,10"
+                            Visibility="Collapsed">
+                    <Rectangle Width="18" Height="1" Fill="#44FFFFFF" VerticalAlignment="Center"/>
+                    <TextBlock Text="···"
                                FontFamily="Segoe UI"
-                               FontSize="12"
+                               FontSize="10"
                                FontWeight="Bold"
-                               Foreground="#FFFFFFFF"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,8"/>
-                    <StackPanel x:Name="TopFivePanel" Margin="0,0,0,4"/>
+                               Foreground="#66FFFFFF"
+                               Margin="8,0"
+                               VerticalAlignment="Center"/>
+                    <Rectangle Width="18" Height="1" Fill="#44FFFFFF" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <StackPanel x:Name="ContestSection" Visibility="Collapsed" Margin="0,0,0,4">
-                    <Rectangle x:Name="ContestDivider"
-                               Height="1"
-                               Fill="#22FFFFFF"
-                               Margin="0,6,0,10"/>
-                    <TextBlock x:Name="ContestTitleText"
-                               Text="TOP 10 · CONCOURS"
-                               FontFamily="Segoe UI"
-                               FontSize="12"
-                               FontWeight="Bold"
-                               Foreground="#FFFFFFFF"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,8"/>
-                    <StackPanel x:Name="ContestPanel"/>
-                </StackPanel>
+                <!-- TOP Concours cartouche -->
+                <Border x:Name="ContestSection"
+                        Background="#B2161B22"
+                        BorderBrush="#33FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Margin="0,0,0,0"
+                        Visibility="Collapsed"
+                        ClipToBounds="True">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0"
+                                Background="#FF5E8BFF"
+                                CornerRadius="6,0,0,6"/>
+                        <StackPanel Grid.Column="1">
+                            <Border Background="#FF1C222B"
+                                    Padding="8,7"
+                                    CornerRadius="0,6,0,0">
+                                <TextBlock x:Name="ContestTitleText"
+                                           Text="TOP 10 · CONCOURS"
+                                           FontFamily="Segoe UI"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="#FFFFFFFF"
+                                           HorizontalAlignment="Center"/>
+                            </Border>
+                            <Rectangle Height="1" Fill="#33FFFFFF"/>
+                            <StackPanel x:Name="ContestPanel" Margin="8,8,8,8"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
                 <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,8"/>
 
