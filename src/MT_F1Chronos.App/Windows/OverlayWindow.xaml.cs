@@ -97,7 +97,9 @@ public partial class OverlayWindow : Window
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
-        LeaderboardTitleText.Text = snapshot.LeaderboardSize == LeaderboardSizes.Extended ? "TOP 10" : "TOP 5";
+        LeaderboardTitleText.Text = snapshot.LeaderboardSize == LeaderboardSizes.Extended
+            ? $"TOP 10 · {snapshot.SourceLabel.ToUpperInvariant()}"
+            : $"TOP 5 · {snapshot.SourceLabel.ToUpperInvariant()}";
 
         TopFivePanel.Children.Clear();
 

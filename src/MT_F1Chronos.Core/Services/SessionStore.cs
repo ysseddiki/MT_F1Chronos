@@ -4,7 +4,7 @@ using MT_F1Chronos.Core.Telemetry;
 
 namespace MT_F1Chronos.Core.Services;
 
-public sealed class SessionStore : IDisposable
+public sealed class SessionStore : IDisposable, IScoreBoardView
 {
     public const int MaxEntriesPerTrack = 5_000;
 
@@ -265,11 +265,17 @@ public sealed class SessionStore : IDisposable
         return removed;
     }
 
-    public OverlaySnapshot BuildSnapshot(TelemetryState state, string playerName, int leaderboardSize = LeaderboardSizes.Default)
+    public OverlaySnapshot BuildSnapshot(
+        TelemetryState state,
+        string playerName,
+        int leaderboardSize = LeaderboardSizes.Default,
+        IReadOnlyList<LeaderboardRow>? leaderboardOverride = null,
+        string sourceLabel = "Global")
     {
         var trackId = ResolveOverlayTrackId(state);
         var size = LeaderboardSizes.Normalize(leaderboardSize);
-        var leaderboard = trackId >= 0 ? GetLeaderboard(trackId, size) : [];
+        var leaderboard = leaderboardOverride ??
+                          (trackId >= 0 ? GetLeaderboard(trackId, size) : []);
         var currentLap = state.CurrentLapTimeMs;
 
         return new OverlaySnapshot
@@ -282,6 +288,7 @@ public sealed class SessionStore : IDisposable
             HasCurrentLap = currentLap is > 0,
             LeaderboardSize = size,
             Leaderboard = leaderboard,
+            SourceLabel = string.IsNullOrWhiteSpace(sourceLabel) ? "Global" : sourceLabel,
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,
             IsTimeTrial = state.IsTimeTrial,
@@ -302,7 +309,7 @@ public sealed class SessionStore : IDisposable
     /// Live telemetry track always wins once known.
     /// Fall back to last scored track only at startup (no UDP yet).
     /// </summary>
-    private int ResolveOverlayTrackId(TelemetryState state)
+    public int ResolveOverlayTrackId(TelemetryState state)
     {
         if (state.TrackId >= 0)
             return state.TrackId;

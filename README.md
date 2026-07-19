@@ -15,7 +15,8 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - **Scores par circuit** avec navigation ◀ ▶
 - **Export** CSV / JSON / HTML
 - Position mémorisée après déplacement
-- **Fenêtre d’administration** (scores, reset, export, affichage, debug)
+- **Fenêtre d’administration** (scores, reset, export, affichage, concours, debug)
+- **Concours** : tableaux de scores parallèles (créer / démarrer / arrêter / exporter)
 - Debug UDP intégré
 - Réinitialisation des scores (mot de passe requis)
 
@@ -92,10 +93,13 @@ Menu ☰ → **Administration** :
 | Section | Contenu |
 |---|---|
 | Scores globaux | Voir par circuit, reset circuit / tous (mdp requis) |
-| Exportation | CSV / JSON / HTML |
+| Exportation | CSV / JSON / HTML du classement **global** |
+| Source overlay | Global, ou un concours via « Afficher » |
 | Affichage overlay | TOP 5 / TOP 10, taille Petit / Moyen / Grand |
-| Concours | *À venir* (tableaux parallèles) |
+| Concours | Créer, démarrer, arrêter, voir, exporter, supprimer |
 | Diagnostic | Debug UDP |
+
+Chaque tour valide alimente le **global** et **tous les concours actifs**. Arrêter un concours fige son tableau sans toucher au global.
 
 ### Raccourcis
 
@@ -116,7 +120,8 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "overlayRight": 12,
   "overlayWidth": 288,
   "leaderboardSize": 5,
-  "playerName": "TonNom"
+  "playerName": "TonNom",
+  "overlayContestId": ""
 }
 ```
 
@@ -128,20 +133,24 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `overlayWidth` | Largeur (px) |
 | `leaderboardSize` | `5` ou `10` |
 | `playerName` | Dernier pseudo confirmé à l’ouverture |
+| `overlayContestId` | Vide = global ; sinon id du concours affiché |
 
 ## Données
 
-Scores : `%LOCALAPPDATA%\MT_F1Chronos\sessions\track-{id}.json` (un fichier par circuit)
+Scores globaux : `%LOCALAPPDATA%\MT_F1Chronos\sessions\track-{id}.json` (un fichier par circuit)
+
+Concours : `%LOCALAPPDATA%\MT_F1Chronos\contests\`
+- `index.json` — métadonnées des concours
+- `{contestId}/track-{id}.json` — scores du concours
 
 - Écriture atomique (`.tmp` → replace) et sauvegarde différée (~2 s), flush à la fermeture
-- Au plus **5000** meilleurs tours conservés par circuit
+- Au plus **5000** meilleurs tours conservés par circuit (global et par concours)
 - Migration automatique depuis l’ancien `sessions.json` (renommé en `sessions.json.bak`)
 
 Le TOP 5 / TOP 10 n’est qu’un filtre d’affichage sur ces données.
 
 ## Améliorations à venir
 
-- **Concours** : tableaux de scores parallèles (créer / démarrer / arrêter / exporter) sans toucher au classement global
 - Mode classement **meilleur tour / joueur / circuit** (une entrée par pseudo et par piste, au lieu de conserver tous les tours valides jusqu’au plafond)
 
 ## Architecture
@@ -164,6 +173,11 @@ Administration → **Ouvrir Debug UDP** : connexion, session, Lap Data, Time Tri
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
 ## Notes de version
+
+### v0.11
+- **Concours** : création, démarrage, arrêt, export, suppression
+- Double écriture des tours (global + concours actifs)
+- Overlay basculable Global / Concours (titre `TOP 5 · …`)
 
 ### v0.10
 - Fenêtre **Administration** (scores, reset, export, affichage overlay, debug)

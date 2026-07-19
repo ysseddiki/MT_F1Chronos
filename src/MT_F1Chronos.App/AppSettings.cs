@@ -9,4 +9,7 @@ public sealed class AppSettings
     public double OverlayWidth { get; set; } = 288;
     public int LeaderboardSize { get; set; } = 5;
     public string PlayerName { get; set; } = string.Empty;
+
+    /// <summary>Empty = global leaderboard. Otherwise the contest id shown on the overlay.</summary>
+    public string OverlayContestId { get; set; } = string.Empty;
 }

@@ -7,7 +7,7 @@
         AllowsTransparency="True"
         Background="Transparent"
         Topmost="True"
-        Width="420"
+        Width="460"
         SizeToContent="Height"
         ShowInTaskbar="False">
     <Border CornerRadius="8"
@@ -145,6 +145,26 @@
 
                     <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
 
+                    <!-- Affichage source -->
+                    <TextBlock Text="SOURCE OVERLAY"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#FFE10600"
+                               Margin="0,0,0,8"/>
+                    <Button x:Name="GlobalSourceButton"
+                            Content="Classement global"
+                            HorizontalContentAlignment="Center"
+                            Click="OnShowGlobalClick"/>
+                    <TextBlock Text="Ou choisis « Afficher » sur un concours ci-dessous."
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,6"
+                               TextWrapping="Wrap"/>
+
+                    <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
+
                     <!-- Affichage -->
                     <TextBlock Text="AFFICHAGE OVERLAY"
                                FontFamily="Segoe UI"
@@ -208,25 +228,48 @@
 
                     <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
 
-                    <!-- Concours placeholder -->
+                    <!-- Concours -->
                     <TextBlock Text="CONCOURS"
                                FontFamily="Segoe UI"
                                FontSize="11"
                                FontWeight="Bold"
                                Foreground="#FFE10600"
-                               Margin="0,0,0,6"/>
-                    <Border Background="#B2161B22"
-                            BorderBrush="#22FFFFFF"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="10,8"
-                            Margin="0,0,0,12">
-                        <TextBlock Text="Bientôt : créer, démarrer, arrêter et exporter des tableaux de scores parallèles pour les concours — sans toucher au classement global."
-                                   FontFamily="Segoe UI"
-                                   FontSize="11"
-                                   Foreground="#FFC5CAD3"
-                                   TextWrapping="Wrap"/>
-                    </Border>
+                               Margin="0,0,0,8"/>
+                    <TextBlock Text="Nom du nouveau concours"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="NewContestNameBox"
+                                 Grid.Column="0"
+                                 FontFamily="Segoe UI"
+                                 FontSize="13"
+                                 Padding="8,6"
+                                 Background="#FF161B22"
+                                 Foreground="White"
+                                 BorderBrush="#33FFFFFF"
+                                 CaretBrush="#FFE10600"
+                                 Margin="0,0,6,0"/>
+                        <Button Grid.Column="1"
+                                Content="Créer"
+                                Padding="12,6"
+                                Margin="0"
+                                HorizontalContentAlignment="Center"
+                                Click="OnCreateContestClick"/>
+                    </Grid>
+                    <StackPanel x:Name="ContestListPanel" Margin="0,0,0,6"/>
+                    <TextBlock x:Name="ContestEmptyText"
+                               Text="Aucun concours pour le moment."
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#88FFFFFF"
+                               Margin="0,0,0,12"
+                               Visibility="Collapsed"/>
 
                     <!-- Debug -->
                     <TextBlock Text="DIAGNOSTIC"

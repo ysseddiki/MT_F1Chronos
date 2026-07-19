@@ -8,17 +8,27 @@ namespace MT_F1Chronos.App.Windows;
 
 public partial class ScoresWindow : Window
 {
-    private readonly SessionStore _store;
+    private readonly IScoreBoardView _board;
     private readonly IReadOnlyList<TrackSummary> _tracks;
     private int _currentIndex;
 
     public ScoresWindow(SessionStore store, int? initialTrackId = null)
+        : this((IScoreBoardView)store, initialTrackId, title: null)
     {
-        _store = store;
-        _tracks = store.GetTracksWithScores();
+    }
+
+    public ScoresWindow(IScoreBoardView board, int? initialTrackId = null, string? title = null)
+    {
+        _board = board;
+        _tracks = board.GetTracksWithScores();
         _currentIndex = ResolveInitialIndex(initialTrackId);
 
         InitializeComponent();
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            Title = title;
+            WindowTitleText.Text = title;
+        }
         RefreshView();
     }
 
@@ -66,7 +76,7 @@ public partial class ScoresWindow : Window
         PrevTrackButton.IsEnabled = _tracks.Count > 1;
         NextTrackButton.IsEnabled = _tracks.Count > 1;
 
-        var scores = _store.GetScoresForTrack(track.TrackId);
+        var scores = _board.GetScoresForTrack(track.TrackId);
         if (scores.Count == 0)
         {
             ScoresPanel.Children.Add(CreateMessage("Aucun score pour ce circuit."));

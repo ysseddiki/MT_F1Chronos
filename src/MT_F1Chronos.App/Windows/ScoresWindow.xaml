@@ -78,7 +78,8 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0"
+                <TextBlock x:Name="WindowTitleText"
+                           Grid.Row="0"
                            Text="Scores par circuit"
                            FontFamily="Segoe UI"
                            FontSize="16"

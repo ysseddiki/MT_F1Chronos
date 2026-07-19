@@ -23,6 +23,7 @@ public sealed class AppController : IDisposable
 
     private readonly UdpTelemetryListener _listener = new();
     private readonly SessionStore _store = new();
+    private readonly ContestStore _contests = new();
     private readonly Dispatcher _dispatcher;
     private readonly AppSettings _settings;
     private readonly DispatcherTimer _refreshTimer;
@@ -36,6 +37,8 @@ public sealed class AppController : IDisposable
         _dispatcher = Dispatcher.CurrentDispatcher;
         _settings = LoadSettings();
         _store.Load();
+        _contests.Load();
+        NormalizeOverlayContestSetting();
         _listener.SetFormat((ushort)_settings.UdpFormat);
         _listener.UpdateReceived += OnTelemetryUpdate;
 
@@ -151,12 +154,135 @@ public sealed class AppController : IDisposable
         window.ShowDialog();
     }
 
-    public void ExportScores(string format)
+    public void ShowContestScores(string contestId)
     {
         if (_overlay is null)
             return;
 
-        var entries = _store.GetAllScoredEntries();
+        var contest = _contests.Get(contestId);
+        if (contest is null)
+        {
+            MessageBox.Show(_overlay, "Concours introuvable.", "Concours", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var currentTrackId = _listener.State.TrackId;
+        var window = new ScoresWindow(
+            _contests.AsScoreBoard(contestId),
+            currentTrackId >= 0 ? currentTrackId : null,
+            title: $"Concours — {contest.Name}")
+        {
+            Owner = _overlay,
+        };
+        window.ShowDialog();
+    }
+
+    public IReadOnlyList<Contest> ListContests() => _contests.List();
+
+    public int GetContestEntryCount(string contestId) => _contests.EntryCount(contestId);
+
+    public Contest? CreateContest(string name)
+    {
+        if (_overlay is null)
+            return null;
+
+        try
+        {
+            var contest = _contests.Create(name, startImmediately: true);
+            RefreshOverlay();
+            return contest;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(_overlay, ex.Message, "Concours", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return null;
+        }
+    }
+
+    public bool StartContest(string contestId)
+    {
+        var ok = _contests.Start(contestId);
+        RefreshOverlay();
+        return ok;
+    }
+
+    public bool StopContest(string contestId)
+    {
+        var ok = _contests.Stop(contestId);
+        RefreshOverlay();
+        return ok;
+    }
+
+    public bool DeleteContest(string contestId)
+    {
+        if (_overlay is null)
+            return false;
+
+        var contest = _contests.Get(contestId);
+        if (contest is null)
+            return false;
+
+        var confirm = MessageBox.Show(
+            _overlay,
+            $"Supprimer le concours « {contest.Name} » et tous ses scores ?\nCette action est irréversible.",
+            "Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes)
+            return false;
+
+        var ok = _contests.Delete(contestId);
+        if (ok && string.Equals(_settings.OverlayContestId, contestId, StringComparison.Ordinal))
+            SetOverlayContest(null);
+
+        RefreshOverlay();
+        return ok;
+    }
+
+    public void SetOverlayContest(string? contestId)
+    {
+        if (string.IsNullOrWhiteSpace(contestId))
+        {
+            _settings.OverlayContestId = string.Empty;
+        }
+        else if (_contests.Get(contestId) is null)
+        {
+            _settings.OverlayContestId = string.Empty;
+        }
+        else
+        {
+            _settings.OverlayContestId = contestId;
+        }
+
+        SaveSettings();
+        RefreshOverlay();
+    }
+
+    public void ExportScores(string format) => ExportEntries(_store.GetAllScoredEntries(), format, "scores");
+
+    public void ExportContestScores(string contestId, string format)
+    {
+        var contest = _contests.Get(contestId);
+        if (contest is null)
+        {
+            if (_overlay is not null)
+                MessageBox.Show(_overlay, "Concours introuvable.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var safeName = string.Concat(contest.Name.Where(ch => !Path.GetInvalidFileNameChars().Contains(ch)));
+        if (string.IsNullOrWhiteSpace(safeName))
+            safeName = "contest";
+
+        ExportEntries(_contests.GetAllScoredEntries(contestId), format, $"contest-{safeName}");
+    }
+
+    private void ExportEntries(IReadOnlyList<ChronoEntry> entries, string format, string filePrefix)
+    {
+        if (_overlay is null)
+            return;
+
         if (entries.Count == 0)
         {
             MessageBox.Show(_overlay, "Aucun score à exporter.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -167,7 +293,7 @@ public sealed class AppController : IDisposable
         var dialog = new SaveFileDialog
         {
             Title = "Exporter les scores",
-            FileName = $"MT_F1Chronos-scores-{stamp}",
+            FileName = $"MT_F1Chronos-{filePrefix}-{stamp}",
             Filter = format switch
             {
                 "csv" => "CSV (*.csv)|*.csv",
@@ -342,6 +468,12 @@ public sealed class AppController : IDisposable
                     update.State.TrackId,
                     update.State.TrackName,
                     update.CompletedLapMs.Value);
+
+                _contests.RecordCompletedLap(
+                    _settings.PlayerName,
+                    update.State.TrackId,
+                    update.State.TrackName,
+                    update.CompletedLapMs.Value);
             }
 
             RefreshOverlay();
@@ -361,10 +493,48 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
+        var size = _settings.LeaderboardSize;
+        IReadOnlyList<LeaderboardRow>? overrideBoard = null;
+        var sourceLabel = "Global";
+
+        if (!string.IsNullOrWhiteSpace(_settings.OverlayContestId))
+        {
+            var contest = _contests.Get(_settings.OverlayContestId);
+            if (contest is not null)
+            {
+                sourceLabel = contest.Name;
+                var trackId = _store.ResolveOverlayTrackId(_listener.State);
+                if (trackId < 0)
+                {
+                    trackId = _contests.GetTracksWithScores(contest.Id).FirstOrDefault()?.TrackId ?? -1;
+                }
+
+                overrideBoard = trackId >= 0
+                    ? _contests.GetLeaderboard(contest.Id, trackId, size)
+                    : [];
+            }
+            else
+            {
+                _settings.OverlayContestId = string.Empty;
+                SaveSettings();
+            }
+        }
+
         _overlay.UpdateSnapshot(_store.BuildSnapshot(
             _listener.State,
             _settings.PlayerName,
-            _settings.LeaderboardSize));
+            size,
+            leaderboardOverride: overrideBoard,
+            sourceLabel: sourceLabel));
+    }
+
+    private void NormalizeOverlayContestSetting()
+    {
+        if (string.IsNullOrWhiteSpace(_settings.OverlayContestId))
+            return;
+
+        if (_contests.Get(_settings.OverlayContestId) is null)
+            _settings.OverlayContestId = string.Empty;
     }
 
     private static string SettingsPath =>
@@ -403,6 +573,7 @@ public sealed class AppController : IDisposable
         _refreshTimer.Stop();
         _store.CloseActiveSession();
         _store.Dispose();
+        _contests.Dispose();
         _listener.Dispose();
         _debugWindow?.Close();
         _overlay?.Close();
