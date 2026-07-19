@@ -72,8 +72,10 @@
                         </Style>
                     </StackPanel.Resources>
 
-                    <!-- Header -->
-                    <Grid Margin="0,0,0,14">
+                    <!-- Header (draggable) -->
+                    <Grid Margin="0,0,0,14"
+                          Cursor="SizeAll"
+                          MouseLeftButtonDown="OnHeaderDrag">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -90,6 +92,7 @@
                                 Height="28"
                                 Padding="0"
                                 Margin="0"
+                                Cursor="Hand"
                                 HorizontalContentAlignment="Center"
                                 FontSize="14"
                                 Click="OnCloseClick"/>
