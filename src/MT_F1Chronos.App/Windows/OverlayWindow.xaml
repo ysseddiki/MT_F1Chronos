@@ -12,38 +12,40 @@
         Focusable="True"
         ShowActivated="True">
     <Border x:Name="RootBorder"
-            CornerRadius="8"
+            CornerRadius="4"
             BorderThickness="1"
-            Opacity="0.96">
+            Opacity="0.98">
         <Border.Background>
-            <SolidColorBrush Color="#F00D1117"/>
+            <SolidColorBrush Color="#F015151E"/>
         </Border.Background>
         <Border.BorderBrush>
-            <SolidColorBrush Color="#22FFFFFF"/>
+            <SolidColorBrush Color="#33FFFFFF"/>
         </Border.BorderBrush>
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="2"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- F1 accent bar -->
+            <!-- Soft white edge (mockup) -->
             <Border Grid.Column="0"
                     Background="#55FFFFFF"
-                    CornerRadius="8,0,0,8"/>
+                    CornerRadius="4,0,0,4"/>
 
-            <StackPanel Grid.Column="1" Margin="12,10,10,10">
-                <!-- Header: circuit (prominent) + live chrono -->
-                <Grid Margin="0,0,0,12" MouseLeftButtonDown="OnHeaderDrag">
+            <StackPanel Grid.Column="1" Margin="12,12,12,10">
+                <!-- Header: circuit + player · live chrono -->
+                <Grid Margin="0,0,0,14" MouseLeftButtonDown="OnHeaderDrag">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
                         <TextBlock x:Name="TrackText"
-                                   FontFamily="Segoe UI"
-                                   FontSize="15"
+                                   FontFamily="Bahnschrift, Segoe UI"
+                                   FontSize="17"
                                    FontWeight="Bold"
+                                   FontStyle="Italic"
+                                   FontStretch="Condensed"
                                    Foreground="#FFFFFFFF"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
@@ -51,9 +53,9 @@
                                    FontFamily="Segoe UI"
                                    FontSize="11"
                                    FontWeight="SemiBold"
-                                   Foreground="#FFC5CAD3"
+                                   Foreground="#FFA8A8B3"
                                    TextTrimming="CharacterEllipsis"
-                                   Margin="0,2,0,0"/>
+                                   Margin="0,3,0,0"/>
                     </StackPanel>
                     <TextBlock x:Name="CurrentLapText"
                                Grid.Column="1"
@@ -66,11 +68,10 @@
 
                 <!-- TOP Global cartouche -->
                 <Border x:Name="GlobalSection"
-                        Background="#B2161B22"
+                        Background="#FF1A1A24"
                         BorderBrush="#33FFFFFF"
                         BorderThickness="1"
-                        CornerRadius="6"
-                        Margin="0,0,0,0"
+                        CornerRadius="4"
                         ClipToBounds="True">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -79,16 +80,15 @@
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0"
                                 Background="#FFE10600"
-                                CornerRadius="6,0,0,6"/>
+                                CornerRadius="4,0,0,4"/>
                         <StackPanel Grid.Column="1">
-                            <Border Background="#FF1C222B"
-                                    Padding="8,7"
-                                    CornerRadius="0,6,0,0">
+                            <Border Background="#FF252530" Padding="8,8">
                                 <TextBlock x:Name="LeaderboardTitleText"
                                            Text="TOP 5 · GLOBAL"
-                                           FontFamily="Segoe UI"
+                                           FontFamily="Bahnschrift, Segoe UI"
                                            FontSize="12"
                                            FontWeight="Bold"
+                                           FontStretch="Condensed"
                                            Foreground="#FFFFFFFF"
                                            HorizontalAlignment="Center"/>
                             </Border>
@@ -98,30 +98,23 @@
                     </Grid>
                 </Border>
 
-                <!-- Separation between boards -->
-                <StackPanel x:Name="ContestDivider"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            Margin="0,10,0,10"
-                            Visibility="Collapsed">
-                    <Rectangle Width="18" Height="1" Fill="#44FFFFFF" VerticalAlignment="Center"/>
-                    <TextBlock Text="···"
-                               FontFamily="Segoe UI"
-                               FontSize="10"
-                               FontWeight="Bold"
-                               Foreground="#66FFFFFF"
-                               Margin="8,0"
-                               VerticalAlignment="Center"/>
-                    <Rectangle Width="18" Height="1" Fill="#44FFFFFF" VerticalAlignment="Center"/>
-                </StackPanel>
+                <!-- Separation -->
+                <TextBlock x:Name="ContestDivider"
+                           Text="···"
+                           FontFamily="Segoe UI"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Foreground="#55FFFFFF"
+                           HorizontalAlignment="Center"
+                           Margin="0,10,0,10"
+                           Visibility="Collapsed"/>
 
                 <!-- TOP Concours cartouche -->
                 <Border x:Name="ContestSection"
-                        Background="#B2161B22"
+                        Background="#FF1A1A24"
                         BorderBrush="#33FFFFFF"
                         BorderThickness="1"
-                        CornerRadius="6"
-                        Margin="0,0,0,0"
+                        CornerRadius="4"
                         Visibility="Collapsed"
                         ClipToBounds="True">
                     <Grid>
@@ -131,16 +124,15 @@
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0"
                                 Background="#FF5E8BFF"
-                                CornerRadius="6,0,0,6"/>
+                                CornerRadius="4,0,0,4"/>
                         <StackPanel Grid.Column="1">
-                            <Border Background="#FF1C222B"
-                                    Padding="8,7"
-                                    CornerRadius="0,6,0,0">
+                            <Border Background="#FF252530" Padding="8,8">
                                 <TextBlock x:Name="ContestTitleText"
-                                           Text="TOP 10 · CONCOURS"
-                                           FontFamily="Segoe UI"
+                                           Text="TOP 5 · CONCOURS"
+                                           FontFamily="Bahnschrift, Segoe UI"
                                            FontSize="12"
                                            FontWeight="Bold"
+                                           FontStretch="Condensed"
                                            Foreground="#FFFFFFFF"
                                            HorizontalAlignment="Center"/>
                             </Border>
@@ -150,24 +142,21 @@
                     </Grid>
                 </Border>
 
-                <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,8"/>
-
                 <!-- Footer: status LED + burger -->
-                <Grid>
+                <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Telemetry LED -->
                     <Grid x:Name="StatusBadge"
                           Grid.Column="1"
                           Width="28"
                           Height="28"
                           ClipToBounds="False"
                           VerticalAlignment="Center"
-                          Margin="0,0,4,0"
+                          Margin="0,0,2,0"
                           ToolTip="Télémétrie">
                         <Ellipse x:Name="StatusGlow"
                                  Width="14"
@@ -218,28 +207,39 @@
                             Height="24"
                             FontSize="14"
                             Padding="0"
-                            Background="#FF161B22"
-                            Foreground="#FFC5CAD3"
-                            BorderBrush="#33FFFFFF"
+                            Background="Transparent"
+                            Foreground="#FFFFFFFF"
+                            BorderBrush="Transparent"
+                            BorderThickness="0"
                             Cursor="Hand"
                             VerticalAlignment="Center"
                             Click="OnMenuButtonClick">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
                         <Button.ContextMenu>
-                            <ContextMenu Background="#FF161B22"
+                            <ContextMenu Background="#FF1A1A24"
                                          Foreground="#FFFFFFFF"
                                          BorderBrush="#33FFFFFF"
                                          BorderThickness="1"
                                          Padding="4">
                                 <ContextMenu.Resources>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#FF161B22"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="#FF161B22"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF161B22"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#FF1A1A24"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="#FF1A1A24"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF1A1A24"/>
                                     <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#FFFFFFFF"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF1C222B"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF252530"/>
                                     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFFFF"/>
 
                                     <Style TargetType="{x:Type ContextMenu}">
-                                        <Setter Property="Background" Value="#FF161B22"/>
+                                        <Setter Property="Background" Value="#FF1A1A24"/>
                                         <Setter Property="Foreground" Value="#FFFFFFFF"/>
                                         <Setter Property="BorderBrush" Value="#33FFFFFF"/>
                                         <Setter Property="BorderThickness" Value="1"/>
@@ -249,13 +249,13 @@
                                         <Setter Property="FontSize" Value="12"/>
                                         <Setter Property="Padding" Value="10,6"/>
                                         <Setter Property="Margin" Value="2,1"/>
-                                        <Setter Property="Background" Value="#FF161B22"/>
+                                        <Setter Property="Background" Value="#FF1A1A24"/>
                                         <Setter Property="Foreground" Value="#FFFFFFFF"/>
                                         <Setter Property="BorderThickness" Value="0"/>
                                         <Setter Property="Cursor" Value="Hand"/>
                                         <Style.Triggers>
                                             <Trigger Property="IsHighlighted" Value="True">
-                                                <Setter Property="Background" Value="#FF1C222B"/>
+                                                <Setter Property="Background" Value="#FF252530"/>
                                                 <Setter Property="Foreground" Value="#FFFFFFFF"/>
                                             </Trigger>
                                             <Trigger Property="IsEnabled" Value="False">

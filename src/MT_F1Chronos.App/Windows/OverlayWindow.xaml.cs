@@ -15,13 +15,14 @@ namespace MT_F1Chronos.App.Windows;
 
 public partial class OverlayWindow : Window
 {
-    private const string RankGold = "#FFFFD700";
-    private const string RankSilver = "#FFC0C7D1";
-    private const string RankBronze = "#FFE8A87C";
-    private const string RankDefault = "#FFE10600";
-    private const string StatusRed = "#FFE10600";
-    private const string StatusBlue = "#FF5E8BFF";
-    private const string StatusGreen = "#FF00D26A";
+    private const string RankGold = OverlayTheme.RankGold;
+    private const string RankSilver = OverlayTheme.RankSilver;
+    private const string RankBronze = OverlayTheme.RankBronze;
+    private const string RankDefault = OverlayTheme.TextWhite;
+    private const string StatusRed = OverlayTheme.StatusRed;
+    private const string StatusBlue = OverlayTheme.StatusBlue;
+    private const string StatusGreen = OverlayTheme.StatusGreen;
+    private const string PlayerAccent = OverlayTheme.WarmRed;
 
     private readonly AppController _controller;
     private HwndSource? _hwndSource;
@@ -215,25 +216,27 @@ public partial class OverlayWindow : Window
         return new TextBlock
         {
             Text = "Aucun chrono — lance un tour valide",
-            FontFamily = new FontFamily("Segoe UI"),
+            FontFamily = new FontFamily(OverlayTheme.BodyFont),
             FontSize = 12,
             FontWeight = FontWeights.SemiBold,
-            Foreground = UiBrushes.FromHex("#66FFFFFF"),
-            Margin = new Thickness(0, 0, 0, 6),
+            Foreground = UiBrushes.FromHex(OverlayTheme.TextMuted),
+            Margin = new Thickness(0, 0, 0, 4),
             TextWrapping = TextWrapping.Wrap,
         };
     }
 
     private static UIElement CreateRow(int rank, string name, string time, bool isCurrentPlayer)
     {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 3) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var rankColor = RankColor(rank);
+        // Mockup: current player row uses Warm Red for rank / name / time.
+        var rankColor = isCurrentPlayer ? PlayerAccent : RankColor(rank);
+        var nameColor = isCurrentPlayer ? PlayerAccent : OverlayTheme.TextWhite;
+        var timeColor = isCurrentPlayer ? PlayerAccent : OverlayTheme.TextWhite;
 
-        // Rank cell: podium wash for P1–P3, unless this is the current player row.
         UIElement rankElement;
         if (!isCurrentPlayer && rank is >= 1 and <= 3)
         {
@@ -241,13 +244,13 @@ public partial class OverlayWindow : Window
             rankElement = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(0x28, r, g, b)),
-                CornerRadius = new CornerRadius(3),
-                Padding = new Thickness(2, 1, 2, 1),
+                CornerRadius = new CornerRadius(2),
+                Padding = new Thickness(1, 1, 1, 1),
                 Child = new TextBlock
                 {
                     Text = $"{rank}.",
-                    FontFamily = new FontFamily("Segoe UI"),
-                    FontSize = 14,
+                    FontFamily = new FontFamily(OverlayTheme.MonoFont),
+                    FontSize = 13,
                     FontWeight = FontWeights.Bold,
                     Foreground = UiBrushes.FromHex(rankColor),
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -260,8 +263,8 @@ public partial class OverlayWindow : Window
             rankElement = new TextBlock
             {
                 Text = $"{rank}.",
-                FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 14,
+                FontFamily = new FontFamily(OverlayTheme.MonoFont),
+                FontSize = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = UiBrushes.FromHex(rankColor),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -271,10 +274,10 @@ public partial class OverlayWindow : Window
         var nameBlock = new TextBlock
         {
             Text = name,
-            FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 14,
+            FontFamily = new FontFamily(OverlayTheme.BodyFont),
+            FontSize = 13,
             FontWeight = isCurrentPlayer ? FontWeights.Bold : FontWeights.SemiBold,
-            Foreground = UiBrushes.FromHex("#FFFFFFFF"),
+            Foreground = UiBrushes.FromHex(nameColor),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -282,10 +285,10 @@ public partial class OverlayWindow : Window
         var timeBlock = new TextBlock
         {
             Text = time,
-            FontFamily = new FontFamily("Consolas"),
-            FontSize = 14,
+            FontFamily = new FontFamily(OverlayTheme.MonoFont),
+            FontSize = 13,
             FontWeight = FontWeights.Bold,
-            Foreground = UiBrushes.FromHex("#FFFFFFFF"),
+            Foreground = UiBrushes.FromHex(timeColor),
             Margin = new Thickness(10, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -304,11 +307,10 @@ public partial class OverlayWindow : Window
             return grid;
         }
 
-        // Current player: red wash wins over podium wash.
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xE1, 0x06, 0x00)),
-            CornerRadius = new CornerRadius(3),
+            Background = new SolidColorBrush(Color.FromArgb(0x33, 0xE1, 0x06, 0x00)),
+            CornerRadius = new CornerRadius(2),
             Padding = new Thickness(4, 3, 4, 3),
             Child = grid,
             Margin = new Thickness(0, 0, 0, 2),
