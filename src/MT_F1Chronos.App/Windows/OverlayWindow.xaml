@@ -32,39 +32,40 @@
                     Background="#55FFFFFF"
                     CornerRadius="4,0,0,4"/>
 
-            <StackPanel Grid.Column="1" Margin="12,12,12,10">
-                <!-- Header: circuit + player · live chrono -->
-                <Grid Margin="0,0,0,14" MouseLeftButtonDown="OnHeaderDrag">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
-                        <TextBlock x:Name="TrackText"
-                                   FontFamily="Bahnschrift, Segoe UI"
-                                   FontSize="17"
-                                   FontWeight="Bold"
-                                   FontStyle="Italic"
-                                   FontStretch="Condensed"
-                                   Foreground="#FFFFFFFF"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Margin="12,14,12,10">
+                <!-- Header: circuit on its own row; pseudo + chrono share the next row -->
+                <StackPanel Margin="0,0,0,14" MouseLeftButtonDown="OnHeaderDrag">
+                    <TextBlock x:Name="TrackText"
+                               FontFamily="Bahnschrift, Segoe UI"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               FontStyle="Italic"
+                               FontStretch="Condensed"
+                               Foreground="#FFFFFFFF"
+                               TextTrimming="CharacterEllipsis"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
                         <TextBlock x:Name="PlayerNameText"
+                                   Grid.Column="0"
                                    FontFamily="Segoe UI"
-                                   FontSize="11"
+                                   FontSize="12"
                                    FontWeight="SemiBold"
                                    Foreground="#FFA8A8B3"
                                    TextTrimming="CharacterEllipsis"
-                                   Margin="0,3,0,0"/>
-                    </StackPanel>
-                    <TextBlock x:Name="CurrentLapText"
-                               Grid.Column="1"
-                               FontFamily="Consolas"
-                               FontSize="14"
-                               FontWeight="Bold"
-                               Foreground="#FFFFFFFF"
-                               VerticalAlignment="Center"/>
-                </Grid>
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+                        <TextBlock x:Name="CurrentLapText"
+                                   Grid.Column="1"
+                                   FontFamily="Consolas"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="#FFFFFFFF"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
 
                 <!-- TOP Global cartouche -->
                 <Border x:Name="GlobalSection"
@@ -82,11 +83,11 @@
                                 Background="#FFE10600"
                                 CornerRadius="4,0,0,4"/>
                         <StackPanel Grid.Column="1">
-                            <Border Background="#FF252530" Padding="8,8">
+                            <Border Background="#FF252530" Padding="10,9">
                                 <TextBlock x:Name="LeaderboardTitleText"
                                            Text="TOP 5 · GLOBAL"
                                            FontFamily="Bahnschrift, Segoe UI"
-                                           FontSize="12"
+                                           FontSize="14"
                                            FontWeight="Bold"
                                            FontStretch="Condensed"
                                            Foreground="#FFFFFFFF"
@@ -126,11 +127,11 @@
                                 Background="#FF5E8BFF"
                                 CornerRadius="4,0,0,4"/>
                         <StackPanel Grid.Column="1">
-                            <Border Background="#FF252530" Padding="8,8">
+                            <Border Background="#FF252530" Padding="10,9">
                                 <TextBlock x:Name="ContestTitleText"
                                            Text="TOP 5 · CONCOURS"
                                            FontFamily="Bahnschrift, Segoe UI"
-                                           FontSize="12"
+                                           FontSize="14"
                                            FontWeight="Bold"
                                            FontStretch="Condensed"
                                            Foreground="#FFFFFFFF"
@@ -142,7 +143,7 @@
                     </Grid>
                 </Border>
 
-                <!-- Footer: status LED + burger -->
+                <!-- Footer: soft glowing status point + burger (no hard ring) -->
                 <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -152,52 +153,34 @@
 
                     <Grid x:Name="StatusBadge"
                           Grid.Column="1"
-                          Width="28"
-                          Height="28"
+                          Width="22"
+                          Height="22"
                           ClipToBounds="False"
                           VerticalAlignment="Center"
-                          Margin="0,0,2,0"
+                          Margin="0,0,6,0"
                           ToolTip="Télémétrie">
+                        <!-- Soft halo only — no stroked ring -->
                         <Ellipse x:Name="StatusGlow"
                                  Width="14"
                                  Height="14"
-                                 Fill="#FFE10600"
-                                 Opacity="0.9"
+                                 Fill="#FF00D26A"
+                                 Opacity="0.7"
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center"
                                  IsHitTestVisible="False">
                             <Ellipse.Effect>
                                 <BlurEffect x:Name="StatusGlowBlur"
-                                            Radius="12"
+                                            Radius="8"
                                             KernelType="Gaussian"/>
                             </Ellipse.Effect>
                         </Ellipse>
-                        <Border x:Name="StatusRing"
-                                Width="11"
-                                Height="11"
-                                CornerRadius="2.5"
-                                BorderThickness="1.25"
-                                BorderBrush="#FFE10600"
-                                Background="#66000000"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        <Border x:Name="StatusCore"
-                                Width="5"
-                                Height="5"
-                                CornerRadius="1.5"
-                                Background="#FFE10600"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                IsHitTestVisible="False">
-                            <Border.Effect>
-                                <DropShadowEffect x:Name="StatusCoreGlow"
-                                                  BlurRadius="10"
-                                                  ShadowDepth="0"
-                                                  Color="#FFE10600"
-                                                  Opacity="0.95"/>
-                            </Border.Effect>
-                        </Border>
+                        <Ellipse x:Name="StatusCore"
+                                 Width="7"
+                                 Height="7"
+                                 Fill="#FF00D26A"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 IsHitTestVisible="False"/>
                     </Grid>
 
                     <Button x:Name="MenuButton"

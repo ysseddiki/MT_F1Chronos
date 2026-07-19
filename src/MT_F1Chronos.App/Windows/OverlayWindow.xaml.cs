@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using MT_F1Chronos.App.Services;
 using MT_F1Chronos.Core.Models;
@@ -361,18 +362,14 @@ public partial class OverlayWindow : Window
         brush.Freeze();
 
         StatusGlow.Fill = brush;
-        StatusCore.Background = brush;
-        StatusRing.BorderBrush = brush;
-        StatusCoreGlow.Color = accent;
+        StatusCore.Fill = brush;
         StatusBadge.ToolTip = tooltip;
 
-        // Idle glow strength: softer when disconnected, fuller when connected.
         if (!_statusPulseActive)
         {
-            StatusGlowBlur.Radius = snapshot.IsConnected ? 11 : 8;
-            StatusCoreGlow.BlurRadius = snapshot.IsConnected ? 10 : 7;
-            StatusCoreGlow.Opacity = snapshot.IsConnected ? 0.95 : 0.7;
-            StatusGlow.Opacity = snapshot.IsConnected ? 0.85 : 0.55;
+            StatusGlowBlur.Radius = snapshot.IsConnected ? 8 : 6;
+            StatusGlow.Opacity = snapshot.IsConnected ? 0.7 : 0.45;
+            StatusCore.Opacity = 1;
         }
 
         SetStatusPulse(pulse);
@@ -386,33 +383,21 @@ public partial class OverlayWindow : Window
         _statusPulseActive = enabled;
 
         StatusGlowBlur.BeginAnimation(BlurEffect.RadiusProperty, null);
-        StatusCoreGlow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, null);
-        StatusCoreGlow.BeginAnimation(DropShadowEffect.OpacityProperty, null);
         StatusGlow.BeginAnimation(OpacityProperty, null);
 
         if (!enabled)
         {
-            StatusGlowBlur.Radius = 11;
-            StatusCoreGlow.BlurRadius = 10;
-            StatusCoreGlow.Opacity = 0.95;
-            StatusGlow.Opacity = 0.85;
+            StatusGlowBlur.Radius = 8;
+            StatusGlow.Opacity = 0.7;
+            StatusCore.Opacity = 1;
             return;
         }
 
-        // Breathe the soft glow outward (dissipation) while CLM is running.
+        // Soft breathe — glow only, no hard contour.
         var blurPulse = new DoubleAnimation
         {
-            From = 8,
-            To = 16,
-            Duration = TimeSpan.FromMilliseconds(1100),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-        };
-        var coreBlurPulse = new DoubleAnimation
-        {
-            From = 8,
-            To = 14,
+            From = 6,
+            To = 12,
             Duration = TimeSpan.FromMilliseconds(1100),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
@@ -420,17 +405,8 @@ public partial class OverlayWindow : Window
         };
         var glowOpacity = new DoubleAnimation
         {
-            From = 0.55,
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(1100),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-        };
-        var shadowOpacity = new DoubleAnimation
-        {
-            From = 0.65,
-            To = 1,
+            From = 0.45,
+            To = 0.85,
             Duration = TimeSpan.FromMilliseconds(1100),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
@@ -438,9 +414,7 @@ public partial class OverlayWindow : Window
         };
 
         StatusGlowBlur.BeginAnimation(BlurEffect.RadiusProperty, blurPulse);
-        StatusCoreGlow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, coreBlurPulse);
         StatusGlow.BeginAnimation(OpacityProperty, glowOpacity);
-        StatusCoreGlow.BeginAnimation(DropShadowEffect.OpacityProperty, shadowOpacity);
     }
 
     private void PlayContentFade()
