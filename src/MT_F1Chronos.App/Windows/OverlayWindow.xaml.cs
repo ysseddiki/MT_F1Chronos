@@ -23,7 +23,6 @@ public partial class OverlayWindow : Window
     private const string StatusRed = OverlayTheme.StatusRed;
     private const string StatusBlue = OverlayTheme.StatusBlue;
     private const string StatusGreen = OverlayTheme.StatusGreen;
-    private const string PlayerAccent = OverlayTheme.WarmRed;
 
     private readonly AppController _controller;
     private HwndSource? _hwndSource;
@@ -151,9 +150,6 @@ public partial class OverlayWindow : Window
         if (snapshot.ShowContestLeaderboard)
         {
             ContestSection.Visibility = Visibility.Visible;
-            ContestDivider.Visibility = snapshot.ShowGlobalLeaderboard
-                ? Visibility.Visible
-                : Visibility.Collapsed;
             var label = string.IsNullOrWhiteSpace(snapshot.ContestLabel) ? "CONCOURS" : snapshot.ContestLabel;
             ContestTitleText.Text =
                 $"{LeaderboardSizes.FormatLabel(snapshot.ContestLeaderboardSize)} · {label.ToUpperInvariant()}";
@@ -162,7 +158,6 @@ public partial class OverlayWindow : Window
         else
         {
             ContestSection.Visibility = Visibility.Collapsed;
-            ContestDivider.Visibility = Visibility.Collapsed;
             ContestPanel.Children.Clear();
         }
 
@@ -299,9 +294,9 @@ public partial class OverlayWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // Mockup: P1–P3 = colored text only (no wash). Current player = red row wash + red name only.
+        // Mockup: P1–P3 = colored text only (no wash). Current player = soft red row wash only.
         var rankColor = RankColor(rank);
-        var nameColor = isCurrentPlayer ? PlayerAccent : OverlayTheme.TextWhite;
+        var nameColor = OverlayTheme.TextWhite;
         var timeColor = OverlayTheme.TextWhite;
 
         var rankElement = new TextBlock

@@ -12,7 +12,7 @@
         Focusable="True"
         ShowActivated="True">
     <Border x:Name="RootBorder"
-            CornerRadius="4"
+            CornerRadius="12"
             BorderThickness="1"
             Opacity="0.98">
         <Border.Background>
@@ -30,7 +30,7 @@
             <!-- Soft white edge (mockup) -->
             <Border Grid.Column="0"
                     Background="#55FFFFFF"
-                    CornerRadius="4,0,0,4"/>
+                    CornerRadius="12,0,0,12"/>
 
             <StackPanel Grid.Column="1" Margin="12,14,12,10">
                 <!-- Header: circuit on its own row; pseudo + chrono share the next row -->
@@ -99,19 +99,13 @@
                     </Grid>
                 </Border>
 
-                <!-- Separation -->
-                <Border x:Name="ContestDivider"
-                        Height="1"
-                        Background="#44FFFFFF"
-                        Margin="28,3,28,3"
-                        Visibility="Collapsed"/>
-
                 <!-- TOP Concours cartouche -->
                 <Border x:Name="ContestSection"
                         Background="#FF14141C"
                         BorderBrush="#33FFFFFF"
                         BorderThickness="1"
                         CornerRadius="4"
+                        Margin="0,4,0,0"
                         Visibility="Collapsed"
                         ClipToBounds="True">
                     <Grid>
