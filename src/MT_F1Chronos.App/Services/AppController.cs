@@ -101,11 +101,11 @@ public sealed class AppController : IDisposable
 
     public void SetOverlayWidth(double width)
     {
-        _settings.OverlayWidth = width;
+        _settings.OverlayWidth = Math.Clamp(width, OverlaySizes.Default, OverlaySizes.Max);
         SaveSettings();
 
         if (_overlay is not null)
-            _overlay.Width = width;
+            _overlay.Width = _settings.OverlayWidth;
     }
 
     public void SaveOverlayPosition(double left, double top, double width)
@@ -113,7 +113,7 @@ public sealed class AppController : IDisposable
         var workArea = SystemParameters.WorkArea;
         _settings.OverlayTop = Math.Max(0, top - workArea.Top);
         _settings.OverlayRight = Math.Max(0, workArea.Right - left - width);
-        _settings.OverlayWidth = width;
+        _settings.OverlayWidth = Math.Clamp(width, OverlaySizes.Default, OverlaySizes.Max);
         SaveSettings();
     }
 
@@ -137,7 +137,10 @@ public sealed class AppController : IDisposable
 
         if (accepted && !string.IsNullOrWhiteSpace(prompt.PlayerName))
         {
-            _settings.PlayerName = prompt.PlayerName.Trim();
+            var name = prompt.PlayerName.Trim();
+            if (name.Length > OverlaySizes.MaxPlayerNameLength)
+                name = name[..OverlaySizes.MaxPlayerNameLength];
+            _settings.PlayerName = name;
             SaveSettings();
         }
         else if (required && string.IsNullOrWhiteSpace(_settings.PlayerName))
@@ -638,6 +641,13 @@ public sealed class AppController : IDisposable
             settings.ContestLeaderboardSize = settings.ContestLeaderboardSize <= 0
                 ? LeaderboardSizes.Extended
                 : LeaderboardSizes.Normalize(settings.ContestLeaderboardSize);
+            settings.OverlayWidth = Math.Clamp(
+                settings.OverlayWidth <= 0 ? OverlaySizes.Default : settings.OverlayWidth,
+                OverlaySizes.Default,
+                OverlaySizes.Max);
+            if (!string.IsNullOrEmpty(settings.PlayerName) &&
+                settings.PlayerName.Length > OverlaySizes.MaxPlayerNameLength)
+                settings.PlayerName = settings.PlayerName[..OverlaySizes.MaxPlayerNameLength];
             return settings;
         }
         catch

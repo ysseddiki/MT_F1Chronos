@@ -41,6 +41,11 @@ public partial class PlayerNameWindow : Window
         if (string.IsNullOrWhiteSpace(NameBox.Text))
             return;
 
+        var trimmed = NameBox.Text.Trim();
+        if (trimmed.Length > OverlaySizes.MaxPlayerNameLength)
+            trimmed = trimmed[..OverlaySizes.MaxPlayerNameLength];
+
+        NameBox.Text = trimmed;
         DialogResult = true;
         Close();
     }

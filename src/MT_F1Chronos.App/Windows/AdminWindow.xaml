@@ -158,7 +158,7 @@
                                FontSize="11"
                                Foreground="#FFC5CAD3"
                                Margin="0,0,0,4"/>
-                    <Grid Margin="0,0,0,10">
+                    <Grid Margin="0,0,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
@@ -175,36 +175,6 @@
                                 Margin="0"
                                 HorizontalContentAlignment="Center"
                                 Click="OnTop10Click"/>
-                    </Grid>
-                    <TextBlock Text="Taille"
-                               FontFamily="Segoe UI"
-                               FontSize="11"
-                               Foreground="#FFC5CAD3"
-                               Margin="0,0,0,4"/>
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Button x:Name="SizeSmallButton"
-                                Grid.Column="0"
-                                Content="Petit"
-                                Margin="0,0,4,0"
-                                HorizontalContentAlignment="Center"
-                                Click="OnSizeSmallClick"/>
-                        <Button x:Name="SizeMediumButton"
-                                Grid.Column="1"
-                                Content="Moyen"
-                                Margin="0,0,4,0"
-                                HorizontalContentAlignment="Center"
-                                Click="OnSizeMediumClick"/>
-                        <Button x:Name="SizeLargeButton"
-                                Grid.Column="2"
-                                Content="Grand"
-                                Margin="0"
-                                HorizontalContentAlignment="Center"
-                                Click="OnSizeLargeClick"/>
                     </Grid>
 
                     <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>

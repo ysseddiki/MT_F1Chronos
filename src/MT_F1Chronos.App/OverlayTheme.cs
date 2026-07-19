@@ -3,9 +3,9 @@ namespace MT_F1Chronos.App;
 /// <summary>Carbon / Warm Red tokens matching the F1 Chronos brand mockup (WPF-feasible).</summary>
 internal static class OverlayTheme
 {
-    public const string WindowBg = "#F015151E";
-    public const string PanelBg = "#FF1A1A24";
-    public const string PlaqueBg = "#FF252530";
+    public const string WindowBg = "#F00A0A10";
+    public const string PanelBg = "#FF14141C";
+    public const string PlaqueBg = "#FF1E1E28";
     public const string Border = "#33FFFFFF";
     public const string EdgeSoft = "#55FFFFFF";
     public const string WarmRed = "#FFE10600";

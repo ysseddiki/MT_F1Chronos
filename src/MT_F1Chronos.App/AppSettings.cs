@@ -6,7 +6,7 @@ public sealed class AppSettings
     public int UdpFormat { get; set; } = 2025;
     public double OverlayTop { get; set; } = 195;
     public double OverlayRight { get; set; } = 12;
-    public double OverlayWidth { get; set; } = 288;
+    public double OverlayWidth { get; set; } = 300;
     public int LeaderboardSize { get; set; } = 5;
     public string PlayerName { get; set; } = string.Empty;
 

@@ -36,7 +36,9 @@ public partial class OverlayWindow : Window
     {
         _controller = controller;
         InitializeComponent();
-        Width = settings.OverlayWidth;
+        MinWidth = OverlaySizes.Default;
+        MaxWidth = OverlaySizes.Max;
+        Width = Math.Clamp(settings.OverlayWidth, OverlaySizes.Default, OverlaySizes.Max);
         Topmost = true;
 
         SourceInitialized += OnSourceInitialized;
@@ -170,6 +172,27 @@ public partial class OverlayWindow : Window
 
         if (trackChanged || layoutChanged)
             PlayContentFade();
+
+        FitWidthToContent();
+    }
+
+    /// <summary>
+    /// Compact default width; grow up to Max when content (long track/names) needs it.
+    /// Keeps the right edge anchored.
+    /// </summary>
+    private void FitWidthToContent()
+    {
+        var right = Left + (ActualWidth > 0 ? ActualWidth : Width);
+
+        MinWidth = OverlaySizes.Default;
+        MaxWidth = OverlaySizes.Max;
+        SizeToContent = SizeToContent.WidthAndHeight;
+        UpdateLayout();
+
+        var width = Math.Clamp(ActualWidth, OverlaySizes.Default, OverlaySizes.Max);
+        SizeToContent = SizeToContent.Height;
+        Width = width;
+        Left = right - width;
     }
 
     /// <summary>Brief highlight when a lap is recorded for the current player.</summary>
@@ -228,69 +251,47 @@ public partial class OverlayWindow : Window
 
     private static UIElement CreateRow(int rank, string name, string time, bool isCurrentPlayer)
     {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 5) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // Mockup: current player row uses Warm Red for rank / name / time.
+        // Mockup: P1–P3 = colored text only (no wash). Current player = Warm Red text + soft red row.
         var rankColor = isCurrentPlayer ? PlayerAccent : RankColor(rank);
         var nameColor = isCurrentPlayer ? PlayerAccent : OverlayTheme.TextWhite;
         var timeColor = isCurrentPlayer ? PlayerAccent : OverlayTheme.TextWhite;
 
-        UIElement rankElement;
-        if (!isCurrentPlayer && rank is >= 1 and <= 3)
+        var rankElement = new TextBlock
         {
-            var (r, g, b) = RankWashRgb(rank);
-            rankElement = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(0x28, r, g, b)),
-                CornerRadius = new CornerRadius(2),
-                Padding = new Thickness(1, 1, 1, 1),
-                Child = new TextBlock
-                {
-                    Text = $"{rank}.",
-                    FontFamily = new FontFamily(OverlayTheme.MonoFont),
-                    FontSize = 13,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = UiBrushes.FromHex(rankColor),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                },
-            };
-        }
-        else
-        {
-            rankElement = new TextBlock
-            {
-                Text = $"{rank}.",
-                FontFamily = new FontFamily(OverlayTheme.MonoFont),
-                FontSize = 13,
-                FontWeight = FontWeights.Bold,
-                Foreground = UiBrushes.FromHex(rankColor),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-        }
+            Text = $"{rank}.",
+            FontFamily = new FontFamily(OverlayTheme.MonoFont),
+            FontSize = 15,
+            FontWeight = FontWeights.Bold,
+            Foreground = UiBrushes.FromHex(rankColor),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 10, 0),
+        };
 
         var nameBlock = new TextBlock
         {
             Text = name,
             FontFamily = new FontFamily(OverlayTheme.BodyFont),
-            FontSize = 13,
+            FontSize = 15,
             FontWeight = isCurrentPlayer ? FontWeights.Bold : FontWeights.SemiBold,
             Foreground = UiBrushes.FromHex(nameColor),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 0, 0),
         };
 
         var timeBlock = new TextBlock
         {
             Text = time,
             FontFamily = new FontFamily(OverlayTheme.MonoFont),
-            FontSize = 13,
+            FontSize = 15,
             FontWeight = FontWeights.Bold,
             Foreground = UiBrushes.FromHex(timeColor),
-            Margin = new Thickness(10, 0, 0, 0),
+            Margin = new Thickness(12, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
 
@@ -312,7 +313,7 @@ public partial class OverlayWindow : Window
         {
             Background = new SolidColorBrush(Color.FromArgb(0x33, 0xE1, 0x06, 0x00)),
             CornerRadius = new CornerRadius(2),
-            Padding = new Thickness(4, 3, 4, 3),
+            Padding = new Thickness(4, 4, 4, 4),
             Child = grid,
             Margin = new Thickness(0, 0, 0, 2),
             Tag = name,
@@ -325,14 +326,6 @@ public partial class OverlayWindow : Window
         2 => RankSilver,
         3 => RankBronze,
         _ => RankDefault,
-    };
-
-    private static (byte R, byte G, byte B) RankWashRgb(int rank) => rank switch
-    {
-        1 => (0xFF, 0xD7, 0x00),
-        2 => (0xC0, 0xC7, 0xD1),
-        3 => (0xE8, 0xA8, 0x7C),
-        _ => (0xE1, 0x06, 0x00),
     };
     private void UpdateStatusSquare(OverlaySnapshot snapshot)
     {

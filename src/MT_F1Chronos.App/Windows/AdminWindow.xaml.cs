@@ -42,10 +42,6 @@ public partial class AdminWindow : Window
         Highlight(ContestTop5Button, !contestTop10);
         Highlight(ContestTop10Button, contestTop10);
 
-        Highlight(SizeSmallButton, Math.Abs(_settings.OverlayWidth - OverlaySizes.Small) < 0.5);
-        Highlight(SizeMediumButton, Math.Abs(_settings.OverlayWidth - OverlaySizes.Medium) < 0.5);
-        Highlight(SizeLargeButton, Math.Abs(_settings.OverlayWidth - OverlaySizes.Large) < 0.5);
-
         var mode = _controller.GetOverlayDisplayMode();
         Highlight(ModeGlobalAndContestButton, mode == OverlayDisplayMode.GlobalAndContest);
         Highlight(ModeContestOnlyButton, mode == OverlayDisplayMode.ContestOnly);
@@ -334,24 +330,6 @@ public partial class AdminWindow : Window
     private void OnContestTop10Click(object sender, RoutedEventArgs e)
     {
         _controller.SetContestLeaderboardSize(LeaderboardSizes.Extended);
-        SyncDisplayButtons();
-    }
-
-    private void OnSizeSmallClick(object sender, RoutedEventArgs e)
-    {
-        _controller.SetOverlayWidth(OverlaySizes.Small);
-        SyncDisplayButtons();
-    }
-
-    private void OnSizeMediumClick(object sender, RoutedEventArgs e)
-    {
-        _controller.SetOverlayWidth(OverlaySizes.Medium);
-        SyncDisplayButtons();
-    }
-
-    private void OnSizeLargeClick(object sender, RoutedEventArgs e)
-    {
-        _controller.SetOverlayWidth(OverlaySizes.Large);
         SyncDisplayButtons();
     }
 
