@@ -13,8 +13,6 @@ namespace MT_F1Chronos.App.Services;
 
 public sealed class AppController : IDisposable
 {
-    private const string ScoreResetPassword = "ys-reset-mt26";
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -432,7 +430,7 @@ public sealed class AppController : IDisposable
         if (prompt.ShowDialog() != true)
             return false;
 
-        if (!string.Equals(prompt.Password, ScoreResetPassword, StringComparison.Ordinal))
+        if (!AdminPassword.Verify(prompt.Password))
         {
             MessageBox.Show(_overlay, "Mot de passe incorrect.", "Administration", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
