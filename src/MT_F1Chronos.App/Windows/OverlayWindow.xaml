@@ -29,7 +29,7 @@
 
             <!-- F1 accent bar -->
             <Border Grid.Column="0"
-                    Background="#FFE10600"
+                    Background="#55FFFFFF"
                     CornerRadius="8,0,0,8"/>
 
             <StackPanel Grid.Column="1" Margin="12,10,10,10">
@@ -78,7 +78,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0"
-                                Background="#55FFFFFF"
+                                Background="#FFE10600"
                                 CornerRadius="6,0,0,6"/>
                         <StackPanel Grid.Column="1">
                             <Border Background="#FF1C222B"
