@@ -29,7 +29,7 @@
 
             <!-- Soft white edge (mockup) -->
             <Border Grid.Column="0"
-                    Background="#55FFFFFF"
+                    Background="#FFFFFFFF"
                     CornerRadius="12,0,0,12"/>
 
             <StackPanel Grid.Column="1" Margin="12,14,12,10">

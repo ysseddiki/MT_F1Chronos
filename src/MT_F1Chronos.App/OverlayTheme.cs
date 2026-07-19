@@ -7,7 +7,7 @@ internal static class OverlayTheme
     public const string PanelBg = "#FF14141C";
     public const string PlaqueBg = "#FF1E1E28";
     public const string Border = "#33FFFFFF";
-    public const string EdgeSoft = "#55FFFFFF";
+    public const string EdgeSoft = "#FFFFFFFF";
     public const string WarmRed = "#FFE10600";
     public const string ContestBlue = "#FF5E8BFF";
     public const string TextWhite = "#FFFFFFFF";
