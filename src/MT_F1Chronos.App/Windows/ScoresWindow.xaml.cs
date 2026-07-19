@@ -27,6 +27,7 @@ public partial class ScoresWindow : Window
         _globalStore = globalStore;
         _contests = contests;
         _preferredTrackId = initialTrackId;
+        _board = globalStore;
 
         InitializeComponent();
         PopulateSources(initialContestId);
