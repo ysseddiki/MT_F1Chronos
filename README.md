@@ -180,6 +180,15 @@ Administration (mdp) → **Ouvrir Debug UDP** : connexion, session, Lap Data, Ti
 - Boutons de l’overlay cliquables (pas click-through)
 - Fiable en **Borderless / Fenêtré** ; le plein écran exclusif peut le masquer
 
+## À revoir plus tard
+
+Idées techniques / produit à reprendre quand on voudra durcir ou enrichir l’app :
+
+- **`TelemetryState` thread-safe** : aujourd’hui l’état est muté sur le thread UDP et lu sur le thread UI sans verrou. Remplacer par un snapshot immuable (copie à chaque update) pour éviter toute lecture incohérente.
+- **Mot de passe admin hors binaire** : sel + hash OK pour l’instant ; plus tard, secret configurable (fichier local protégé ou saisie à la première exécution) plutôt que hash embarqué.
+- Mode classement **meilleur tour / joueur / circuit** (filtre best-per-player)
+- Installateur avec mise à jour (suite v0.7 partiellement retirée)
+
 ## Notes de version
 
 ### v0.13
