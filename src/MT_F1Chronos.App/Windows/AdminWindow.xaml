@@ -222,20 +222,44 @@
                                FontSize="11"
                                Foreground="#FFC5CAD3"
                                Margin="0,0,0,6"/>
-                    <Button x:Name="ModeGlobalAndContestButton"
-                            Content="Global + Concours principal"
-                            HorizontalContentAlignment="Center"
-                            Click="OnModeGlobalAndContestClick"/>
-                    <Button x:Name="ModeContestOnlyButton"
-                            Content="Concours principal seul"
-                            HorizontalContentAlignment="Center"
-                            Click="OnModeContestOnlyClick"/>
-                    <Button x:Name="ModeGlobalOnlyButton"
-                            Content="Global seul"
-                            HorizontalContentAlignment="Center"
-                            Margin="0,0,0,8"
-                            Click="OnModeGlobalOnlyClick"/>
-                    <TextBlock Text="Choisis le concours « Principal » dans la liste. Les 3 boutons ci-dessus définissent ce qui s’affiche."
+                    <Border BorderBrush="#33FFFFFF"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Margin="0,0,0,6"
+                            Background="#FF0D1117">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="ModeGlobalAndContestButton"
+                                    Grid.Column="0"
+                                    Content="Global + Concours"
+                                    Margin="0"
+                                    Padding="6,8"
+                                    FontSize="11"
+                                    HorizontalContentAlignment="Center"
+                                    Click="OnModeGlobalAndContestClick"/>
+                            <Button x:Name="ModeContestOnlyButton"
+                                    Grid.Column="1"
+                                    Content="Concours seul"
+                                    Margin="0"
+                                    Padding="6,8"
+                                    FontSize="11"
+                                    HorizontalContentAlignment="Center"
+                                    Click="OnModeContestOnlyClick"/>
+                            <Button x:Name="ModeGlobalOnlyButton"
+                                    Grid.Column="2"
+                                    Content="Global seul"
+                                    Margin="0"
+                                    Padding="6,8"
+                                    FontSize="11"
+                                    HorizontalContentAlignment="Center"
+                                    Click="OnModeGlobalOnlyClick"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="Choisis le concours « Principal » dans la liste. La barre ci-dessus définit ce qui s’affiche."
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#FFC5CAD3"
@@ -295,11 +319,12 @@
                     </Grid>
                     <StackPanel x:Name="ContestListPanel" Margin="0,0,0,6"/>
                     <TextBlock x:Name="ContestEmptyText"
-                               Text="Aucun concours pour le moment."
+                               Text="Aucun concours — crée-en un ci-dessus pour démarrer une soirée."
                                FontFamily="Segoe UI"
                                FontSize="11"
                                Foreground="#88FFFFFF"
                                Margin="0,0,0,12"
+                               TextWrapping="Wrap"
                                Visibility="Collapsed"/>
 
                     <!-- Debug -->

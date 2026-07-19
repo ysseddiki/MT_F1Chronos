@@ -103,7 +103,7 @@ public partial class ScoresWindow : Window
             TrackIndexText.Text = string.Empty;
             PrevTrackButton.IsEnabled = false;
             NextTrackButton.IsEnabled = false;
-            ScoresPanel.Children.Add(CreateMessage("Aucun score enregistré."));
+            ScoresPanel.Children.Add(CreateMessage("Aucun score enregistré.\nLance un tour valide pour peupler ce classement."));
             return;
         }
 
@@ -116,7 +116,7 @@ public partial class ScoresWindow : Window
         var scores = _board.GetScoresForTrack(track.TrackId);
         if (scores.Count == 0)
         {
-            ScoresPanel.Children.Add(CreateMessage("Aucun score pour ce circuit."));
+            ScoresPanel.Children.Add(CreateMessage("Aucun score pour ce circuit.\nComplète un tour valide pour l’ajouter."));
             return;
         }
 
@@ -161,6 +161,8 @@ public partial class ScoresWindow : Window
             FontSize = 13,
             Foreground = UiBrushes.FromHex("#88FFFFFF"),
             Margin = new Thickness(0, 8, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            LineHeight = 20,
         };
 
     private static UIElement CreateHeader()
@@ -175,7 +177,14 @@ public partial class ScoresWindow : Window
     private static UIElement CreateRow(LeaderboardRow score)
     {
         var grid = CreateGrid();
-        AddCell(grid, 0, "#FFE10600", $"{score.Rank}.", FontWeights.Bold);
+        var rankColor = score.Rank switch
+        {
+            1 => "#FFFFD700",
+            2 => "#FFC0C7D1",
+            3 => "#FFE8A87C",
+            _ => "#FFE10600",
+        };
+        AddCell(grid, 0, rankColor, $"{score.Rank}.", FontWeights.Bold);
         AddCell(grid, 1, "#FFFFFFFF", score.Name, FontWeights.SemiBold);
         AddCell(grid, 2, "#FFFFFFFF", score.FormattedTime, FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
         return grid;

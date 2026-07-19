@@ -81,6 +81,7 @@ public partial class AdminWindow : Window
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var nameBlock = new TextBlock
         {
@@ -95,6 +96,30 @@ public partial class AdminWindow : Window
         Grid.SetColumn(nameBlock, 0);
         header.Children.Add(nameBlock);
 
+        var isPrincipal = string.Equals(_settings.OverlayContestId, contest.Id, StringComparison.Ordinal);
+        if (isPrincipal)
+        {
+            var badge = new Border
+            {
+                Background = SelectedBg,
+                BorderBrush = AccentBorder,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(6, 2, 6, 2),
+                Margin = new Thickness(8, 0, 0, 0),
+                Child = new TextBlock
+                {
+                    Text = "PRINCIPAL",
+                    FontFamily = new FontFamily("Segoe UI"),
+                    FontSize = 9,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = White,
+                },
+            };
+            Grid.SetColumn(badge, 1);
+            header.Children.Add(badge);
+        }
+
         var statusBlock = new TextBlock
         {
             Text = StatusLabel(contest.Status),
@@ -105,17 +130,14 @@ public partial class AdminWindow : Window
             Margin = new Thickness(8, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        Grid.SetColumn(statusBlock, 1);
+        Grid.SetColumn(statusBlock, 2);
         header.Children.Add(statusBlock);
         stack.Children.Add(header);
 
         var count = _controller.GetContestEntryCount(contest.Id);
-        var isPrincipal = string.Equals(_settings.OverlayContestId, contest.Id, StringComparison.Ordinal);
         stack.Children.Add(new TextBlock
         {
-            Text = isPrincipal
-                ? $"{count} chrono(s) · principal"
-                : $"{count} chrono(s)",
+            Text = $"{count} chrono(s)",
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 10,
             Foreground = Muted,
@@ -145,18 +167,66 @@ public partial class AdminWindow : Window
         }, highlight: isPrincipal));
 
         actions.Children.Add(MakeAction("Voir", () => _controller.ShowContestScores(contest.Id)));
-        actions.Children.Add(MakeAction("CSV", () => _controller.ExportContestScores(contest.Id, "csv")));
-        actions.Children.Add(MakeAction("JSON", () => _controller.ExportContestScores(contest.Id, "json")));
-        actions.Children.Add(MakeAction("HTML", () => _controller.ExportContestScores(contest.Id, "html")));
-        actions.Children.Add(MakeAction("Suppr.", () =>
+        actions.Children.Add(MakeOverflowMenu(contest));
+
+        stack.Children.Add(actions);
+        card.Child = stack;
+        return card;
+    }
+
+    private Button MakeOverflowMenu(Contest contest)
+    {
+        var button = new Button
+        {
+            Content = "⋯",
+            Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 6, 4),
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Background = DefaultBg,
+            BorderBrush = DefaultBorder,
+            Foreground = White,
+        };
+
+        var menu = new ContextMenu
+        {
+            Background = DefaultBg,
+            Foreground = White,
+            BorderBrush = DefaultBorder,
+        };
+
+        menu.Items.Add(MakeMenuItem("Exporter CSV", () => _controller.ExportContestScores(contest.Id, "csv")));
+        menu.Items.Add(MakeMenuItem("Exporter JSON", () => _controller.ExportContestScores(contest.Id, "json")));
+        menu.Items.Add(MakeMenuItem("Exporter HTML", () => _controller.ExportContestScores(contest.Id, "html")));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(MakeMenuItem("Supprimer…", () =>
         {
             if (_controller.DeleteContest(contest.Id))
                 RefreshContestList();
         }));
 
-        stack.Children.Add(actions);
-        card.Child = stack;
-        return card;
+        button.ContextMenu = menu;
+        button.Click += (_, _) =>
+        {
+            menu.PlacementTarget = button;
+            menu.IsOpen = true;
+        };
+        return button;
+    }
+
+    private static MenuItem MakeMenuItem(string header, Action onClick)
+    {
+        var item = new MenuItem
+        {
+            Header = header,
+            FontFamily = new FontFamily("Segoe UI"),
+            FontSize = 12,
+            Foreground = White,
+            Background = DefaultBg,
+        };
+        item.Click += (_, _) => onClick();
+        return item;
     }
 
     private Button MakeAction(string label, Action onClick, bool highlight = false)

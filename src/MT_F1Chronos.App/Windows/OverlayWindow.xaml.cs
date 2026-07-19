@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using MT_F1Chronos.App.Services;
 using MT_F1Chronos.Core.Models;
@@ -12,9 +13,19 @@ namespace MT_F1Chronos.App.Windows;
 
 public partial class OverlayWindow : Window
 {
+    private const string RankGold = "#FFFFD700";
+    private const string RankSilver = "#FFC0C7D1";
+    private const string RankBronze = "#FFE8A87C";
+    private const string RankDefault = "#FFE10600";
+    private const string StatusRed = "#FFE10600";
+    private const string StatusBlue = "#FF5E8BFF";
+    private const string StatusGreen = "#FF00D26A";
+
     private readonly AppController _controller;
     private HwndSource? _hwndSource;
     private readonly DispatcherTimer _topMostTimer;
+    private string _lastTrackName = string.Empty;
+    private bool _leaderboardLayout;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
@@ -95,6 +106,12 @@ public partial class OverlayWindow : Window
 
     public void UpdateSnapshot(OverlaySnapshot snapshot)
     {
+        var trackChanged = !string.Equals(_lastTrackName, snapshot.TrackName, StringComparison.Ordinal);
+        var layout = snapshot.ShowGlobalLeaderboard || snapshot.ShowContestLeaderboard;
+        var layoutChanged = layout != _leaderboardLayout;
+        _lastTrackName = snapshot.TrackName;
+        _leaderboardLayout = layout;
+
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
@@ -123,6 +140,7 @@ public partial class OverlayWindow : Window
             ContestTitleText.Text = snapshot.ContestLeaderboardSize == LeaderboardSizes.Extended
                 ? $"TOP 10 · {label.ToUpperInvariant()}"
                 : $"TOP 5 · {label.ToUpperInvariant()}";
+            // Same visual language as global (title color + row density).
             FillLeaderboardPanel(ContestPanel, snapshot.ContestLeaderboard, snapshot.PlayerName);
         }
         else
@@ -131,7 +149,30 @@ public partial class OverlayWindow : Window
             ContestPanel.Children.Clear();
         }
 
-        UpdateStatusBar(snapshot);
+        UpdateStatusSquare(snapshot);
+
+        if (trackChanged || layoutChanged)
+            PlayContentFade();
+    }
+
+    /// <summary>Brief highlight when a lap is recorded for the current player.</summary>
+    public void FlashLapRecorded(string playerName)
+    {
+        if (string.IsNullOrWhiteSpace(playerName))
+            return;
+
+        foreach (var panel in new[] { TopFivePanel, ContestPanel })
+        {
+            foreach (UIElement child in panel.Children)
+            {
+                if (child is not FrameworkElement fe)
+                    continue;
+                if (!string.Equals(fe.Tag as string, playerName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                PlayRowPulse(fe);
+            }
+        }
     }
 
     private static void FillLeaderboardPanel(
@@ -143,51 +184,68 @@ public partial class OverlayWindow : Window
 
         if (rows.Count == 0)
         {
-            panel.Children.Add(CreateRow("—", "Aucun chrono", "--:--.---", false, false));
+            panel.Children.Add(CreateEmptyRow());
             return;
         }
 
         foreach (var row in rows)
         {
             var isCurrent = string.Equals(row.Name, playerName, StringComparison.OrdinalIgnoreCase);
-            panel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true, isCurrent));
+            panel.Children.Add(CreateRow(row.Rank, row.Name, row.FormattedTime, isCurrent));
         }
     }
 
-    private static UIElement CreateRow(string rank, string name, string time, bool hasData, bool isCurrentPlayer)
+    private static UIElement CreateEmptyRow()
     {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+        return new TextBlock
+        {
+            Text = "Aucun chrono — lance un tour valide",
+            FontFamily = new FontFamily("Segoe UI"),
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = UiBrushes.FromHex("#66FFFFFF"),
+            Margin = new Thickness(0, 0, 0, 6),
+            TextWrapping = TextWrapping.Wrap,
+        };
+    }
+
+    private static UIElement CreateRow(int rank, string name, string time, bool isCurrentPlayer)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 3) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var rankColor = hasData ? "#FFE10600" : "#55FFFFFF";
-        var nameColor = hasData
-            ? (isCurrentPlayer ? "#FFFFD700" : "#FFFFFFFF")
-            : "#77FFFFFF";
-        var timeColor = hasData ? "#FFFFFFFF" : "#55FFFFFF";
+        var rankColor = RankColor(rank);
+        var nameColor = "#FFFFFFFF";
+        var timeColor = "#FFFFFFFF";
 
         UIElement content = grid;
 
-        if (isCurrentPlayer && hasData)
+        if (isCurrentPlayer)
         {
-            var highlight = new Border
+            content = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(0x33, 0xE1, 0x06, 0x00)),
+                // Soft wash so medal ranks and white time stay readable.
+                Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xE1, 0x06, 0x00)),
                 CornerRadius = new CornerRadius(3),
-                Padding = new Thickness(4, 2, 4, 2),
+                Padding = new Thickness(4, 3, 4, 3),
                 Child = grid,
                 Margin = new Thickness(0, 0, 0, 2),
+                Tag = name,
             };
-            content = highlight;
             grid.Margin = new Thickness(0);
+        }
+        else
+        {
+            grid.Tag = name;
         }
 
         var rankBlock = new TextBlock
         {
-            Text = rank,
+            Text = $"{rank}.",
             FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 13,
+            FontSize = 14,
             FontWeight = FontWeights.Bold,
             Foreground = UiBrushes.FromHex(rankColor),
             VerticalAlignment = VerticalAlignment.Center,
@@ -197,7 +255,7 @@ public partial class OverlayWindow : Window
         {
             Text = name,
             FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 13,
+            FontSize = 14,
             FontWeight = isCurrentPlayer ? FontWeights.Bold : FontWeights.SemiBold,
             Foreground = UiBrushes.FromHex(nameColor),
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -208,7 +266,7 @@ public partial class OverlayWindow : Window
         {
             Text = time,
             FontFamily = new FontFamily("Consolas"),
-            FontSize = 13,
+            FontSize = 14,
             FontWeight = FontWeights.Bold,
             Foreground = UiBrushes.FromHex(timeColor),
             Margin = new Thickness(10, 0, 0, 0),
@@ -226,30 +284,52 @@ public partial class OverlayWindow : Window
         return content;
     }
 
-    private void UpdateStatusBar(OverlaySnapshot snapshot)
+    private static string RankColor(int rank) => rank switch
     {
-        if (!snapshot.IsConnected)
-        {
-            SetStatusStyle("En attente de F1…", "▱", "#FFEA9A00", "#FFC5CAD3", "#66EA9A00");
-            return;
-        }
+        1 => RankGold,
+        2 => RankSilver,
+        3 => RankBronze,
+        _ => RankDefault,
+    };
 
-        if (snapshot.IsTimeTrial || snapshot.HasCurrentLap)
-        {
-            SetStatusStyle("Tour en cours", "◉", "#FF5E8BFF", "#FF7FA4FF", "#665E8BFF");
-            return;
-        }
+    private void UpdateStatusSquare(OverlaySnapshot snapshot)
+    {
+        // Red = no telemetry · Blue = connected, waiting for CLM · Green = CLM running
+        var color = !snapshot.IsConnected
+            ? StatusRed
+            : snapshot.HasCurrentLap
+                ? StatusGreen
+                : StatusBlue;
 
-        SetStatusStyle("Connecté", "▮▮▮", "#FF00D26A", "#FF77E3A8", "#6600D26A");
+        StatusSquare.Background = UiBrushes.FromHex(color);
+        StatusSquare.ToolTip = !snapshot.IsConnected
+            ? "Télémétrie absente"
+            : snapshot.HasCurrentLap
+                ? "Tour en cours"
+                : "Connecté — en attente d’un tour";
     }
 
-    private void SetStatusStyle(string text, string icon, string accentColor, string textColor, string borderColor)
+    private void PlayContentFade()
     {
-        StatusText.Text = text;
-        StatusIconText.Text = icon;
-        StatusDot.Fill = UiBrushes.FromHex(accentColor);
-        StatusText.Foreground = UiBrushes.FromHex(textColor);
-        StatusIconText.Foreground = UiBrushes.FromHex(accentColor);
-        StatusBorder.BorderBrush = UiBrushes.FromHex(borderColor);
+        var animation = new DoubleAnimation
+        {
+            From = 0.55,
+            To = 0.96,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        RootBorder.BeginAnimation(OpacityProperty, animation);
+    }
+
+    private static void PlayRowPulse(FrameworkElement element)
+    {
+        var animation = new DoubleAnimation
+        {
+            From = 0.45,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(280),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        element.BeginAnimation(OpacityProperty, animation);
     }
 }

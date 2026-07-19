@@ -191,6 +191,11 @@ Idées techniques / produit à reprendre quand on voudra durcir ou enrichir l’
 
 ## Notes de version
 
+### v0.15
+- Overlay : TOP prioritaire, médailles P1–P3, status télémétrie (carré bas droite), feedback léger à l’enregistrement
+- Admin : barre segmentée Global+Concours / Concours seul / Global seul ; cartes concours allégées
+- Cohérence visuelle des fenêtres secondaires (menu, scores)
+
 ### v0.13
 - **Scores par circuit** : sélecteur de source Global / Concours
 - Overlay concours : TOP 5 ou TOP 10 + option pour masquer le TOP global

@@ -536,6 +536,10 @@ public sealed class AppController : IDisposable
                     update.State.TrackId,
                     update.State.TrackName,
                     update.CompletedLapMs.Value);
+
+                RefreshOverlay();
+                _overlay?.FlashLapRecorded(_settings.PlayerName);
+                return;
             }
 
             // Leaderboards and headers only change on these events; the live
