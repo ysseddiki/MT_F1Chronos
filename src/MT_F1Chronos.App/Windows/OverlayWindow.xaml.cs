@@ -26,6 +26,7 @@ public partial class OverlayWindow : Window
     private readonly DispatcherTimer _topMostTimer;
     private string _lastTrackName = string.Empty;
     private bool _leaderboardLayout;
+    private bool _statusPulseActive;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
@@ -295,18 +296,75 @@ public partial class OverlayWindow : Window
     private void UpdateStatusSquare(OverlaySnapshot snapshot)
     {
         // Red = no telemetry · Blue = connected, waiting for CLM · Green = CLM running
-        var color = !snapshot.IsConnected
-            ? StatusRed
-            : snapshot.HasCurrentLap
-                ? StatusGreen
-                : StatusBlue;
+        string core;
+        string halo;
+        string tooltip;
+        var pulse = false;
 
-        StatusSquare.Background = UiBrushes.FromHex(color);
-        StatusSquare.ToolTip = !snapshot.IsConnected
-            ? "Télémétrie absente"
-            : snapshot.HasCurrentLap
-                ? "Tour en cours"
-                : "Connecté — en attente d’un tour";
+        if (!snapshot.IsConnected)
+        {
+            core = StatusRed;
+            halo = "#55E10600";
+            tooltip = "Télémétrie absente";
+        }
+        else if (snapshot.HasCurrentLap)
+        {
+            core = StatusGreen;
+            halo = "#5500D26A";
+            tooltip = "Tour en cours";
+            pulse = true;
+        }
+        else
+        {
+            core = StatusBlue;
+            halo = "#555E8BFF";
+            tooltip = "Connecté — en attente d’un tour";
+        }
+
+        StatusCore.Background = UiBrushes.FromHex(core);
+        StatusRing.BorderBrush = UiBrushes.FromHex(core);
+        StatusHalo.Background = UiBrushes.FromHex(halo);
+        StatusBadge.ToolTip = tooltip;
+
+        SetStatusPulse(pulse);
+    }
+
+    private void SetStatusPulse(bool enabled)
+    {
+        if (_statusPulseActive == enabled)
+            return;
+
+        _statusPulseActive = enabled;
+        StatusHalo.BeginAnimation(OpacityProperty, null);
+        StatusCore.BeginAnimation(OpacityProperty, null);
+
+        if (!enabled)
+        {
+            StatusHalo.Opacity = 1;
+            StatusCore.Opacity = 1;
+            return;
+        }
+
+        var haloPulse = new DoubleAnimation
+        {
+            From = 0.35,
+            To = 0.9,
+            Duration = TimeSpan.FromMilliseconds(900),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+        };
+        var corePulse = new DoubleAnimation
+        {
+            From = 0.7,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(900),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+        };
+        StatusHalo.BeginAnimation(OpacityProperty, haloPulse);
+        StatusCore.BeginAnimation(OpacityProperty, corePulse);
     }
 
     private void PlayContentFade()

@@ -165,15 +165,41 @@
                                    Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border x:Name="StatusSquare"
-                            Grid.Column="1"
-                            Width="8"
-                            Height="8"
-                            CornerRadius="1"
-                            Background="#FFE10600"
-                            VerticalAlignment="Bottom"
-                            Margin="0,0,0,2"
-                            ToolTip="Télémétrie"/>
+                    <!-- Telemetry LED (bottom-right): halo + ring + core -->
+                    <Grid x:Name="StatusBadge"
+                          Grid.Column="1"
+                          Width="18"
+                          Height="18"
+                          VerticalAlignment="Bottom"
+                          Margin="0,0,0,0"
+                          ToolTip="Télémétrie">
+                        <Border x:Name="StatusHalo"
+                                Width="18"
+                                Height="18"
+                                CornerRadius="4"
+                                Background="#40E10600"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        <Border x:Name="StatusRing"
+                                Width="12"
+                                Height="12"
+                                CornerRadius="3"
+                                BorderThickness="1.5"
+                                BorderBrush="#FFE10600"
+                                Background="#22000000"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        <Border x:Name="StatusCore"
+                                Width="5"
+                                Height="5"
+                                CornerRadius="1.5"
+                                Background="#FFE10600"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                    </Grid>
                 </Grid>
             </StackPanel>
         </Grid>
