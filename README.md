@@ -15,10 +15,10 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - **Scores par circuit** avec navigation ◀ ▶
 - **Export** CSV / JSON / HTML
 - Position mémorisée après déplacement
-- **Fenêtre d’administration** (scores, reset, export, affichage, concours, debug)
+- **Fenêtre d’administration** protégée par mot de passe (reset, export, affichage, concours, debug)
 - **Concours** : tableaux de scores parallèles (créer / démarrer / arrêter / exporter)
 - Debug UDP intégré
-- Réinitialisation des scores (mot de passe requis)
+- Réinitialisation des scores depuis l’administration
 
 ## Prérequis
 
@@ -74,7 +74,8 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Zone | Contenu |
 |---|---|
 | En-tête | Nom du circuit + menu ☰ |
-| TOP 5 / TOP 10 | Meilleurs chronos du circuit (joueur courant surligné) |
+| TOP 5 / TOP 10 · GLOBAL | Meilleurs chronos du circuit (joueur courant surligné) |
+| TOP 10 · CONCOURS | Optionnel : classement du concours lié |
 | Tour en cours | Chrono live `00:00.000` + pseudo |
 | Statut | Connexion télémétrie |
 
@@ -83,23 +84,25 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 | Action | Description |
 |---|---|
 | Changer le nom du joueur | Pseudo pour les **prochains** tours |
-| Administration | Fenêtre centralisée (scores, export, reset, affichage, debug) |
+| Scores par circuit | Liste complète, navigation ◀ ▶ |
+| Administration | Fenêtre centralisée (mdp requis) |
 | Quitter | Ferme l’application |
 
 ### Administration
 
-Menu ☰ → **Administration** :
+Menu ☰ → **Administration** (mot de passe requis) :
 
 | Section | Contenu |
 |---|---|
-| Scores globaux | Voir par circuit, reset circuit / tous (mdp requis) |
+| Scores globaux | Reset circuit / tous (confirmation) |
 | Exportation | CSV / JSON / HTML du classement **global** |
-| Source overlay | Global, ou un concours via « Afficher » |
-| Affichage overlay | TOP 5 / TOP 10, taille Petit / Moyen / Grand |
+| Concours sur l’overlay | Case à cocher TOP 10 concours + lier un concours via « Afficher » |
+| Affichage overlay | TOP 5 / TOP 10 **global**, taille Petit / Moyen / Grand |
 | Concours | Créer, démarrer, arrêter, voir, exporter, supprimer |
 | Diagnostic | Debug UDP |
 
-Chaque tour valide alimente le **global** et **tous les concours actifs**. Arrêter un concours fige son tableau sans toucher au global.
+Chaque tour valide alimente le **global** et **tous les concours actifs**.  
+Sur l’overlay : **TOP global** toujours visible ; **TOP 10 concours** en dessous si l’option est cochée et qu’un concours est lié.
 
 ### Raccourcis
 
@@ -121,7 +124,8 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "overlayWidth": 288,
   "leaderboardSize": 5,
   "playerName": "TonNom",
-  "overlayContestId": ""
+  "overlayContestId": "",
+  "showContestOnOverlay": true
 }
 ```
 
@@ -131,9 +135,10 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `udpPort` | Port UDP (défaut `20888`) |
 | `overlayTop` / `overlayRight` | Position (aussi mise à jour au drag) |
 | `overlayWidth` | Largeur (px) |
-| `leaderboardSize` | `5` ou `10` |
+| `leaderboardSize` | `5` ou `10` (classement **global**) |
 | `playerName` | Dernier pseudo confirmé à l’ouverture |
-| `overlayContestId` | Vide = global ; sinon id du concours affiché |
+| `overlayContestId` | Id du concours lié à l’overlay (vide = aucun) |
+| `showContestOnOverlay` | Afficher le TOP 10 concours sous le global |
 
 ## Données
 
@@ -163,7 +168,7 @@ assets/             → Icône F1 Chronos (app.ico)
 
 ## Debug UDP
 
-Administration → **Ouvrir Debug UDP** : connexion, session, Lap Data, Time Trial, SessionStore, log des paquets.
+Administration (mdp) → **Ouvrir Debug UDP** : connexion, session, Lap Data, Time Trial, SessionStore, log des paquets.
 
 ## Limites
 
@@ -177,7 +182,7 @@ Administration → **Ouvrir Debug UDP** : connexion, session, Lap Data, Time Tri
 ### v0.11
 - **Concours** : création, démarrage, arrêt, export, suppression
 - Double écriture des tours (global + concours actifs)
-- Overlay basculable Global / Concours (titre `TOP 5 · …`)
+- Overlay : TOP global + TOP 10 concours optionnel en dessous
 
 ### v0.10
 - Fenêtre **Administration** (scores, reset, export, affichage overlay, debug)

@@ -89,6 +89,7 @@ public partial class OverlayWindow : Window
     }
 
     private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.PromptPlayerName();
+    private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
     private void OnAdminClick(object sender, RoutedEventArgs e) => _controller.ShowAdminWindow();
     private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
 
@@ -98,25 +99,45 @@ public partial class OverlayWindow : Window
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
         LeaderboardTitleText.Text = snapshot.LeaderboardSize == LeaderboardSizes.Extended
-            ? $"TOP 10 · {snapshot.SourceLabel.ToUpperInvariant()}"
-            : $"TOP 5 · {snapshot.SourceLabel.ToUpperInvariant()}";
+            ? "TOP 10 · GLOBAL"
+            : "TOP 5 · GLOBAL";
 
-        TopFivePanel.Children.Clear();
+        FillLeaderboardPanel(TopFivePanel, snapshot.Leaderboard, snapshot.PlayerName);
 
-        if (snapshot.Leaderboard.Count == 0)
+        if (snapshot.ShowContestLeaderboard)
         {
-            TopFivePanel.Children.Add(CreateRow("—", "Aucun chrono", "--:--.---", false, false));
+            ContestSection.Visibility = Visibility.Visible;
+            var label = string.IsNullOrWhiteSpace(snapshot.ContestLabel) ? "CONCOURS" : snapshot.ContestLabel;
+            ContestTitleText.Text = $"TOP 10 · {label.ToUpperInvariant()}";
+            FillLeaderboardPanel(ContestPanel, snapshot.ContestLeaderboard, snapshot.PlayerName);
         }
         else
         {
-            foreach (var row in snapshot.Leaderboard)
-            {
-                var isCurrent = string.Equals(row.Name, snapshot.PlayerName, StringComparison.OrdinalIgnoreCase);
-                TopFivePanel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true, isCurrent));
-            }
+            ContestSection.Visibility = Visibility.Collapsed;
+            ContestPanel.Children.Clear();
         }
 
         UpdateStatusBar(snapshot);
+    }
+
+    private static void FillLeaderboardPanel(
+        StackPanel panel,
+        IReadOnlyList<LeaderboardRow> rows,
+        string playerName)
+    {
+        panel.Children.Clear();
+
+        if (rows.Count == 0)
+        {
+            panel.Children.Add(CreateRow("—", "Aucun chrono", "--:--.---", false, false));
+            return;
+        }
+
+        foreach (var row in rows)
+        {
+            var isCurrent = string.Equals(row.Name, playerName, StringComparison.OrdinalIgnoreCase);
+            panel.Children.Add(CreateRow($"{row.Rank}.", row.Name, row.FormattedTime, true, isCurrent));
+        }
     }
 
     private static UIElement CreateRow(string rank, string name, string time, bool hasData, bool isCurrentPlayer)

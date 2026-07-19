@@ -102,8 +102,6 @@
                                FontWeight="Bold"
                                Foreground="#FFE10600"
                                Margin="0,0,0,8"/>
-                    <Button Content="Voir les scores par circuit"
-                            Click="OnScoresClick"/>
                     <Button Content="Réinitialiser le circuit affiché…"
                             Click="OnResetCurrentTrackClick"/>
                     <Button Content="Réinitialiser tous les scores…"
@@ -146,21 +144,29 @@
                     <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
 
                     <!-- Affichage source -->
-                    <TextBlock Text="SOURCE OVERLAY"
+                    <TextBlock Text="CONCOURS SUR L'OVERLAY"
                                FontFamily="Segoe UI"
                                FontSize="11"
                                FontWeight="Bold"
                                Foreground="#FFE10600"
                                Margin="0,0,0,8"/>
+                    <CheckBox x:Name="ShowContestCheckBox"
+                              Content="Afficher le TOP 10 du concours sous le classement global"
+                              FontFamily="Segoe UI"
+                              FontSize="12"
+                              Foreground="#FFC5CAD3"
+                              Margin="0,0,0,8"
+                              Checked="OnShowContestChecked"
+                              Unchecked="OnShowContestChecked"/>
                     <Button x:Name="GlobalSourceButton"
-                            Content="Classement global"
+                            Content="Masquer le concours (global seul)"
                             HorizontalContentAlignment="Center"
                             Click="OnShowGlobalClick"/>
-                    <TextBlock Text="Ou choisis « Afficher » sur un concours ci-dessous."
+                    <TextBlock Text="Choisis « Afficher » sur un concours ci-dessous pour le lier à l’overlay."
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#FFC5CAD3"
-                               Margin="0,0,0,6"
+                               Margin="0,4,0,6"
                                TextWrapping="Wrap"/>
 
                     <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>

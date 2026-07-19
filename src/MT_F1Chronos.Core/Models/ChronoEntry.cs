@@ -39,8 +39,9 @@ public sealed class OverlaySnapshot
     public bool HasCurrentLap { get; init; }
     public int LeaderboardSize { get; init; } = LeaderboardSizes.Default;
     public IReadOnlyList<LeaderboardRow> Leaderboard { get; init; } = [];
-    /// <summary>Display label for the score source shown on the overlay (e.g. Global / contest name).</summary>
-    public string SourceLabel { get; init; } = "Global";
+    public bool ShowContestLeaderboard { get; init; }
+    public string ContestLabel { get; init; } = string.Empty;
+    public IReadOnlyList<LeaderboardRow> ContestLeaderboard { get; init; } = [];
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }
 }

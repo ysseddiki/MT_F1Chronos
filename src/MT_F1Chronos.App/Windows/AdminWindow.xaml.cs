@@ -27,6 +27,7 @@ public partial class AdminWindow : Window
         _controller = controller;
         _settings = settings;
         InitializeComponent();
+        ShowContestCheckBox.IsChecked = _settings.ShowContestOnOverlay;
         SyncDisplayButtons();
         RefreshContestList();
     }
@@ -106,7 +107,7 @@ public partial class AdminWindow : Window
         stack.Children.Add(new TextBlock
         {
             Text = showing
-                ? $"{count} chrono(s) · affiché sur l’overlay"
+                ? $"{count} chrono(s) · lié à l’overlay"
                 : $"{count} chrono(s)",
             FontFamily = new FontFamily("Segoe UI"),
             FontSize = 10,
@@ -133,6 +134,11 @@ public partial class AdminWindow : Window
         actions.Children.Add(MakeAction(showing ? "Sur overlay ✓" : "Afficher", () =>
         {
             _controller.SetOverlayContest(contest.Id);
+            if (!_settings.ShowContestOnOverlay)
+            {
+                ShowContestCheckBox.IsChecked = true;
+                _controller.SetShowContestOnOverlay(true);
+            }
             RefreshContestList();
         }, highlight: showing));
 
@@ -191,7 +197,6 @@ public partial class AdminWindow : Window
     private static SolidColorBrush CreateBrush(string hex) =>
         (SolidColorBrush)new BrushConverter().ConvertFromString(hex)!;
 
-    private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
     private void OnResetCurrentTrackClick(object sender, RoutedEventArgs e) => _controller.ResetCurrentTrackScores();
     private void OnResetAllClick(object sender, RoutedEventArgs e) => _controller.ResetAllScores();
     private void OnExportCsvClick(object sender, RoutedEventArgs e) => _controller.ExportScores("csv");
@@ -201,6 +206,12 @@ public partial class AdminWindow : Window
     private void OnShowGlobalClick(object sender, RoutedEventArgs e)
     {
         _controller.SetOverlayContest(null);
+        RefreshContestList();
+    }
+
+    private void OnShowContestChecked(object sender, RoutedEventArgs e)
+    {
+        _controller.SetShowContestOnOverlay(ShowContestCheckBox.IsChecked == true);
         RefreshContestList();
     }
 
@@ -218,6 +229,8 @@ public partial class AdminWindow : Window
             return;
 
         NewContestNameBox.Text = string.Empty;
+        ShowContestCheckBox.IsChecked = true;
+        _controller.SetShowContestOnOverlay(true);
         _controller.SetOverlayContest(created.Id);
         RefreshContestList();
     }

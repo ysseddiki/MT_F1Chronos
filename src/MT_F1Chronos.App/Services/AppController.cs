@@ -137,6 +137,11 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
+        if (!ConfirmAdminPassword(
+                "Administration",
+                "Mot de passe requis pour ouvrir l’administration."))
+            return;
+
         var window = new AdminWindow(this, _settings) { Owner = _overlay };
         window.ShowDialog();
     }
@@ -259,6 +264,13 @@ public sealed class AppController : IDisposable
         RefreshOverlay();
     }
 
+    public void SetShowContestOnOverlay(bool show)
+    {
+        _settings.ShowContestOnOverlay = show;
+        SaveSettings();
+        RefreshOverlay();
+    }
+
     public void ExportScores(string format) => ExportEntries(_store.GetAllScoredEntries(), format, "scores");
 
     public void ExportContestScores(string contestId, string format)
@@ -349,9 +361,6 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        if (!ConfirmResetPassword("Réinitialiser le circuit", "Mot de passe requis pour effacer les scores du circuit affiché."))
-            return;
-
         var trackId = ResolveResetTrackId();
         if (trackId < 0)
         {
@@ -379,9 +388,6 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        if (!ConfirmResetPassword("Réinitialiser tout", "Mot de passe requis pour effacer TOUS les scores."))
-            return;
-
         var confirm = MessageBox.Show(
             _overlay,
             "Effacer tous les scores de tous les circuits ? Cette action est irréversible.",
@@ -397,7 +403,7 @@ public sealed class AppController : IDisposable
         MessageBox.Show(_overlay, $"{removed} score(s) supprimé(s).", "Scores", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private bool ConfirmResetPassword(string title, string message)
+    private bool ConfirmAdminPassword(string title, string message)
     {
         if (_overlay is null)
             return false;
@@ -408,7 +414,7 @@ public sealed class AppController : IDisposable
 
         if (!string.Equals(prompt.Password, ScoreResetPassword, StringComparison.Ordinal))
         {
-            MessageBox.Show(_overlay, "Mot de passe incorrect.", "Scores", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(_overlay, "Mot de passe incorrect.", "Administration", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
@@ -494,23 +500,23 @@ public sealed class AppController : IDisposable
             return;
 
         var size = _settings.LeaderboardSize;
-        IReadOnlyList<LeaderboardRow>? overrideBoard = null;
-        var sourceLabel = "Global";
+        var showContest = false;
+        var contestLabel = string.Empty;
+        IReadOnlyList<LeaderboardRow> contestBoard = [];
 
-        if (!string.IsNullOrWhiteSpace(_settings.OverlayContestId))
+        if (_settings.ShowContestOnOverlay && !string.IsNullOrWhiteSpace(_settings.OverlayContestId))
         {
             var contest = _contests.Get(_settings.OverlayContestId);
             if (contest is not null)
             {
-                sourceLabel = contest.Name;
+                showContest = true;
+                contestLabel = contest.Name;
                 var trackId = _store.ResolveOverlayTrackId(_listener.State);
                 if (trackId < 0)
-                {
                     trackId = _contests.GetTracksWithScores(contest.Id).FirstOrDefault()?.TrackId ?? -1;
-                }
 
-                overrideBoard = trackId >= 0
-                    ? _contests.GetLeaderboard(contest.Id, trackId, size)
+                contestBoard = trackId >= 0
+                    ? _contests.GetLeaderboard(contest.Id, trackId, LeaderboardSizes.Extended)
                     : [];
             }
             else
@@ -524,8 +530,9 @@ public sealed class AppController : IDisposable
             _listener.State,
             _settings.PlayerName,
             size,
-            leaderboardOverride: overrideBoard,
-            sourceLabel: sourceLabel));
+            showContestLeaderboard: showContest,
+            contestLabel: contestLabel,
+            contestLeaderboard: contestBoard));
     }
 
     private void NormalizeOverlayContestSetting()

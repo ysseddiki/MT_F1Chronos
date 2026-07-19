@@ -105,6 +105,7 @@
                                 </ContextMenu.Resources>
 
                                 <MenuItem Header="Changer le nom du joueur" Click="OnRenameClick"/>
+                                <MenuItem Header="Scores par circuit" Click="OnScoresClick"/>
                                 <MenuItem Header="Administration" Click="OnAdminClick"/>
                                 <Separator/>
                                 <MenuItem Header="Quitter" Click="OnQuitClick"/>
@@ -114,7 +115,7 @@
                 </Grid>
 
                 <TextBlock x:Name="LeaderboardTitleText"
-                           Text="TOP 5"
+                           Text="TOP 5 · GLOBAL"
                            FontFamily="Segoe UI"
                            FontSize="11"
                            FontWeight="Bold"
@@ -122,6 +123,18 @@
                            Margin="0,0,0,6"/>
 
                 <StackPanel x:Name="TopFivePanel" Margin="0,0,0,10"/>
+
+                <StackPanel x:Name="ContestSection" Visibility="Collapsed" Margin="0,0,0,10">
+                    <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,0,0,10"/>
+                    <TextBlock x:Name="ContestTitleText"
+                               Text="TOP 10 · CONCOURS"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#FFFFD700"
+                               Margin="0,0,0,6"/>
+                    <StackPanel x:Name="ContestPanel"/>
+                </StackPanel>
 
                 <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,0,0,10"/>
 

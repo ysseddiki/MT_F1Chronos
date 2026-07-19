@@ -269,13 +269,13 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
         TelemetryState state,
         string playerName,
         int leaderboardSize = LeaderboardSizes.Default,
-        IReadOnlyList<LeaderboardRow>? leaderboardOverride = null,
-        string sourceLabel = "Global")
+        bool showContestLeaderboard = false,
+        string contestLabel = "",
+        IReadOnlyList<LeaderboardRow>? contestLeaderboard = null)
     {
         var trackId = ResolveOverlayTrackId(state);
         var size = LeaderboardSizes.Normalize(leaderboardSize);
-        var leaderboard = leaderboardOverride ??
-                          (trackId >= 0 ? GetLeaderboard(trackId, size) : []);
+        var leaderboard = trackId >= 0 ? GetLeaderboard(trackId, size) : [];
         var currentLap = state.CurrentLapTimeMs;
 
         return new OverlaySnapshot
@@ -288,7 +288,9 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
             HasCurrentLap = currentLap is > 0,
             LeaderboardSize = size,
             Leaderboard = leaderboard,
-            SourceLabel = string.IsNullOrWhiteSpace(sourceLabel) ? "Global" : sourceLabel,
+            ShowContestLeaderboard = showContestLeaderboard,
+            ContestLabel = contestLabel,
+            ContestLeaderboard = contestLeaderboard ?? [],
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,
             IsTimeTrial = state.IsTimeTrial,

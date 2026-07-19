@@ -10,6 +10,9 @@ public sealed class AppSettings
     public int LeaderboardSize { get; set; } = 5;
     public string PlayerName { get; set; } = string.Empty;
 
-    /// <summary>Empty = global leaderboard. Otherwise the contest id shown on the overlay.</summary>
+    /// <summary>Empty = no contest panel. Otherwise the contest id for the secondary TOP 10.</summary>
     public string OverlayContestId { get; set; } = string.Empty;
+
+    /// <summary>When true and a contest is selected, show contest TOP 10 under the global leaderboard.</summary>
+    public bool ShowContestOnOverlay { get; set; } = true;
 }
