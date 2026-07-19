@@ -103,7 +103,7 @@
                 <Border x:Name="ContestDivider"
                         Height="1"
                         Background="#44FFFFFF"
-                        Margin="28,6,28,6"
+                        Margin="28,3,28,3"
                         Visibility="Collapsed"/>
 
                 <!-- TOP Concours cartouche -->

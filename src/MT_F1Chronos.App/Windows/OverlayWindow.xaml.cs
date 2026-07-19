@@ -299,10 +299,10 @@ public partial class OverlayWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // Mockup: P1–P3 = colored text only (no wash). Current player = Warm Red text + soft red row.
-        var rankColor = isCurrentPlayer ? PlayerAccent : RankColor(rank);
+        // Mockup: P1–P3 = colored text only (no wash). Current player = red row wash + red name only.
+        var rankColor = RankColor(rank);
         var nameColor = isCurrentPlayer ? PlayerAccent : OverlayTheme.TextWhite;
-        var timeColor = isCurrentPlayer ? PlayerAccent : OverlayTheme.TextWhite;
+        var timeColor = OverlayTheme.TextWhite;
 
         var rankElement = new TextBlock
         {
