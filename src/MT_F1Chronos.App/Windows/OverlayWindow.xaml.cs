@@ -102,13 +102,27 @@ public partial class OverlayWindow : Window
             ? "TOP 10 · GLOBAL"
             : "TOP 5 · GLOBAL";
 
-        FillLeaderboardPanel(TopFivePanel, snapshot.Leaderboard, snapshot.PlayerName);
+        if (snapshot.ShowGlobalLeaderboard)
+        {
+            GlobalSection.Visibility = Visibility.Visible;
+            FillLeaderboardPanel(TopFivePanel, snapshot.Leaderboard, snapshot.PlayerName);
+        }
+        else
+        {
+            GlobalSection.Visibility = Visibility.Collapsed;
+            TopFivePanel.Children.Clear();
+        }
 
         if (snapshot.ShowContestLeaderboard)
         {
             ContestSection.Visibility = Visibility.Visible;
+            ContestDivider.Visibility = snapshot.ShowGlobalLeaderboard
+                ? Visibility.Visible
+                : Visibility.Collapsed;
             var label = string.IsNullOrWhiteSpace(snapshot.ContestLabel) ? "CONCOURS" : snapshot.ContestLabel;
-            ContestTitleText.Text = $"TOP 10 · {label.ToUpperInvariant()}";
+            ContestTitleText.Text = snapshot.ContestLeaderboardSize == LeaderboardSizes.Extended
+                ? $"TOP 10 · {label.ToUpperInvariant()}"
+                : $"TOP 5 · {label.ToUpperInvariant()}";
             FillLeaderboardPanel(ContestPanel, snapshot.ContestLeaderboard, snapshot.PlayerName);
         }
         else

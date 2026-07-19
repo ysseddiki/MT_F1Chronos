@@ -271,6 +271,20 @@ public sealed class AppController : IDisposable
         RefreshOverlay();
     }
 
+    public void SetContestLeaderboardSize(int size)
+    {
+        _settings.ContestLeaderboardSize = LeaderboardSizes.Normalize(size);
+        SaveSettings();
+        RefreshOverlay();
+    }
+
+    public void SetHideGlobalWhenContest(bool hide)
+    {
+        _settings.HideGlobalWhenContest = hide;
+        SaveSettings();
+        RefreshOverlay();
+    }
+
     public void ExportScores(string format) => ExportEntries(_store.GetAllScoredEntries(), format, "scores");
 
     public void ExportContestScores(string contestId, string format)
@@ -500,6 +514,7 @@ public sealed class AppController : IDisposable
             return;
 
         var size = _settings.LeaderboardSize;
+        var contestSize = LeaderboardSizes.Normalize(_settings.ContestLeaderboardSize);
         var showContest = false;
         var contestLabel = string.Empty;
         IReadOnlyList<LeaderboardRow> contestBoard = [];
@@ -516,7 +531,7 @@ public sealed class AppController : IDisposable
                     trackId = _contests.GetTracksWithScores(contest.Id).FirstOrDefault()?.TrackId ?? -1;
 
                 contestBoard = trackId >= 0
-                    ? _contests.GetLeaderboard(contest.Id, trackId, LeaderboardSizes.Extended)
+                    ? _contests.GetLeaderboard(contest.Id, trackId, contestSize)
                     : [];
             }
             else
@@ -526,12 +541,16 @@ public sealed class AppController : IDisposable
             }
         }
 
+        var showGlobal = !(showContest && _settings.HideGlobalWhenContest);
+
         _overlay.UpdateSnapshot(_store.BuildSnapshot(
             _listener.State,
             _settings.PlayerName,
             size,
+            showGlobalLeaderboard: showGlobal,
             showContestLeaderboard: showContest,
             contestLabel: contestLabel,
+            contestLeaderboardSize: contestSize,
             contestLeaderboard: contestBoard));
     }
 
@@ -561,6 +580,9 @@ public sealed class AppController : IDisposable
             var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
             settings.UdpFormat = settings.UdpFormat is 2026 ? 2026 : 2025;
             settings.LeaderboardSize = LeaderboardSizes.Normalize(settings.LeaderboardSize);
+            settings.ContestLeaderboardSize = settings.ContestLeaderboardSize <= 0
+                ? LeaderboardSizes.Extended
+                : LeaderboardSizes.Normalize(settings.ContestLeaderboardSize);
             return settings;
         }
         catch

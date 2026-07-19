@@ -75,7 +75,7 @@ Chaque tour **valide** (non cut) est enregistré avec le pseudo **au moment du t
 |---|---|
 | En-tête | Nom du circuit + menu ☰ |
 | TOP 5 / TOP 10 · GLOBAL | Meilleurs chronos du circuit (joueur courant surligné) |
-| TOP 10 · CONCOURS | Optionnel : classement du concours lié |
+| TOP 5/10 · CONCOURS | Optionnel : classement du concours lié |
 | Tour en cours | Chrono live `00:00.000` + pseudo |
 | Statut | Connexion télémétrie |
 
@@ -96,13 +96,12 @@ Menu ☰ → **Administration** (mot de passe requis) :
 |---|---|
 | Scores globaux | Reset circuit / tous (confirmation) |
 | Exportation | CSV / JSON / HTML du classement **global** |
-| Concours sur l’overlay | Case à cocher TOP 10 concours + lier un concours via « Afficher » |
 | Affichage overlay | TOP 5 / TOP 10 **global**, taille Petit / Moyen / Grand |
-| Concours | Créer, démarrer, arrêter, voir, exporter, supprimer |
+| Concours | Paramètres overlay (afficher, masquer global, TOP 5/10), créer / gérer |
 | Diagnostic | Debug UDP |
 
 Chaque tour valide alimente le **global** et **tous les concours actifs**.  
-Sur l’overlay : **TOP global** toujours visible ; **TOP 10 concours** en dessous si l’option est cochée et qu’un concours est lié.
+Sur l’overlay : **TOP global** (masquable si concours affiché) ; **TOP 5/10 concours** si l’option est cochée et qu’un concours est lié.
 
 ### Raccourcis
 
@@ -125,7 +124,9 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "leaderboardSize": 5,
   "playerName": "TonNom",
   "overlayContestId": "",
-  "showContestOnOverlay": true
+  "showContestOnOverlay": true,
+  "contestLeaderboardSize": 10,
+  "hideGlobalWhenContest": false
 }
 ```
 
@@ -138,7 +139,9 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `leaderboardSize` | `5` ou `10` (classement **global**) |
 | `playerName` | Dernier pseudo confirmé à l’ouverture |
 | `overlayContestId` | Id du concours lié à l’overlay (vide = aucun) |
-| `showContestOnOverlay` | Afficher le TOP 10 concours sous le global |
+| `showContestOnOverlay` | Afficher le concours sous le global |
+| `contestLeaderboardSize` | `5` ou `10` (classement **concours**) |
+| `hideGlobalWhenContest` | Masquer le TOP global quand un concours est affiché |
 
 ## Données
 

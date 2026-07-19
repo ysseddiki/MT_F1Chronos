@@ -39,8 +39,10 @@ public sealed class OverlaySnapshot
     public bool HasCurrentLap { get; init; }
     public int LeaderboardSize { get; init; } = LeaderboardSizes.Default;
     public IReadOnlyList<LeaderboardRow> Leaderboard { get; init; } = [];
+    public bool ShowGlobalLeaderboard { get; init; } = true;
     public bool ShowContestLeaderboard { get; init; }
     public string ContestLabel { get; init; } = string.Empty;
+    public int ContestLeaderboardSize { get; init; } = LeaderboardSizes.Extended;
     public IReadOnlyList<LeaderboardRow> ContestLeaderboard { get; init; } = [];
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }

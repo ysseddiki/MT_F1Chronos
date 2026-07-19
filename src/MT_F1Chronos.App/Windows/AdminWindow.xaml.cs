@@ -28,6 +28,7 @@ public partial class AdminWindow : Window
         _settings = settings;
         InitializeComponent();
         ShowContestCheckBox.IsChecked = _settings.ShowContestOnOverlay;
+        HideGlobalWhenContestCheckBox.IsChecked = _settings.HideGlobalWhenContest;
         SyncDisplayButtons();
         RefreshContestList();
     }
@@ -37,6 +38,10 @@ public partial class AdminWindow : Window
         var isTop10 = _settings.LeaderboardSize == LeaderboardSizes.Extended;
         Highlight(Top5Button, !isTop10);
         Highlight(Top10Button, isTop10);
+
+        var contestTop10 = _settings.ContestLeaderboardSize == LeaderboardSizes.Extended;
+        Highlight(ContestTop5Button, !contestTop10);
+        Highlight(ContestTop10Button, contestTop10);
 
         Highlight(SizeSmallButton, Math.Abs(_settings.OverlayWidth - OverlaySizes.Small) < 0.5);
         Highlight(SizeMediumButton, Math.Abs(_settings.OverlayWidth - OverlaySizes.Medium) < 0.5);
@@ -215,6 +220,12 @@ public partial class AdminWindow : Window
         RefreshContestList();
     }
 
+    private void OnHideGlobalWhenContestChecked(object sender, RoutedEventArgs e)
+    {
+        _controller.SetHideGlobalWhenContest(HideGlobalWhenContestCheckBox.IsChecked == true);
+        RefreshContestList();
+    }
+
     private void OnCreateContestClick(object sender, RoutedEventArgs e)
     {
         var name = NewContestNameBox.Text?.Trim() ?? string.Empty;
@@ -244,6 +255,18 @@ public partial class AdminWindow : Window
     private void OnTop10Click(object sender, RoutedEventArgs e)
     {
         _controller.SetLeaderboardSize(LeaderboardSizes.Extended);
+        SyncDisplayButtons();
+    }
+
+    private void OnContestTop5Click(object sender, RoutedEventArgs e)
+    {
+        _controller.SetContestLeaderboardSize(LeaderboardSizes.Default);
+        SyncDisplayButtons();
+    }
+
+    private void OnContestTop10Click(object sender, RoutedEventArgs e)
+    {
+        _controller.SetContestLeaderboardSize(LeaderboardSizes.Extended);
         SyncDisplayButtons();
     }
 
