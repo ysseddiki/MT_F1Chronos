@@ -24,9 +24,23 @@ public sealed class UdpTelemetryListener : IDisposable
     {
         Stop();
 
-        _cts = new CancellationTokenSource();
-        _client = new UdpClient(port);
-        _ = Task.Run(() => ListenLoop(_cts.Token));
+        var cts = new CancellationTokenSource();
+        UdpClient client;
+        try
+        {
+            client = new UdpClient(port);
+        }
+        catch
+        {
+            // Port already in use (another instance/tool) or unavailable.
+            // Leave the listener stopped and let the caller surface the error.
+            cts.Dispose();
+            throw;
+        }
+
+        _cts = cts;
+        _client = client;
+        _ = Task.Run(() => ListenLoop(cts.Token));
     }
 
     public void Stop()

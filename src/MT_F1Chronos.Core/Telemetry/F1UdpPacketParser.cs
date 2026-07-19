@@ -16,6 +16,10 @@ public sealed class F1UdpPacketParser
     private int _packetLogCount;
     private int _packetLogHead;
 
+    // Guards the packet counters and log, which are written on the UDP listener
+    // thread and read on the UI thread when the Debug window is open.
+    private readonly object _debugGate = new();
+
     private int _rawTrackId = -1;
     private uint _rawLastLapMs;
     private uint _rawCurrentLapMs;
@@ -159,7 +163,7 @@ public sealed class F1UdpPacketParser
             PacketsPerSecond = PacketsPerSecond,
             IsConnected = state.IsReceiving && secondsSince < 3,
             SecondsSinceLastPacket = secondsSince,
-            PacketCounts = new Dictionary<byte, int>(_packetCounts),
+            PacketCounts = SnapshotPacketCounts(),
 
             RawTrackId = _rawTrackId,
             ResolvedTrackId = state.TrackId,
@@ -201,35 +205,50 @@ public sealed class F1UdpPacketParser
 
     private void IncrementPacketCount(byte packetId)
     {
-        _packetCounts.TryGetValue(packetId, out var count);
-        _packetCounts[packetId] = count + 1;
+        lock (_debugGate)
+        {
+            _packetCounts.TryGetValue(packetId, out var count);
+            _packetCounts[packetId] = count + 1;
+        }
+    }
+
+    private Dictionary<byte, int> SnapshotPacketCounts()
+    {
+        lock (_debugGate)
+            return new Dictionary<byte, int>(_packetCounts);
     }
 
     private void AppendPacketLog(byte packetId, int bufferLength, string summary)
     {
-        _packetLog[_packetLogHead] = new PacketLogEntry
+        lock (_debugGate)
         {
-            Timestamp = DateTime.Now,
-            PacketId = packetId,
-            BufferLength = bufferLength,
-            Summary = summary,
-        };
-        _packetLogHead = (_packetLogHead + 1) % PacketLogCapacity;
-        if (_packetLogCount < PacketLogCapacity)
-            _packetLogCount++;
+            _packetLog[_packetLogHead] = new PacketLogEntry
+            {
+                Timestamp = DateTime.Now,
+                PacketId = packetId,
+                BufferLength = bufferLength,
+                Summary = summary,
+            };
+            _packetLogHead = (_packetLogHead + 1) % PacketLogCapacity;
+            if (_packetLogCount < PacketLogCapacity)
+                _packetLogCount++;
+        }
     }
 
     /// <summary>Returns the packet log newest-first, without the extra allocation of a LINQ Reverse().</summary>
     private IReadOnlyList<PacketLogEntry> GetPacketLog()
     {
-        var entries = new PacketLogEntry[_packetLogCount];
-        for (var i = 0; i < _packetLogCount; i++)
+        lock (_debugGate)
         {
-            var index = (_packetLogHead - 1 - i + PacketLogCapacity) % PacketLogCapacity;
-            entries[i] = _packetLog[index];
-        }
+            var entries = new PacketLogEntry[_packetLogCount];
+            for (var i = 0; i < _packetLogCount; i++)
+            {
+                var index = (_packetLogHead - 1 - i + PacketLogCapacity) % PacketLogCapacity;
+                entries[i] = _packetLog[index];
+            }
 
-        return entries;
+            return entries;
+        }
     }
 
     private void TrackPacketRate()

@@ -64,8 +64,28 @@ public sealed class AppController : IDisposable
         // Show persisted TOP 5 immediately (before UDP track id is known).
         RefreshOverlay();
 
-        _listener.Start(_settings.UdpPort);
+        TryStartListener();
         _refreshTimer.Start();
+    }
+
+    private void TryStartListener()
+    {
+        try
+        {
+            _listener.Start(_settings.UdpPort);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                _overlay!,
+                $"Impossible d'écouter la télémétrie sur le port UDP {_settings.UdpPort}.\n" +
+                "Vérifie qu'aucune autre application (ou une seconde instance de F1 Chronos) " +
+                "n'utilise déjà ce port.\n\n" +
+                $"Détail : {ex.Message}",
+                "F1 Chronos — UDP",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
     }
 
     public void PositionOverlay()
@@ -500,7 +520,14 @@ public sealed class AppController : IDisposable
                     update.CompletedLapMs.Value);
             }
 
-            RefreshOverlay();
+            // Leaderboards and headers only change on these events; the live
+            // current-lap clock and connection status are repainted by the
+            // 250 ms timer, so a full rebuild on every packet is wasted work.
+            if (update.LapCompleted ||
+                update.TrackChanged ||
+                update.SessionStarted ||
+                update.SessionEnded)
+                RefreshOverlay();
         });
     }
 
