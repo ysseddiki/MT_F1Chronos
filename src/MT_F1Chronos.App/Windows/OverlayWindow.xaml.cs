@@ -295,7 +295,7 @@ public partial class OverlayWindow : Window
         const double rowFont = 13.5; // ~10% under previous 15
 
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 5) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -312,7 +312,7 @@ public partial class OverlayWindow : Window
             FontWeight = FontWeights.Bold,
             Foreground = UiBrushes.FromHex(rankColor),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 10, 0),
+            Margin = new Thickness(0, 0, 5, 0),
         };
 
         var nameBlock = new TextBlock
@@ -324,7 +324,7 @@ public partial class OverlayWindow : Window
             Foreground = UiBrushes.FromHex(nameColor),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(4, 0, 0, 0),
+            Margin = new Thickness(2, 0, 0, 0),
         };
 
         var timeBlock = new TextBlock
