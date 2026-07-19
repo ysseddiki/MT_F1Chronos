@@ -34,7 +34,7 @@
 
             <StackPanel Grid.Column="1" Margin="12,14,12,10">
                 <!-- Header: circuit on its own row; pseudo + chrono share the next row -->
-                <StackPanel Margin="0,0,0,14" MouseLeftButtonDown="OnHeaderDrag">
+                <StackPanel Margin="0,0,0,8" MouseLeftButtonDown="OnHeaderDrag">
                     <TextBlock x:Name="TrackText"
                                FontFamily="Bahnschrift, Segoe UI"
                                FontSize="28"
@@ -43,7 +43,7 @@
                                FontStretch="Condensed"
                                Foreground="#FFFFFFFF"
                                TextTrimming="CharacterEllipsis"/>
-                    <Grid Margin="0,6,0,0">
+                    <Grid Margin="0,3,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -105,7 +105,7 @@
                         BorderBrush="#33FFFFFF"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Margin="0,4,0,0"
+                        Margin="0,8,0,0"
                         Visibility="Collapsed"
                         ClipToBounds="True">
                     <Grid>
