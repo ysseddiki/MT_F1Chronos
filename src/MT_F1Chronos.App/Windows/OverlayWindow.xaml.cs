@@ -4,9 +4,11 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using MT_F1Chronos.App.Services;
 using MT_F1Chronos.Core.Models;
+using MT_F1Chronos.Core.Services;
 using Application = System.Windows.Application;
 
 namespace MT_F1Chronos.App.Windows;
@@ -104,6 +106,18 @@ public partial class OverlayWindow : Window
     private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
     private void OnAdminClick(object sender, RoutedEventArgs e) => _controller.ShowAdminWindow();
     private void OnQuitClick(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
+
+    public void UpdateLiveChrono(uint? currentLapMs)
+    {
+        var text = currentLapMs is > 0
+            ? LapTimeFormatter.Format(currentLapMs.Value)
+            : "--:--.---";
+
+        if (string.Equals(CurrentLapText.Text, text, StringComparison.Ordinal))
+            return;
+
+        CurrentLapText.Text = text;
+    }
 
     public void UpdateSnapshot(OverlaySnapshot snapshot)
     {
@@ -296,35 +310,44 @@ public partial class OverlayWindow : Window
     private void UpdateStatusSquare(OverlaySnapshot snapshot)
     {
         // Red = no telemetry · Blue = connected, waiting for CLM · Green = CLM running
-        string core;
-        string halo;
+        Color accent;
         string tooltip;
         var pulse = false;
 
         if (!snapshot.IsConnected)
         {
-            core = StatusRed;
-            halo = "#55E10600";
+            accent = (Color)ColorConverter.ConvertFromString(StatusRed)!;
             tooltip = "Télémétrie absente";
         }
         else if (snapshot.HasCurrentLap)
         {
-            core = StatusGreen;
-            halo = "#5500D26A";
+            accent = (Color)ColorConverter.ConvertFromString(StatusGreen)!;
             tooltip = "Tour en cours";
             pulse = true;
         }
         else
         {
-            core = StatusBlue;
-            halo = "#555E8BFF";
+            accent = (Color)ColorConverter.ConvertFromString(StatusBlue)!;
             tooltip = "Connecté — en attente d’un tour";
         }
 
-        StatusCore.Background = UiBrushes.FromHex(core);
-        StatusRing.BorderBrush = UiBrushes.FromHex(core);
-        StatusHalo.Background = UiBrushes.FromHex(halo);
+        var brush = new SolidColorBrush(accent);
+        brush.Freeze();
+
+        StatusGlow.Fill = brush;
+        StatusCore.Background = brush;
+        StatusRing.BorderBrush = brush;
+        StatusCoreGlow.Color = accent;
         StatusBadge.ToolTip = tooltip;
+
+        // Idle glow strength: softer when disconnected, fuller when connected.
+        if (!_statusPulseActive)
+        {
+            StatusGlowBlur.Radius = snapshot.IsConnected ? 11 : 8;
+            StatusCoreGlow.BlurRadius = snapshot.IsConnected ? 10 : 7;
+            StatusCoreGlow.Opacity = snapshot.IsConnected ? 0.95 : 0.7;
+            StatusGlow.Opacity = snapshot.IsConnected ? 0.85 : 0.55;
+        }
 
         SetStatusPulse(pulse);
     }
@@ -335,36 +358,63 @@ public partial class OverlayWindow : Window
             return;
 
         _statusPulseActive = enabled;
-        StatusHalo.BeginAnimation(OpacityProperty, null);
-        StatusCore.BeginAnimation(OpacityProperty, null);
+
+        StatusGlowBlur.BeginAnimation(BlurEffect.RadiusProperty, null);
+        StatusCoreGlow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, null);
+        StatusCoreGlow.BeginAnimation(DropShadowEffect.OpacityProperty, null);
+        StatusGlow.BeginAnimation(OpacityProperty, null);
 
         if (!enabled)
         {
-            StatusHalo.Opacity = 1;
-            StatusCore.Opacity = 1;
+            StatusGlowBlur.Radius = 11;
+            StatusCoreGlow.BlurRadius = 10;
+            StatusCoreGlow.Opacity = 0.95;
+            StatusGlow.Opacity = 0.85;
             return;
         }
 
-        var haloPulse = new DoubleAnimation
+        // Breathe the soft glow outward (dissipation) while CLM is running.
+        var blurPulse = new DoubleAnimation
         {
-            From = 0.35,
-            To = 0.9,
-            Duration = TimeSpan.FromMilliseconds(900),
+            From = 8,
+            To = 16,
+            Duration = TimeSpan.FromMilliseconds(1100),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
         };
-        var corePulse = new DoubleAnimation
+        var coreBlurPulse = new DoubleAnimation
         {
-            From = 0.7,
+            From = 8,
+            To = 14,
+            Duration = TimeSpan.FromMilliseconds(1100),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+        };
+        var glowOpacity = new DoubleAnimation
+        {
+            From = 0.55,
             To = 1,
-            Duration = TimeSpan.FromMilliseconds(900),
+            Duration = TimeSpan.FromMilliseconds(1100),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
         };
-        StatusHalo.BeginAnimation(OpacityProperty, haloPulse);
-        StatusCore.BeginAnimation(OpacityProperty, corePulse);
+        var shadowOpacity = new DoubleAnimation
+        {
+            From = 0.65,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(1100),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+        };
+
+        StatusGlowBlur.BeginAnimation(BlurEffect.RadiusProperty, blurPulse);
+        StatusCoreGlow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, coreBlurPulse);
+        StatusGlow.BeginAnimation(OpacityProperty, glowOpacity);
+        StatusCoreGlow.BeginAnimation(DropShadowEffect.OpacityProperty, shadowOpacity);
     }
 
     private void PlayContentFade()

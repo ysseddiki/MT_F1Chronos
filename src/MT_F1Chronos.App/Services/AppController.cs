@@ -542,9 +542,9 @@ public sealed class AppController : IDisposable
                 return;
             }
 
-            // Leaderboards and headers only change on these events; the live
-            // current-lap clock and connection status are repainted by the
-            // 250 ms timer, so a full rebuild on every packet is wasted work.
+            // Live chrono follows UDP packets; leaderboard / headers stay on events + 250 ms timer.
+            _overlay?.UpdateLiveChrono(update.State.CurrentLapTimeMs);
+
             if (update.LapCompleted ||
                 update.TrackChanged ||
                 update.SessionStarted ||
