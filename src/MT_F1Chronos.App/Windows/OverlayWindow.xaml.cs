@@ -111,7 +111,11 @@ public partial class OverlayWindow : Window
 
     private void OnBestPerPlayerToggleClick(object sender, MouseButtonEventArgs e)
     {
-        _controller.SetBestPerPlayer(!_bestPerPlayer);
+        e.Handled = true;
+        var next = !_bestPerPlayer;
+        _bestPerPlayer = next;
+        SyncBestPerPlayerToggle(animate: true);
+        _controller.SetBestPerPlayer(next);
     }
 
     private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.PromptPlayerName();

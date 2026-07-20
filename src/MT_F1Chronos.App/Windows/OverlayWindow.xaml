@@ -169,41 +169,44 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Best-per-player slide toggle + full label -->
-                    <StackPanel Grid.Column="0"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center"
-                                Cursor="Hand"
-                                ToolTip="Basculer tous les chronos / meilleur par joueur"
-                                MouseLeftButtonUp="OnBestPerPlayerToggleClick">
-                        <Border x:Name="BestPerPlayerToggle"
-                                Width="44"
-                                Height="22"
-                                CornerRadius="11"
-                                Background="#FF252530"
-                                BorderBrush="#44FFFFFF"
-                                BorderThickness="1"
-                                VerticalAlignment="Center"
-                                IsHitTestVisible="False">
-                            <Canvas>
-                                <Ellipse x:Name="BestPerPlayerKnob"
-                                         Width="16"
-                                         Height="16"
-                                         Canvas.Left="3"
-                                         Canvas.Top="2"
-                                         Fill="#FFFFFFFF"
-                                         IsHitTestVisible="False"/>
-                            </Canvas>
-                        </Border>
-                        <TextBlock x:Name="BestPerPlayerLabel"
-                                   Text="Tous les chronos"
-                                   FontFamily="Segoe UI"
-                                   FontSize="11"
-                                   FontWeight="SemiBold"
-                                   Foreground="#FFA8A8B3"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,0,0"
-                                   IsHitTestVisible="False"/>
-                    </StackPanel>
+                    <Border Grid.Column="0"
+                            Background="Transparent"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Padding="0,4"
+                            ToolTip="Basculer tous les chronos / meilleur par joueur"
+                            MouseLeftButtonUp="OnBestPerPlayerToggleClick">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="BestPerPlayerToggle"
+                                    Width="44"
+                                    Height="22"
+                                    CornerRadius="11"
+                                    Background="#FF252530"
+                                    BorderBrush="#44FFFFFF"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Center"
+                                    IsHitTestVisible="False">
+                                <Canvas>
+                                    <Ellipse x:Name="BestPerPlayerKnob"
+                                             Width="16"
+                                             Height="16"
+                                             Canvas.Left="3"
+                                             Canvas.Top="2"
+                                             Fill="#FFFFFFFF"
+                                             IsHitTestVisible="False"/>
+                                </Canvas>
+                            </Border>
+                            <TextBlock x:Name="BestPerPlayerLabel"
+                                       Text="Tous les chronos"
+                                       FontFamily="Segoe UI"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#FFA8A8B3"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0"
+                                       IsHitTestVisible="False"/>
+                        </StackPanel>
+                    </Border>
 
                     <Grid x:Name="StatusBadge"
                           Grid.Column="2"
