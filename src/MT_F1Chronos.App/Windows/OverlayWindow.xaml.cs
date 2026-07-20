@@ -149,7 +149,9 @@ public partial class OverlayWindow : Window
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
         CurrentLapText.Text = snapshot.CurrentLapFormatted;
-        LeaderboardTitleText.Text = $"{LeaderboardSizes.FormatLabel(snapshot.LeaderboardSize)} · GLOBAL";
+        var bestSuffix = snapshot.BestPerPlayer ? " · BEST" : string.Empty;
+        LeaderboardTitleText.Text =
+            $"{LeaderboardSizes.FormatLabel(snapshot.LeaderboardSize)} · GLOBAL{bestSuffix}";
 
         if (snapshot.ShowGlobalLeaderboard)
         {
@@ -167,7 +169,7 @@ public partial class OverlayWindow : Window
             ContestSection.Visibility = Visibility.Visible;
             var label = string.IsNullOrWhiteSpace(snapshot.ContestLabel) ? "CONCOURS" : snapshot.ContestLabel;
             ContestTitleText.Text =
-                $"{LeaderboardSizes.FormatLabel(snapshot.ContestLeaderboardSize)} · {label.ToUpperInvariant()}";
+                $"{LeaderboardSizes.FormatLabel(snapshot.ContestLeaderboardSize)} · {label.ToUpperInvariant()}{bestSuffix}";
             FillLeaderboardPanel(ContestPanel, snapshot.ContestLeaderboard, snapshot.PlayerName);
             if (!contestWasVisible)
                 PlayBoardReveal(ContestSection);
@@ -197,9 +199,8 @@ public partial class OverlayWindow : Window
     {
         var on = _bestPerPlayer;
         BestPerPlayerToggle.Background = UiBrushes.FromHex(on ? "#FFE10600" : "#FF252530");
-        BestPerPlayerToggle.ToolTip = on
-            ? "Meilleur chrono / joueur — activé"
-            : "Afficher uniquement le meilleur chrono par joueur";
+        BestPerPlayerLabel.Text = on ? "Meilleur par joueur" : "Tous les chronos";
+        BestPerPlayerLabel.Foreground = UiBrushes.FromHex(on ? "#FFFFFFFF" : "#FFA8A8B3");
 
         var targetLeft = on ? 25.0 : 3.0;
         if (!animate)
@@ -215,6 +216,15 @@ public partial class OverlayWindow : Window
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         BestPerPlayerKnob.BeginAnimation(Canvas.LeftProperty, anim);
+
+        var fade = new DoubleAnimation
+        {
+            From = 0.45,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        BestPerPlayerLabel.BeginAnimation(OpacityProperty, fade);
     }
 
     /// <summary>
