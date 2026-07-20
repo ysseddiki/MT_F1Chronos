@@ -16,6 +16,7 @@ public partial class ScoresWindow : Window
     private readonly ContestStore _contests;
     private readonly AppController? _controller;
     private readonly int? _preferredTrackId;
+    private readonly bool _allowDelete;
 
     private IScoreBoardView _board;
     private IReadOnlyList<TrackSummary> _tracks = [];
@@ -30,13 +31,15 @@ public partial class ScoresWindow : Window
         int? initialTrackId = null,
         string? initialContestId = null,
         bool bestPerPlayer = false,
-        AppController? controller = null)
+        AppController? controller = null,
+        bool allowDelete = false)
     {
         _globalStore = globalStore;
         _contests = contests;
         _controller = controller;
         _preferredTrackId = initialTrackId;
         _bestPerPlayer = bestPerPlayer;
+        _allowDelete = allowDelete;
         _board = globalStore;
 
         InitializeComponent();
@@ -72,14 +75,14 @@ public partial class ScoresWindow : Window
         if (option?.ContestId is { Length: > 0 } contestId)
         {
             _board = _contests.AsScoreBoard(contestId);
-            WindowTitleText.Text = option.Label;
-            Title = option.Label;
+            WindowTitleText.Text = _allowDelete ? $"Gérer — {option.Label}" : option.Label;
+            Title = WindowTitleText.Text;
         }
         else
         {
             _board = _globalStore;
-            WindowTitleText.Text = "Scores par circuit";
-            Title = "Scores par circuit";
+            WindowTitleText.Text = _allowDelete ? "Gérer les chronos" : "Scores par circuit";
+            Title = WindowTitleText.Text;
         }
 
         _tracks = _board.GetTracksWithScores();
@@ -159,7 +162,7 @@ public partial class ScoresWindow : Window
             return;
         }
 
-        ScoresPanel.Children.Add(CreateHeader());
+        ScoresPanel.Children.Add(CreateHeader(_allowDelete));
 
         foreach (var score in scores)
             ScoresPanel.Children.Add(CreateRow(score));
@@ -293,9 +296,9 @@ public partial class ScoresWindow : Window
             LineHeight = 20,
         };
 
-    private static UIElement CreateHeader()
+    private static UIElement CreateHeader(bool allowDelete)
     {
-        var grid = CreateGrid();
+        var grid = CreateGrid(allowDelete);
         AddCell(grid, 0, "#FFC5CAD3", "Rang", FontWeights.Bold);
         AddCell(grid, 1, "#FFC5CAD3", "Nom", FontWeights.Bold);
         AddCell(grid, 2, "#FFC5CAD3", "Temps", FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
@@ -304,7 +307,7 @@ public partial class ScoresWindow : Window
 
     private UIElement CreateRow(LeaderboardRow score)
     {
-        var grid = CreateGrid();
+        var grid = CreateGrid(_allowDelete);
         var rankColor = score.Rank switch
         {
             1 => "#FFFFD700",
@@ -316,6 +319,9 @@ public partial class ScoresWindow : Window
         AddCell(grid, 1, "#FFFFFFFF", score.Name, FontWeights.SemiBold);
         AddCell(grid, 2, "#FFFFFFFF", score.FormattedTime, FontWeights.Bold, horizontalAlignment: HorizontalAlignment.Right);
 
+        if (!_allowDelete)
+            return grid;
+
         var delete = new Button
         {
             Content = "×",
@@ -323,6 +329,7 @@ public partial class ScoresWindow : Window
             Height = 24,
             FontSize = 14,
             Padding = new Thickness(0),
+            Margin = new Thickness(10, 0, 0, 0),
             Tag = score,
             ToolTip = "Supprimer ce chrono",
             VerticalAlignment = VerticalAlignment.Center,
@@ -338,21 +345,21 @@ public partial class ScoresWindow : Window
         deleteAll.Click += OnDeletePlayerClick;
         menu.Items.Add(deleteAll);
         delete.ContextMenu = menu;
+        grid.ContextMenu = menu;
 
         Grid.SetColumn(delete, 3);
         grid.Children.Add(delete);
-
-        grid.ContextMenu = menu;
         return grid;
     }
 
-    private static Grid CreateGrid()
+    private static Grid CreateGrid(bool allowDelete)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+        if (allowDelete)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
         return grid;
     }
 

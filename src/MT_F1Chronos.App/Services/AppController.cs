@@ -222,6 +222,27 @@ public sealed class AppController : IDisposable
 
     public void NotifyScoresChanged() => RefreshOverlay();
 
+    /// <summary>Scores view with delete actions — only reachable from admin (already password-gated).</summary>
+    public void ShowManageScores()
+    {
+        if (_overlay is null)
+            return;
+
+        var currentTrackId = _listener.State.TrackId;
+        var window = new ScoresWindow(
+            _store,
+            _contests,
+            currentTrackId >= 0 ? currentTrackId : null,
+            initialContestId: null,
+            bestPerPlayer: _settings.BestPerPlayer,
+            controller: this,
+            allowDelete: true)
+        {
+            Owner = _overlay,
+        };
+        window.ShowDialog();
+    }
+
     public IReadOnlyList<Contest> ListContests() => _contests.List();
 
     public int GetContestEntryCount(string contestId) => _contests.EntryCount(contestId);

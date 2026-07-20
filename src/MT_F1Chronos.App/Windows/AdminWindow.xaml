@@ -111,6 +111,10 @@
                             Click="OnResetAllClick"
                             Foreground="#FFFF8A80"
                             BorderBrush="#66E10600"/>
+                    <Button Content="Gérer / supprimer des chronos…"
+                            Click="OnManageScoresClick"
+                            Foreground="#FFFF8A80"
+                            BorderBrush="#66E10600"/>
 
                     <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
 

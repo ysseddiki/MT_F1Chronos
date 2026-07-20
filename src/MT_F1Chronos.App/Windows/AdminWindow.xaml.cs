@@ -269,6 +269,7 @@ public partial class AdminWindow : Window
 
     private void OnResetCurrentTrackClick(object sender, RoutedEventArgs e) => _controller.ResetCurrentTrackScores();
     private void OnResetAllClick(object sender, RoutedEventArgs e) => _controller.ResetAllScores();
+    private void OnManageScoresClick(object sender, RoutedEventArgs e) => _controller.ShowManageScores();
     private void OnExportCsvClick(object sender, RoutedEventArgs e) => _controller.ExportScores("csv");
     private void OnExportJsonClick(object sender, RoutedEventArgs e) => _controller.ExportScores("json");
     private void OnExportHtmlClick(object sender, RoutedEventArgs e) => _controller.ExportScores("html");
