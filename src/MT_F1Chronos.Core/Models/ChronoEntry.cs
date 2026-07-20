@@ -1,3 +1,5 @@
+using MT_F1Chronos.Core.Services;
+
 namespace MT_F1Chronos.Core.Models;
 
 public sealed class ChronoEntry
@@ -18,10 +20,47 @@ public sealed class ChronoDatabase
 
 public sealed class LeaderboardRow
 {
+    public string EntryId { get; init; } = string.Empty;
     public int Rank { get; init; }
     public string Name { get; init; } = string.Empty;
     public uint BestLapMs { get; init; }
     public string FormattedTime { get; init; } = "--:--.---";
+}
+
+/// <summary>Shared ranking helpers for global and contest boards.</summary>
+public static class LeaderboardQuery
+{
+    public static IEnumerable<ChronoEntry> Filter(
+        IEnumerable<ChronoEntry> entries,
+        bool bestPerPlayer = false,
+        string? playerName = null)
+    {
+        var query = entries.Where(s => s.BestLapMs is > 0);
+
+        if (!string.IsNullOrWhiteSpace(playerName))
+            query = query.Where(s => string.Equals(s.Name, playerName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        if (bestPerPlayer)
+        {
+            query = query
+                .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.OrderBy(s => s.BestLapMs).ThenBy(s => s.StartedAt).First());
+        }
+
+        return query
+            .OrderBy(s => s.BestLapMs)
+            .ThenBy(s => s.StartedAt);
+    }
+
+    public static IReadOnlyList<LeaderboardRow> ToRows(IEnumerable<ChronoEntry> ranked) =>
+        ranked.Select((s, i) => new LeaderboardRow
+        {
+            EntryId = s.Id,
+            Rank = i + 1,
+            Name = s.Name,
+            BestLapMs = s.BestLapMs!.Value,
+            FormattedTime = LapTimeFormatter.Format(s.BestLapMs.Value),
+        }).ToList();
 }
 
 public sealed class TrackSummary
@@ -44,6 +83,7 @@ public sealed class OverlaySnapshot
     public string ContestLabel { get; init; } = string.Empty;
     public int ContestLeaderboardSize { get; init; } = LeaderboardSizes.Extended;
     public IReadOnlyList<LeaderboardRow> ContestLeaderboard { get; init; } = [];
+    public bool BestPerPlayer { get; init; }
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }
 }

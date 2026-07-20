@@ -124,6 +124,15 @@ public sealed class AppController : IDisposable
         RefreshOverlay();
     }
 
+    public void SetBestPerPlayer(bool enabled)
+    {
+        _settings.BestPerPlayer = enabled;
+        SaveSettings();
+        RefreshOverlay();
+    }
+
+    public bool GetBestPerPlayer() => _settings.BestPerPlayer;
+
     public void PromptPlayerName(bool required = false)
     {
         if (_promptOpen)
@@ -177,7 +186,9 @@ public sealed class AppController : IDisposable
             _store,
             _contests,
             currentTrackId >= 0 ? currentTrackId : null,
-            initialContestId: null)
+            initialContestId: null,
+            bestPerPlayer: _settings.BestPerPlayer,
+            controller: this)
         {
             Owner = _overlay,
         };
@@ -200,12 +211,16 @@ public sealed class AppController : IDisposable
             _store,
             _contests,
             currentTrackId >= 0 ? currentTrackId : null,
-            initialContestId: contestId)
+            initialContestId: contestId,
+            bestPerPlayer: _settings.BestPerPlayer,
+            controller: this)
         {
             Owner = _overlay,
         };
         window.ShowDialog();
     }
+
+    public void NotifyScoresChanged() => RefreshOverlay();
 
     public IReadOnlyList<Contest> ListContests() => _contests.List();
 
@@ -592,7 +607,7 @@ public sealed class AppController : IDisposable
                     trackId = _contests.GetTracksWithScores(contest.Id).FirstOrDefault()?.TrackId ?? -1;
 
                 contestBoard = trackId >= 0
-                    ? _contests.GetLeaderboard(contest.Id, trackId, contestSize)
+                    ? _contests.GetLeaderboard(contest.Id, trackId, contestSize, _settings.BestPerPlayer)
                     : [];
             }
         }
@@ -613,7 +628,8 @@ public sealed class AppController : IDisposable
             showContestLeaderboard: showContest,
             contestLabel: contestLabel,
             contestLeaderboardSize: contestSize,
-            contestLeaderboard: contestBoard));
+            contestLeaderboard: contestBoard,
+            bestPerPlayer: _settings.BestPerPlayer));
     }
 
     private void NormalizeOverlayContestSetting()

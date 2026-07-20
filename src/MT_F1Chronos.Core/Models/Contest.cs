@@ -29,5 +29,8 @@ public sealed class ContestIndex
 public interface IScoreBoardView
 {
     IReadOnlyList<TrackSummary> GetTracksWithScores();
-    IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId);
+    IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId, bool bestPerPlayer = false, string? playerName = null);
+    IReadOnlyList<string> GetPlayerNamesForTrack(int trackId);
+    bool DeleteEntry(string entryId);
+    int DeletePlayerOnTrack(string playerName, int trackId);
 }

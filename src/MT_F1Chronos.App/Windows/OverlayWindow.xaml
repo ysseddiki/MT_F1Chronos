@@ -57,13 +57,27 @@
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"
                                    Margin="0,0,10,0"/>
-                        <TextBlock x:Name="CurrentLapText"
-                                   Grid.Column="1"
-                                   FontFamily="Consolas"
-                                   FontSize="15"
-                                   FontWeight="Bold"
-                                   Foreground="#FFFFFFFF"
-                                   VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <!-- Vector chrono / stopwatch pictogram -->
+                            <Canvas Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse Width="12" Height="12" Canvas.Left="1" Canvas.Top="2"
+                                         Stroke="#FFFFFFFF" StrokeThickness="1.4" Fill="Transparent"/>
+                                <Rectangle Width="3" Height="2" Canvas.Left="5.5" Canvas.Top="0"
+                                           RadiusX="0.5" RadiusY="0.5" Fill="#FFFFFFFF"/>
+                                <Line X1="7" Y1="8" X2="7" Y2="5"
+                                      Stroke="#FFFFFFFF" StrokeThickness="1.4" StrokeStartLineCap="Round"/>
+                                <Line X1="7" Y1="8" X2="9.5" Y2="8"
+                                      Stroke="#FFFFFFFF" StrokeThickness="1.4" StrokeEndLineCap="Round"/>
+                            </Canvas>
+                            <TextBlock x:Name="CurrentLapText"
+                                       FontFamily="Consolas"
+                                       FontSize="15"
+                                       FontWeight="Bold"
+                                       Foreground="#FFFFFFFF"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Grid>
                 </StackPanel>
 
@@ -72,8 +86,14 @@
                         Background="#FF14141C"
                         BorderBrush="#33FFFFFF"
                         BorderThickness="1"
-                        CornerRadius="4"
-                        ClipToBounds="True">
+                        CornerRadius="4">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="12"
+                                          ShadowDepth="2"
+                                          Direction="270"
+                                          Color="#000000"
+                                          Opacity="0.35"/>
+                    </Border.Effect>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="3"/>
@@ -106,8 +126,14 @@
                         BorderThickness="1"
                         CornerRadius="4"
                         Margin="0,8,0,0"
-                        Visibility="Collapsed"
-                        ClipToBounds="True">
+                        Visibility="Collapsed">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="12"
+                                          ShadowDepth="2"
+                                          Direction="270"
+                                          Color="#000000"
+                                          Opacity="0.35"/>
+                    </Border.Effect>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="3"/>
@@ -133,26 +159,50 @@
                     </Grid>
                 </Border>
 
-                <!-- Footer: soft glowing status point + burger (no hard ring) -->
+                <!-- Footer: best-per-player toggle · status LED · vector burger -->
                 <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
+                    <!-- Best-per-player slide toggle -->
+                    <Border x:Name="BestPerPlayerToggle"
+                            Grid.Column="0"
+                            Width="44"
+                            Height="22"
+                            CornerRadius="11"
+                            Background="#FF252530"
+                            BorderBrush="#44FFFFFF"
+                            BorderThickness="1"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            ToolTip="Afficher uniquement le meilleur chrono par joueur"
+                            MouseLeftButtonUp="OnBestPerPlayerToggleClick">
+                        <Canvas>
+                            <Ellipse x:Name="BestPerPlayerKnob"
+                                     Width="16"
+                                     Height="16"
+                                     Canvas.Left="3"
+                                     Canvas.Top="2"
+                                     Fill="#FFFFFFFF"
+                                     IsHitTestVisible="False"/>
+                        </Canvas>
+                    </Border>
+
                     <Grid x:Name="StatusBadge"
-                          Grid.Column="1"
-                          Width="22"
-                          Height="22"
+                          Grid.Column="2"
+                          Width="26"
+                          Height="26"
                           ClipToBounds="False"
                           VerticalAlignment="Center"
                           Margin="0,0,6,0"
                           ToolTip="Télémétrie">
-                        <!-- Soft halo only — no stroked ring -->
                         <Ellipse x:Name="StatusGlow"
-                                 Width="14"
-                                 Height="14"
+                                 Width="16"
+                                 Height="16"
                                  Fill="#FF00D26A"
                                  Opacity="0.7"
                                  HorizontalAlignment="Center"
@@ -165,8 +215,8 @@
                             </Ellipse.Effect>
                         </Ellipse>
                         <Ellipse x:Name="StatusCore"
-                                 Width="7"
-                                 Height="7"
+                                 Width="8"
+                                 Height="8"
                                  Fill="#FF00D26A"
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center"
@@ -174,27 +224,37 @@
                     </Grid>
 
                     <Button x:Name="MenuButton"
-                            Grid.Column="2"
-                            Content="☰"
+                            Grid.Column="3"
                             Width="28"
                             Height="24"
-                            FontSize="14"
                             Padding="0"
                             Background="Transparent"
-                            Foreground="#FFFFFFFF"
                             BorderBrush="Transparent"
                             BorderThickness="0"
                             Cursor="Hand"
                             VerticalAlignment="Center"
-                            Click="OnMenuButtonClick">
+                            Click="OnMenuButtonClick"
+                            ToolTip="Menu">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      TextElement.Foreground="{TemplateBinding Foreground}"/>
+                                <Border x:Name="Bd"
+                                        Background="Transparent"
+                                        Padding="4,3">
+                                    <!-- Vector burger -->
+                                    <Canvas Width="16" Height="12">
+                                        <Rectangle Width="16" Height="2" Canvas.Top="0" RadiusX="1" RadiusY="1" Fill="#FFFFFFFF"/>
+                                        <Rectangle Width="16" Height="2" Canvas.Top="5" RadiusX="1" RadiusY="1" Fill="#FFFFFFFF"/>
+                                        <Rectangle Width="16" Height="2" Canvas.Top="10" RadiusX="1" RadiusY="1" Fill="#FFFFFFFF"/>
+                                    </Canvas>
                                 </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Opacity" Value="0.75"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Opacity" Value="0.55"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>
                         <Button.ContextMenu>

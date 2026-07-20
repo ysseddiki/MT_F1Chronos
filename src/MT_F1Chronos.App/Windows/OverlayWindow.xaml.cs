@@ -31,6 +31,7 @@ public partial class OverlayWindow : Window
     private bool _leaderboardLayout;
     private bool _statusPulseActive;
     private string _widthFitKey = string.Empty;
+    private bool _bestPerPlayer;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
@@ -40,6 +41,8 @@ public partial class OverlayWindow : Window
         MaxWidth = OverlaySizes.Max;
         Width = Math.Clamp(settings.OverlayWidth, OverlaySizes.Default, OverlaySizes.Max);
         Topmost = true;
+        _bestPerPlayer = settings.BestPerPlayer;
+        SyncBestPerPlayerToggle(animate: false);
 
         SourceInitialized += OnSourceInitialized;
         Activated += (_, _) => AssertTopMost();
@@ -106,6 +109,11 @@ public partial class OverlayWindow : Window
         }
     }
 
+    private void OnBestPerPlayerToggleClick(object sender, MouseButtonEventArgs e)
+    {
+        _controller.SetBestPerPlayer(!_bestPerPlayer);
+    }
+
     private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.PromptPlayerName();
     private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
     private void OnAdminClick(object sender, RoutedEventArgs e) => _controller.ShowAdminWindow();
@@ -128,8 +136,15 @@ public partial class OverlayWindow : Window
         var trackChanged = !string.Equals(_lastTrackName, snapshot.TrackName, StringComparison.Ordinal);
         var layout = snapshot.ShowGlobalLeaderboard || snapshot.ShowContestLeaderboard;
         var layoutChanged = layout != _leaderboardLayout;
+        var contestWasVisible = ContestSection.Visibility == Visibility.Visible;
         _lastTrackName = snapshot.TrackName;
         _leaderboardLayout = layout;
+
+        if (snapshot.BestPerPlayer != _bestPerPlayer)
+        {
+            _bestPerPlayer = snapshot.BestPerPlayer;
+            SyncBestPerPlayerToggle(animate: true);
+        }
 
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
         PlayerNameText.Text = snapshot.PlayerName;
@@ -154,6 +169,8 @@ public partial class OverlayWindow : Window
             ContestTitleText.Text =
                 $"{LeaderboardSizes.FormatLabel(snapshot.ContestLeaderboardSize)} · {label.ToUpperInvariant()}";
             FillLeaderboardPanel(ContestPanel, snapshot.ContestLeaderboard, snapshot.PlayerName);
+            if (!contestWasVisible)
+                PlayBoardReveal(ContestSection);
         }
         else
         {
@@ -174,6 +191,30 @@ public partial class OverlayWindow : Window
             _widthFitKey = fitKey;
             FitWidthToContent();
         }
+    }
+
+    private void SyncBestPerPlayerToggle(bool animate)
+    {
+        var on = _bestPerPlayer;
+        BestPerPlayerToggle.Background = UiBrushes.FromHex(on ? "#FFE10600" : "#FF252530");
+        BestPerPlayerToggle.ToolTip = on
+            ? "Meilleur chrono / joueur — activé"
+            : "Afficher uniquement le meilleur chrono par joueur";
+
+        var targetLeft = on ? 25.0 : 3.0;
+        if (!animate)
+        {
+            Canvas.SetLeft(BestPerPlayerKnob, targetLeft);
+            return;
+        }
+
+        var anim = new DoubleAnimation
+        {
+            To = targetLeft,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        BestPerPlayerKnob.BeginAnimation(Canvas.LeftProperty, anim);
     }
 
     /// <summary>
@@ -211,6 +252,7 @@ public partial class OverlayWindow : Window
           .Append(snapshot.ContestLeaderboardSize).Append('|')
           .Append(snapshot.ShowGlobalLeaderboard).Append('|')
           .Append(snapshot.ShowContestLeaderboard).Append('|')
+          .Append(snapshot.BestPerPlayer).Append('|')
           .Append(snapshot.ContestLabel).Append('|');
 
         AppendBoardKey(sb, snapshot.Leaderboard);
@@ -456,10 +498,31 @@ public partial class OverlayWindow : Window
         {
             From = 0.55,
             To = 0.96,
-            Duration = TimeSpan.FromMilliseconds(180),
+            Duration = TimeSpan.FromMilliseconds(200),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         RootBorder.BeginAnimation(OpacityProperty, animation);
+    }
+
+    private static void PlayBoardReveal(FrameworkElement board)
+    {
+        board.RenderTransform = new TranslateTransform(0, 10);
+        var fade = new DoubleAnimation
+        {
+            From = 0.35,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        var slide = new DoubleAnimation
+        {
+            From = 10,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        board.BeginAnimation(OpacityProperty, fade);
+        board.RenderTransform.BeginAnimation(TranslateTransform.YProperty, slide);
     }
 
     private static void PlayRowPulse(FrameworkElement element)
@@ -468,7 +531,7 @@ public partial class OverlayWindow : Window
         {
             From = 0.45,
             To = 1,
-            Duration = TimeSpan.FromMilliseconds(280),
+            Duration = TimeSpan.FromMilliseconds(320),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         element.BeginAnimation(OpacityProperty, animation);

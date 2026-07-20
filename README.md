@@ -10,9 +10,10 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - Nom d’affichage / icône : **F1 Chronos**
 - **Nom du joueur** demandé à **chaque ouverture** (prérempli, sans réécrire l’historique)
 - **TOP 3** / **TOP 5** / **TOP 10** des meilleurs chronos du circuit
+- Mode **meilleur chrono par joueur** (toggle overlay + Scores)
 - Mise en évidence du **joueur courant** dans le classement (fond rouge)
 - **Tour en cours** synchronisé via télémétrie UDP (format `00:00.000`)
-- **Scores par circuit** avec navigation ◀ ▶
+- **Scores par circuit** : filtre joueur, suppression d’un chrono ou de tous les chronos d’un joueur
 - **Export** CSV / JSON / HTML
 - Position mémorisée après déplacement
 - **Fenêtre d’administration** protégée par mot de passe (reset, export, affichage, concours, debug)
@@ -190,6 +191,10 @@ Idées techniques / produit à reprendre quand on voudra durcir ou enrichir l’
 - Installateur avec mise à jour (suite v0.7 partiellement retirée)
 
 ## Notes de version
+
+### v1.1
+- Overlay : toggle « meilleur chrono / joueur », burger vectoriel, picto chrono, LED un peu plus grosse, ombres douces + micro-animations
+- Scores : filtre par joueur, mode meilleur / joueur, suppression d’un chrono ou de tous les chronos d’un joueur
 
 ### v1.0
 - **Première version stable** de F1 Chronos

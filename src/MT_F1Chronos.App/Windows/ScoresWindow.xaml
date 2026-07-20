@@ -8,7 +8,7 @@
         Background="Transparent"
         Topmost="True"
         Width="400"
-        Height="520"
+        Height="580"
         ShowInTaskbar="False">
     <Border CornerRadius="8"
             BorderThickness="1"
@@ -75,6 +75,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -91,7 +92,7 @@
                                Foreground="White"/>
                 </Grid>
 
-                <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                <StackPanel Grid.Row="1" Margin="0,0,0,10">
                     <TextBlock Text="Source"
                                FontFamily="Segoe UI"
                                FontSize="11"
@@ -210,7 +211,44 @@
                     </ComboBox>
                 </StackPanel>
 
-                <Grid Grid.Row="2" Margin="0,0,0,12">
+                <Grid Grid.Row="2" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Joueur"
+                                   FontFamily="Segoe UI"
+                                   FontSize="11"
+                                   Foreground="#FFC5CAD3"
+                                   Margin="0,0,0,4"/>
+                        <ComboBox x:Name="PlayerCombo"
+                                  FontFamily="Segoe UI"
+                                  FontSize="13"
+                                  Height="34"
+                                  Padding="8,4"
+                                  Background="#FF161B22"
+                                  Foreground="White"
+                                  BorderBrush="#33FFFFFF"
+                                  SelectionChanged="OnPlayerFilterChanged"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
+                        <TextBlock Text="Meilleur / joueur"
+                                   FontFamily="Segoe UI"
+                                   FontSize="11"
+                                   Foreground="#FFC5CAD3"
+                                   Margin="0,0,0,4"
+                                   HorizontalAlignment="Center"/>
+                        <Button x:Name="BestPerPlayerButton"
+                                      Content="Tous"
+                                      Width="88"
+                                      Height="34"
+                                      FontSize="12"
+                                      Click="OnBestPerPlayerClick"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="3" Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -251,11 +289,11 @@
                             Click="OnNextTrackClick"/>
                 </Grid>
 
-                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="ScoresPanel"/>
                 </ScrollViewer>
 
-                <Button Grid.Row="4"
+                <Button Grid.Row="5"
                         Content="Fermer"
                         Width="90"
                         Height="32"

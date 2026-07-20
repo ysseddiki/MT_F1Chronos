@@ -28,6 +28,9 @@ public sealed class AppSettings
 
     /// <summary>When true, hide the global TOP while the contest panel is shown.</summary>
     public bool HideGlobalWhenContest { get; set; }
+
+    /// <summary>When true, overlay (and default scores filter) show only each player's best lap.</summary>
+    public bool BestPerPlayer { get; set; }
 }
 
 /// <summary>How global / contest leaderboards appear on the overlay.</summary>

@@ -245,8 +245,12 @@ public sealed class ContestStore : IDisposable
         }
     }
 
-    public IReadOnlyList<LeaderboardRow> GetLeaderboard(string contestId, int trackId, int count = LeaderboardSizes.Default) =>
-        RankedLaps(contestId, trackId).Take(LeaderboardSizes.Normalize(count)).ToList();
+    public IReadOnlyList<LeaderboardRow> GetLeaderboard(
+        string contestId,
+        int trackId,
+        int count = LeaderboardSizes.Default,
+        bool bestPerPlayer = false) =>
+        RankedLaps(contestId, trackId, bestPerPlayer).Take(LeaderboardSizes.Normalize(count)).ToList();
 
     public IReadOnlyList<TrackSummary> GetTracksWithScores(string contestId)
     {
@@ -277,8 +281,86 @@ public sealed class ContestStore : IDisposable
         }
     }
 
-    public IReadOnlyList<LeaderboardRow> GetScoresForTrack(string contestId, int trackId) =>
-        RankedLaps(contestId, trackId).ToList();
+    public IReadOnlyList<LeaderboardRow> GetScoresForTrack(
+        string contestId,
+        int trackId,
+        bool bestPerPlayer = false,
+        string? playerName = null) =>
+        RankedLaps(contestId, trackId, bestPerPlayer, playerName).ToList();
+
+    public IReadOnlyList<string> GetPlayerNamesForTrack(string contestId, int trackId)
+    {
+        lock (_gate)
+        {
+            if (!_scores.TryGetValue(contestId, out var board) ||
+                !board.TryGetValue(trackId, out var list))
+                return [];
+
+            return list
+                .Where(s => s.BestLapMs is > 0 && !string.IsNullOrWhiteSpace(s.Name))
+                .Select(s => s.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+    }
+
+    public bool DeleteEntry(string contestId, string entryId)
+    {
+        if (string.IsNullOrWhiteSpace(contestId) || string.IsNullOrWhiteSpace(entryId))
+            return false;
+
+        int? dirtyTrack = null;
+        lock (_gate)
+        {
+            if (!_scores.TryGetValue(contestId, out var board))
+                return false;
+
+            foreach (var (trackId, list) in board)
+            {
+                var removed = list.RemoveAll(s => string.Equals(s.Id, entryId, StringComparison.Ordinal));
+                if (removed > 0)
+                {
+                    dirtyTrack = trackId;
+                    break;
+                }
+            }
+        }
+
+        if (dirtyTrack is null)
+            return false;
+
+        _dirty.Add((contestId, dirtyTrack.Value));
+        ScheduleSave();
+        FlushDirty();
+        return true;
+    }
+
+    public int DeletePlayerOnTrack(string contestId, string playerName, int trackId)
+    {
+        if (string.IsNullOrWhiteSpace(contestId) || string.IsNullOrWhiteSpace(playerName) || trackId < 0)
+            return 0;
+
+        int removed;
+        lock (_gate)
+        {
+            if (!_scores.TryGetValue(contestId, out var board) ||
+                !board.TryGetValue(trackId, out var list))
+                return 0;
+
+            removed = list.RemoveAll(s =>
+                string.Equals(s.Name, playerName.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (removed > 0)
+        {
+            _dirty.Add((contestId, trackId));
+            ScheduleSave();
+            FlushDirty();
+        }
+
+        return removed;
+    }
 
     public IReadOnlyList<ChronoEntry> GetAllScoredEntries(string contestId)
     {
@@ -319,7 +401,11 @@ public sealed class ContestStore : IDisposable
         _saveTimer.Dispose();
     }
 
-    private IEnumerable<LeaderboardRow> RankedLaps(string contestId, int trackId)
+    private IEnumerable<LeaderboardRow> RankedLaps(
+        string contestId,
+        int trackId,
+        bool bestPerPlayer = false,
+        string? playerName = null)
     {
         List<ChronoEntry> snapshot;
         lock (_gate)
@@ -332,17 +418,7 @@ public sealed class ContestStore : IDisposable
             snapshot = list.ToList();
         }
 
-        return snapshot
-            .Where(s => s.BestLapMs is > 0)
-            .OrderBy(s => s.BestLapMs)
-            .ThenBy(s => s.StartedAt)
-            .Select((s, i) => new LeaderboardRow
-            {
-                Rank = i + 1,
-                Name = s.Name,
-                BestLapMs = s.BestLapMs!.Value,
-                FormattedTime = LapTimeFormatter.Format(s.BestLapMs.Value),
-            });
+        return LeaderboardQuery.ToRows(LeaderboardQuery.Filter(snapshot, bestPerPlayer, playerName));
     }
 
     private void ScheduleSave()
@@ -476,6 +552,19 @@ public sealed class ContestStore : IDisposable
     private sealed class ContestScoreBoardView(ContestStore store, string contestId) : IScoreBoardView
     {
         public IReadOnlyList<TrackSummary> GetTracksWithScores() => store.GetTracksWithScores(contestId);
-        public IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId) => store.GetScoresForTrack(contestId, trackId);
+
+        public IReadOnlyList<LeaderboardRow> GetScoresForTrack(
+            int trackId,
+            bool bestPerPlayer = false,
+            string? playerName = null) =>
+            store.GetScoresForTrack(contestId, trackId, bestPerPlayer, playerName);
+
+        public IReadOnlyList<string> GetPlayerNamesForTrack(int trackId) =>
+            store.GetPlayerNamesForTrack(contestId, trackId);
+
+        public bool DeleteEntry(string entryId) => store.DeleteEntry(contestId, entryId);
+
+        public int DeletePlayerOnTrack(string playerName, int trackId) =>
+            store.DeletePlayerOnTrack(contestId, playerName, trackId);
     }
 }
