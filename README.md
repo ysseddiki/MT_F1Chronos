@@ -2,7 +2,7 @@
 
 Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local par circuit, tour en cours live, export des scores.
 
-![Overlay preview](docs/overlay-preview-v0.9.1.jpg)
+![Overlay preview](docs/overlay-preview-v1.0.jpg)
 
 ## Fonctionnalités
 
