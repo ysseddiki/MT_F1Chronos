@@ -25,12 +25,15 @@ public sealed class ContestIndex
     public List<Contest> Contests { get; set; } = [];
 }
 
-/// <summary>Minimal score-board view used by ScoresWindow for global or contest data.</summary>
+/// <summary>Minimal score-board view used by ScoresWindow / ManageScoresWindow.</summary>
 public interface IScoreBoardView
 {
+    string BoardLabel { get; }
     IReadOnlyList<TrackSummary> GetTracksWithScores();
     IReadOnlyList<LeaderboardRow> GetScoresForTrack(int trackId, bool bestPerPlayer = false, string? playerName = null);
     IReadOnlyList<string> GetPlayerNamesForTrack(int trackId);
     bool DeleteEntry(string entryId);
     int DeletePlayerOnTrack(string playerName, int trackId);
+    int ClearTrack(int trackId);
+    int ClearAll();
 }

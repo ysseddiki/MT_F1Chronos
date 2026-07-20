@@ -30,6 +30,7 @@ public partial class AdminWindow : Window
         InitializeComponent();
         SyncDisplayButtons();
         RefreshContestList();
+        RefreshExportSelectors();
     }
 
     private void SyncDisplayButtons()
@@ -60,6 +61,71 @@ public partial class AdminWindow : Window
             ContestListPanel.Children.Add(CreateContestCard(contest));
 
         SyncDisplayButtons();
+        RefreshExportSelectors();
+    }
+
+    private void RefreshExportSelectors()
+    {
+        var previousSource = (ExportSourceCombo.SelectedItem as ExportSourceOption)?.ContestId;
+        var previousTrack = (ExportTrackCombo.SelectedItem as ExportTrackOption)?.TrackId;
+
+        ExportSourceCombo.SelectionChanged -= OnExportSourceChanged;
+        ExportSourceCombo.Items.Clear();
+        ExportSourceCombo.Items.Add(new ExportSourceOption(null, "Global"));
+        foreach (var contest in _controller.ListContests())
+            ExportSourceCombo.Items.Add(new ExportSourceOption(contest.Id, $"Concours — {contest.Name}"));
+
+        ExportSourceCombo.DisplayMemberPath = nameof(ExportSourceOption.Label);
+        var sourceIndex = 0;
+        for (var i = 0; i < ExportSourceCombo.Items.Count; i++)
+        {
+            if (ExportSourceCombo.Items[i] is ExportSourceOption opt &&
+                string.Equals(opt.ContestId, previousSource, StringComparison.Ordinal))
+            {
+                sourceIndex = i;
+                break;
+            }
+        }
+
+        ExportSourceCombo.SelectedIndex = sourceIndex;
+        ExportSourceCombo.SelectionChanged += OnExportSourceChanged;
+        RefreshExportTracks(previousTrack);
+    }
+
+    private void RefreshExportTracks(int? preferredTrackId = null)
+    {
+        var source = ExportSourceCombo.SelectedItem as ExportSourceOption;
+        var tracks = _controller.ListExportTracks(source?.ContestId);
+
+        ExportTrackCombo.Items.Clear();
+        ExportTrackCombo.Items.Add(new ExportTrackOption(null, "Tous les circuits"));
+        foreach (var track in tracks)
+            ExportTrackCombo.Items.Add(new ExportTrackOption(track.TrackId, track.TrackName));
+
+        ExportTrackCombo.DisplayMemberPath = nameof(ExportTrackOption.Label);
+        var index = 0;
+        if (preferredTrackId.HasValue)
+        {
+            for (var i = 0; i < ExportTrackCombo.Items.Count; i++)
+            {
+                if (ExportTrackCombo.Items[i] is ExportTrackOption opt &&
+                    opt.TrackId == preferredTrackId.Value)
+                {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        ExportTrackCombo.SelectedIndex = index;
+    }
+
+    private void OnExportSourceChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded)
+            return;
+
+        RefreshExportTracks();
     }
 
     private UIElement CreateContestCard(Contest contest)
@@ -194,10 +260,6 @@ public partial class AdminWindow : Window
             BorderBrush = DefaultBorder,
         };
 
-        menu.Items.Add(MakeMenuItem("Exporter CSV", () => _controller.ExportContestScores(contest.Id, "csv")));
-        menu.Items.Add(MakeMenuItem("Exporter JSON", () => _controller.ExportContestScores(contest.Id, "json")));
-        menu.Items.Add(MakeMenuItem("Exporter HTML", () => _controller.ExportContestScores(contest.Id, "html")));
-        menu.Items.Add(new Separator());
         menu.Items.Add(MakeMenuItem("Supprimer…", () =>
         {
             if (_controller.DeleteContest(contest.Id))
@@ -267,12 +329,19 @@ public partial class AdminWindow : Window
     private static SolidColorBrush CreateBrush(string hex) =>
         (SolidColorBrush)new BrushConverter().ConvertFromString(hex)!;
 
-    private void OnResetCurrentTrackClick(object sender, RoutedEventArgs e) => _controller.ResetCurrentTrackScores();
-    private void OnResetAllClick(object sender, RoutedEventArgs e) => _controller.ResetAllScores();
     private void OnManageScoresClick(object sender, RoutedEventArgs e) => _controller.ShowManageScores();
-    private void OnExportCsvClick(object sender, RoutedEventArgs e) => _controller.ExportScores("csv");
-    private void OnExportJsonClick(object sender, RoutedEventArgs e) => _controller.ExportScores("json");
-    private void OnExportHtmlClick(object sender, RoutedEventArgs e) => _controller.ExportScores("html");
+
+    private void OnExportCsvClick(object sender, RoutedEventArgs e) => RunExport("csv");
+    private void OnExportJsonClick(object sender, RoutedEventArgs e) => RunExport("json");
+    private void OnExportHtmlClick(object sender, RoutedEventArgs e) => RunExport("html");
+
+    private void RunExport(string format)
+    {
+        var source = ExportSourceCombo.SelectedItem as ExportSourceOption;
+        var track = ExportTrackCombo.SelectedItem as ExportTrackOption;
+        _controller.ExportScores(format, source?.ContestId, track?.TrackId);
+    }
+
     private void OnDebugClick(object sender, RoutedEventArgs e) => _controller.ShowDebugWindow();
 
     private void OnModeGlobalAndContestClick(object sender, RoutedEventArgs e)
@@ -357,4 +426,7 @@ public partial class AdminWindow : Window
 
         DragMove();
     }
+
+    private sealed record ExportSourceOption(string? ContestId, string Label);
+    private sealed record ExportTrackOption(int? TrackId, string Label);
 }

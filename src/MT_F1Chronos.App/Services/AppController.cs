@@ -222,21 +222,18 @@ public sealed class AppController : IDisposable
 
     public void NotifyScoresChanged() => RefreshOverlay();
 
-    /// <summary>Scores view with delete actions — only reachable from admin (already password-gated).</summary>
+    /// <summary>Dedicated score management UI — only reachable from admin (password-gated).</summary>
     public void ShowManageScores()
     {
         if (_overlay is null)
             return;
 
         var currentTrackId = _listener.State.TrackId;
-        var window = new ScoresWindow(
+        var window = new ManageScoresWindow(
             _store,
             _contests,
-            currentTrackId >= 0 ? currentTrackId : null,
-            initialContestId: null,
-            bestPerPlayer: _settings.BestPerPlayer,
-            controller: this,
-            allowDelete: true)
+            this,
+            currentTrackId >= 0 ? currentTrackId : null)
         {
             Owner = _overlay,
         };
@@ -364,23 +361,55 @@ public sealed class AppController : IDisposable
         RefreshOverlay();
     }
 
-    public void ExportScores(string format) => ExportEntries(_store.GetAllScoredEntries(), format, "scores");
-
-    public void ExportContestScores(string contestId, string format)
+    public void ExportScores(string format, string? contestId = null, int? trackId = null)
     {
-        var contest = _contests.Get(contestId);
-        if (contest is null)
+        IReadOnlyList<ChronoEntry> entries;
+        string filePrefix;
+
+        if (!string.IsNullOrWhiteSpace(contestId))
         {
-            if (_overlay is not null)
-                MessageBox.Show(_overlay, "Concours introuvable.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            var contest = _contests.Get(contestId);
+            if (contest is null)
+            {
+                if (_overlay is not null)
+                    MessageBox.Show(_overlay, "Concours introuvable.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var safeName = string.Concat(contest.Name.Where(ch => !Path.GetInvalidFileNameChars().Contains(ch)));
+            if (string.IsNullOrWhiteSpace(safeName))
+                safeName = "contest";
+
+            entries = _contests.GetAllScoredEntries(contestId);
+            filePrefix = $"contest-{safeName}";
+        }
+        else
+        {
+            entries = _store.GetAllScoredEntries();
+            filePrefix = "scores";
         }
 
-        var safeName = string.Concat(contest.Name.Where(ch => !Path.GetInvalidFileNameChars().Contains(ch)));
-        if (string.IsNullOrWhiteSpace(safeName))
-            safeName = "contest";
+        if (trackId is >= 0)
+        {
+            entries = entries.Where(e => e.TrackId == trackId.Value).ToList();
+            var trackName = entries.FirstOrDefault()?.TrackName
+                            ?? _store.GetTracksWithScores().FirstOrDefault(t => t.TrackId == trackId.Value)?.TrackName
+                            ?? $"track-{trackId.Value}";
+            var safeTrack = string.Concat(trackName.Where(ch => !Path.GetInvalidFileNameChars().Contains(ch)));
+            if (string.IsNullOrWhiteSpace(safeTrack))
+                safeTrack = $"track-{trackId.Value}";
+            filePrefix += $"-{safeTrack}";
+        }
 
-        ExportEntries(_contests.GetAllScoredEntries(contestId), format, $"contest-{safeName}");
+        ExportEntries(entries, format, filePrefix);
+    }
+
+    public IReadOnlyList<TrackSummary> ListExportTracks(string? contestId)
+    {
+        if (!string.IsNullOrWhiteSpace(contestId))
+            return _contests.GetTracksWithScores(contestId);
+
+        return _store.GetTracksWithScores();
     }
 
     private void ExportEntries(IReadOnlyList<ChronoEntry> entries, string format, string filePrefix)

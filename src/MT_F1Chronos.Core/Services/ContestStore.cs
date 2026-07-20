@@ -362,6 +362,60 @@ public sealed class ContestStore : IDisposable
         return removed;
     }
 
+    public int ClearScoresForTrack(string contestId, int trackId)
+    {
+        if (string.IsNullOrWhiteSpace(contestId) || trackId < 0)
+            return 0;
+
+        int removed;
+        lock (_gate)
+        {
+            if (!_scores.TryGetValue(contestId, out var board) ||
+                !board.TryGetValue(trackId, out var list))
+                return 0;
+
+            removed = list.Count;
+            board.Remove(trackId);
+        }
+
+        if (removed > 0)
+        {
+            _dirty.Add((contestId, trackId));
+            ScheduleSave();
+            FlushDirty();
+        }
+
+        return removed;
+    }
+
+    public int ClearAllScores(string contestId)
+    {
+        if (string.IsNullOrWhiteSpace(contestId))
+            return 0;
+
+        int removed;
+        List<int> trackIds;
+        lock (_gate)
+        {
+            if (!_scores.TryGetValue(contestId, out var board))
+                return 0;
+
+            removed = board.Values.Sum(list => list.Count);
+            trackIds = board.Keys.ToList();
+            board.Clear();
+            foreach (var trackId in trackIds)
+                _dirty.Add((contestId, trackId));
+        }
+
+        if (removed > 0)
+        {
+            ScheduleSave();
+            FlushDirty();
+        }
+
+        return removed;
+    }
+
     public IReadOnlyList<ChronoEntry> GetAllScoredEntries(string contestId)
     {
         lock (_gate)
@@ -551,6 +605,11 @@ public sealed class ContestStore : IDisposable
 
     private sealed class ContestScoreBoardView(ContestStore store, string contestId) : IScoreBoardView
     {
+        public string BoardLabel =>
+            store.Get(contestId) is { Name: { Length: > 0 } name }
+                ? $"Concours — {name}"
+                : "Concours";
+
         public IReadOnlyList<TrackSummary> GetTracksWithScores() => store.GetTracksWithScores(contestId);
 
         public IReadOnlyList<LeaderboardRow> GetScoresForTrack(
@@ -566,5 +625,9 @@ public sealed class ContestStore : IDisposable
 
         public int DeletePlayerOnTrack(string playerName, int trackId) =>
             store.DeletePlayerOnTrack(contestId, playerName, trackId);
+
+        public int ClearTrack(int trackId) => store.ClearScoresForTrack(contestId, trackId);
+
+        public int ClearAll() => store.ClearAllScores(contestId);
     }
 }

@@ -13,7 +13,7 @@ Overlay PC pour **EA Sports F1 25/26** (UDP **2025/2026**) : classement local pa
 - Mode **meilleur chrono par joueur** (toggle overlay + Scores)
 - Mise en évidence du **joueur courant** dans le classement (fond rouge)
 - **Tour en cours** synchronisé via télémétrie UDP (format `00:00.000`)
-- **Scores par circuit** : filtre joueur, mode meilleur / joueur (suppression réservée à l’admin)
+- **Scores par circuit** : filtre joueur, mode meilleur / joueur (gestion/suppression via admin)
 - **Export** CSV / JSON / HTML
 - Position mémorisée après déplacement
 - **Fenêtre d’administration** protégée par mot de passe (reset, export, affichage, concours, debug)
@@ -95,8 +95,8 @@ Menu ☰ → **Administration** (mot de passe requis) :
 
 | Section | Contenu |
 |---|---|
-| Scores globaux | Reset circuit / tous ; gérer / supprimer des chronos |
-| Exportation | CSV / JSON / HTML du classement **global** |
+| Scores | **Gérer les chronos** (suppression ciblée, circuit, concours, reset) |
+| Exportation | Source (Global / concours) + circuit (tous / un) · CSV / JSON / HTML |
 | Affichage overlay | TOP 3 / 5 / 10 **global** (largeur auto) |
 | Concours | Contenu overlay (Global+Concours / Concours seul / Global seul), TOP 3/5/10, créer / gérer |
 | Diagnostic | Debug UDP |
@@ -194,7 +194,7 @@ Idées techniques / produit à reprendre quand on voudra durcir ou enrichir l’
 
 ### v1.1
 - Overlay : toggle « meilleur chrono / joueur », burger vectoriel, picto chrono, LED un peu plus grosse, ombres douces + micro-animations
-- Scores : filtre par joueur, mode meilleur / joueur ; suppression de chronos via **Administration** (mot de passe)
+- Scores : filtre par joueur, mode meilleur / joueur ; gestion/suppression centralisée dans **Administration → Gérer les chronos**
 
 ### v1.0
 - **Première version stable** de F1 Chronos

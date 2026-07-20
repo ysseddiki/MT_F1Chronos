@@ -8,6 +8,8 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
 {
     public const int MaxEntriesPerTrack = 5_000;
 
+    public string BoardLabel => "Global";
+
     private static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(2);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -286,6 +288,10 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
                 .ToList();
         }
     }
+
+    public int ClearTrack(int trackId) => ClearScoresForTrack(trackId);
+
+    public int ClearAll() => ClearAllScores();
 
     public int ClearScoresForTrack(int trackId)
     {

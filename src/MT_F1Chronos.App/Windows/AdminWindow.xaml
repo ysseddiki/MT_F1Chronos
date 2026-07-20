@@ -99,19 +99,13 @@
                     </Grid>
 
                     <!-- Scores -->
-                    <TextBlock Text="SCORES GLOBAUX"
+                    <TextBlock Text="SCORES"
                                FontFamily="Segoe UI"
                                FontSize="11"
                                FontWeight="Bold"
                                Foreground="#FFE10600"
                                Margin="0,0,0,8"/>
-                    <Button Content="Réinitialiser le circuit affiché…"
-                            Click="OnResetCurrentTrackClick"/>
-                    <Button Content="Réinitialiser tous les scores…"
-                            Click="OnResetAllClick"
-                            Foreground="#FFFF8A80"
-                            BorderBrush="#66E10600"/>
-                    <Button Content="Gérer / supprimer des chronos…"
+                    <Button Content="Gérer les chronos…"
                             Click="OnManageScoresClick"
                             Foreground="#FFFF8A80"
                             BorderBrush="#66E10600"/>
@@ -125,6 +119,35 @@
                                FontWeight="Bold"
                                Foreground="#FFE10600"
                                Margin="0,0,0,8"/>
+                    <TextBlock Text="Source"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <ComboBox x:Name="ExportSourceCombo"
+                              FontFamily="Segoe UI"
+                              FontSize="13"
+                              Height="34"
+                              Margin="0,0,0,8"
+                              Padding="8,4"
+                              Background="#FF161B22"
+                              Foreground="White"
+                              BorderBrush="#33FFFFFF"
+                              SelectionChanged="OnExportSourceChanged"/>
+                    <TextBlock Text="Circuit"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <ComboBox x:Name="ExportTrackCombo"
+                              FontFamily="Segoe UI"
+                              FontSize="13"
+                              Height="34"
+                              Margin="0,0,0,8"
+                              Padding="8,4"
+                              Background="#FF161B22"
+                              Foreground="White"
+                              BorderBrush="#33FFFFFF"/>
                     <Grid Margin="0,0,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
