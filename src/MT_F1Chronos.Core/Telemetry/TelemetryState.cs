@@ -1,5 +1,9 @@
 namespace MT_F1Chronos.Core.Telemetry;
 
+/// <summary>
+/// Mutable working state for the UDP parser. Publish only via <see cref="Clone"/> —
+/// UI and consumers must never mutate a published snapshot.
+/// </summary>
 public sealed class TelemetryState
 {
     public bool IsReceiving { get; set; }
@@ -46,6 +50,32 @@ public sealed class TelemetryState
         DriverStatus = 0;
         CurrentLapInvalid = 0;
     }
+
+    /// <summary>Deep-enough copy for safe cross-thread publication.</summary>
+    public TelemetryState Clone() => new()
+    {
+        IsReceiving = IsReceiving,
+        LastPacketUtc = LastPacketUtc,
+        SessionUid = SessionUid,
+        TrackId = TrackId,
+        RawTrackId = RawTrackId,
+        TrackLengthMeters = TrackLengthMeters,
+        SessionType = SessionType,
+        GameMode = GameMode,
+        PlayerCarIndex = PlayerCarIndex,
+        ResolvedCarIndex = ResolvedCarIndex,
+        DriverStatus = DriverStatus,
+        CurrentLapInvalid = CurrentLapInvalid,
+        PacketFormat = PacketFormat,
+        ConfiguredFormat = ConfiguredFormat,
+        LastPacketId = LastPacketId,
+        SessionBestLapMs = SessionBestLapMs,
+        PersonalBestLapMs = PersonalBestLapMs,
+        CurrentLastLapMs = CurrentLastLapMs,
+        CurrentLapTimeMs = CurrentLapTimeMs,
+        LastEventCode = LastEventCode,
+        TimeTrialSessionType = TimeTrialSessionType,
+    };
 }
 
 public sealed class TelemetryUpdate

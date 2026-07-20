@@ -117,7 +117,7 @@ public sealed class F1UdpPacketParser
 
         update = new TelemetryUpdate
         {
-            State = state,
+            State = state.Clone(),
             SessionStarted = sessionStarted,
             SessionEnded = sessionEnded,
             TrackChanged = trackChanged,

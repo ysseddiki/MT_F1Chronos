@@ -275,7 +275,7 @@ public static class ScoreExporter
     // A field starting with = + - @ (or a tab/CR) is treated as a formula by
     // spreadsheet apps, so a crafted player name could run on open. Prefix such
     // values with an apostrophe to force them to be read as plain text.
-    private static string NeutralizeFormula(string value)
+    public static string NeutralizeFormula(string value)
     {
         if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
             return "'" + value;

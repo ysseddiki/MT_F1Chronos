@@ -17,10 +17,9 @@ public sealed class ContestStore : IDisposable
     private readonly string _contestsDirectory;
     private readonly string _indexPath;
     private readonly List<Contest> _contests = [];
-    private readonly Dictionary<string, Dictionary<int, List<ChronoEntry>>> _scores = new(StringComparer.Ordinal);
-    private readonly HashSet<(string ContestId, int TrackId)> _dirty = [];
+    private readonly Dictionary<string, TrackScoreBoard> _boards = new(StringComparer.Ordinal);
     private readonly object _gate = new();
-    private readonly Timer _saveTimer;
+    private readonly DeferredFlush _flush;
     private bool _indexDirty;
     private bool _disposed;
 
@@ -31,7 +30,7 @@ public sealed class ContestStore : IDisposable
             "MT_F1Chronos");
         _contestsDirectory = Path.Combine(root, "contests");
         _indexPath = Path.Combine(_contestsDirectory, "index.json");
-        _saveTimer = new Timer(_ => FlushDirty(), null, Timeout.Infinite, Timeout.Infinite);
+        _flush = new DeferredFlush(SaveDelay, FlushDirty);
     }
 
     public void Load()
@@ -41,8 +40,9 @@ public sealed class ContestStore : IDisposable
         lock (_gate)
         {
             _contests.Clear();
-            _scores.Clear();
-            _dirty.Clear();
+            foreach (var board in _boards.Values)
+                board.BecameDirty -= OnBoardBecameDirty;
+            _boards.Clear();
             _indexDirty = false;
 
             if (File.Exists(_indexPath))
@@ -62,22 +62,10 @@ public sealed class ContestStore : IDisposable
 
             foreach (var contest in _contests)
             {
-                var board = new Dictionary<int, List<ChronoEntry>>();
-                var dir = ContestDirectory(contest.Id);
-                if (Directory.Exists(dir))
-                {
-                    foreach (var path in Directory.EnumerateFiles(dir, "track-*.json"))
-                    {
-                        if (!TryParseTrackId(path, out var trackId))
-                            continue;
-
-                        var entries = CapEntries(ReadTrackFile(path));
-                        if (entries.Count > 0)
-                            board[trackId] = entries;
-                    }
-                }
-
-                _scores[contest.Id] = board;
+                var board = new TrackScoreBoard();
+                board.BecameDirty += OnBoardBecameDirty;
+                board.LoadFromDirectory(ContestDirectory(contest.Id));
+                _boards[contest.Id] = board;
             }
         }
     }
@@ -113,10 +101,12 @@ public sealed class ContestStore : IDisposable
         lock (_gate)
         {
             _contests.Add(contest);
-            _scores[contest.Id] = new Dictionary<int, List<ChronoEntry>>();
+            var board = new TrackScoreBoard();
+            board.BecameDirty += OnBoardBecameDirty;
+            _boards[contest.Id] = board;
             Directory.CreateDirectory(ContestDirectory(contest.Id));
             _indexDirty = true;
-            ScheduleSave();
+            _flush.Schedule();
         }
 
         FlushDirty();
@@ -138,7 +128,7 @@ public sealed class ContestStore : IDisposable
             contest.StartedAt ??= DateTime.UtcNow;
             contest.StoppedAt = null;
             _indexDirty = true;
-            ScheduleSave();
+            _flush.Schedule();
         }
 
         FlushDirty();
@@ -159,7 +149,7 @@ public sealed class ContestStore : IDisposable
             contest.Status = ContestStatus.Stopped;
             contest.StoppedAt = DateTime.UtcNow;
             _indexDirty = true;
-            ScheduleSave();
+            _flush.Schedule();
         }
 
         FlushDirty();
@@ -168,16 +158,19 @@ public sealed class ContestStore : IDisposable
 
     public bool Delete(string contestId)
     {
+        TrackScoreBoard? board;
         lock (_gate)
         {
             var removed = _contests.RemoveAll(c => c.Id == contestId);
             if (removed == 0)
                 return false;
 
-            _scores.Remove(contestId);
-            _dirty.RemoveWhere(d => d.ContestId == contestId);
+            _boards.Remove(contestId, out board);
             _indexDirty = true;
         }
+
+        if (board is not null)
+            board.BecameDirty -= OnBoardBecameDirty;
 
         FlushDirty();
 
@@ -195,54 +188,25 @@ public sealed class ContestStore : IDisposable
         return true;
     }
 
-    /// <summary>Writes the lap into every Active contest that accepts the track.</summary>
     public void RecordCompletedLap(string playerName, int trackId, string trackName, uint lapMs)
     {
         if (string.IsNullOrWhiteSpace(playerName) || trackId < 0 || lapMs == 0)
             return;
 
+        List<TrackScoreBoard> targets;
         lock (_gate)
         {
-            foreach (var contest in _contests.Where(c => c.Status == ContestStatus.Active))
-            {
-                if (contest.TrackFilter is int filter && filter != trackId)
-                    continue;
-
-                if (!_scores.TryGetValue(contest.Id, out var board))
-                {
-                    board = new Dictionary<int, List<ChronoEntry>>();
-                    _scores[contest.Id] = board;
-                }
-
-                if (!board.TryGetValue(trackId, out var list))
-                {
-                    list = [];
-                    board[trackId] = list;
-                }
-
-                list.Add(new ChronoEntry
-                {
-                    Name = playerName.Trim(),
-                    TrackId = trackId,
-                    TrackName = trackName,
-                    BestLapMs = lapMs,
-                    StartedAt = DateTime.UtcNow,
-                    EndedAt = DateTime.UtcNow,
-                });
-
-                if (list.Count > SessionStore.MaxEntriesPerTrack)
-                {
-                    var capped = CapEntries(list);
-                    list.Clear();
-                    list.AddRange(capped);
-                }
-
-                _dirty.Add((contest.Id, trackId));
-            }
-
-            if (_dirty.Count > 0)
-                ScheduleSave();
+            targets = _contests
+                .Where(c => c.Status == ContestStatus.Active)
+                .Where(c => c.TrackFilter is not int filter || filter == trackId)
+                .Select(c => _boards.TryGetValue(c.Id, out var board) ? board : null)
+                .Where(b => b is not null)
+                .Select(b => b!)
+                .ToList();
         }
+
+        foreach (var board in targets)
+            board.Record(playerName, trackId, trackName, lapMs);
     }
 
     public IReadOnlyList<LeaderboardRow> GetLeaderboard(
@@ -250,198 +214,74 @@ public sealed class ContestStore : IDisposable
         int trackId,
         int count = LeaderboardSizes.Default,
         bool bestPerPlayer = false) =>
-        RankedLaps(contestId, trackId, bestPerPlayer).Take(LeaderboardSizes.Normalize(count)).ToList();
+        GetBoard(contestId)?.GetLeaderboard(trackId, count, bestPerPlayer) ?? [];
 
-    public IReadOnlyList<TrackSummary> GetTracksWithScores(string contestId)
-    {
-        lock (_gate)
-        {
-            if (!_scores.TryGetValue(contestId, out var board))
-                return [];
-
-            return board
-                .Select(kv =>
-                {
-                    var scored = kv.Value.Where(s => s.BestLapMs is > 0).ToList();
-                    if (scored.Count == 0)
-                        return null;
-
-                    var latest = scored.OrderByDescending(s => s.StartedAt).First();
-                    return new TrackSummary
-                    {
-                        TrackId = kv.Key,
-                        TrackName = latest.TrackName,
-                        ScoreCount = scored.Count,
-                    };
-                })
-                .Where(t => t is not null)
-                .Select(t => t!)
-                .OrderBy(t => t.TrackName, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-    }
+    public IReadOnlyList<TrackSummary> GetTracksWithScores(string contestId) =>
+        GetBoard(contestId)?.GetTracksWithScores() ?? [];
 
     public IReadOnlyList<LeaderboardRow> GetScoresForTrack(
         string contestId,
         int trackId,
         bool bestPerPlayer = false,
         string? playerName = null) =>
-        RankedLaps(contestId, trackId, bestPerPlayer, playerName).ToList();
+        GetBoard(contestId)?.GetScoresForTrack(trackId, bestPerPlayer, playerName) ?? [];
 
-    public IReadOnlyList<string> GetPlayerNamesForTrack(string contestId, int trackId)
-    {
-        lock (_gate)
-        {
-            if (!_scores.TryGetValue(contestId, out var board) ||
-                !board.TryGetValue(trackId, out var list))
-                return [];
-
-            return list
-                .Where(s => s.BestLapMs is > 0 && !string.IsNullOrWhiteSpace(s.Name))
-                .Select(s => s.Name)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-    }
+    public IReadOnlyList<string> GetPlayerNamesForTrack(string contestId, int trackId) =>
+        GetBoard(contestId)?.GetPlayerNamesForTrack(trackId) ?? [];
 
     public bool DeleteEntry(string contestId, string entryId)
     {
-        if (string.IsNullOrWhiteSpace(contestId) || string.IsNullOrWhiteSpace(entryId))
+        var board = GetBoard(contestId);
+        if (board is null || !board.DeleteEntry(entryId))
             return false;
 
-        int? dirtyTrack = null;
-        lock (_gate)
-        {
-            if (!_scores.TryGetValue(contestId, out var board))
-                return false;
-
-            foreach (var (trackId, list) in board)
-            {
-                var removed = list.RemoveAll(s => string.Equals(s.Id, entryId, StringComparison.Ordinal));
-                if (removed > 0)
-                {
-                    dirtyTrack = trackId;
-                    break;
-                }
-            }
-        }
-
-        if (dirtyTrack is null)
-            return false;
-
-        _dirty.Add((contestId, dirtyTrack.Value));
-        ScheduleSave();
         FlushDirty();
         return true;
     }
 
     public int DeletePlayerOnTrack(string contestId, string playerName, int trackId)
     {
-        if (string.IsNullOrWhiteSpace(contestId) || string.IsNullOrWhiteSpace(playerName) || trackId < 0)
+        var board = GetBoard(contestId);
+        if (board is null)
             return 0;
 
-        int removed;
-        lock (_gate)
-        {
-            if (!_scores.TryGetValue(contestId, out var board) ||
-                !board.TryGetValue(trackId, out var list))
-                return 0;
-
-            removed = list.RemoveAll(s =>
-                string.Equals(s.Name, playerName.Trim(), StringComparison.OrdinalIgnoreCase));
-        }
-
+        var removed = board.DeletePlayerOnTrack(playerName, trackId);
         if (removed > 0)
-        {
-            _dirty.Add((contestId, trackId));
-            ScheduleSave();
             FlushDirty();
-        }
-
         return removed;
     }
 
     public int ClearScoresForTrack(string contestId, int trackId)
     {
-        if (string.IsNullOrWhiteSpace(contestId) || trackId < 0)
+        var board = GetBoard(contestId);
+        if (board is null)
             return 0;
 
-        int removed;
-        lock (_gate)
-        {
-            if (!_scores.TryGetValue(contestId, out var board) ||
-                !board.TryGetValue(trackId, out var list))
-                return 0;
-
-            removed = list.Count;
-            board.Remove(trackId);
-        }
-
+        var removed = board.ClearTrack(trackId);
         if (removed > 0)
-        {
-            _dirty.Add((contestId, trackId));
-            ScheduleSave();
             FlushDirty();
-        }
-
         return removed;
     }
 
     public int ClearAllScores(string contestId)
     {
-        if (string.IsNullOrWhiteSpace(contestId))
+        var board = GetBoard(contestId);
+        if (board is null)
             return 0;
 
-        int removed;
-        List<int> trackIds;
-        lock (_gate)
-        {
-            if (!_scores.TryGetValue(contestId, out var board))
-                return 0;
+        var removed = board.ClearAll();
+        if (removed == 0)
+            return 0;
 
-            removed = board.Values.Sum(list => list.Count);
-            trackIds = board.Keys.ToList();
-            board.Clear();
-            foreach (var trackId in trackIds)
-                _dirty.Add((contestId, trackId));
-        }
-
-        if (removed > 0)
-        {
-            ScheduleSave();
-            FlushDirty();
-        }
-
+        FlushDirty();
+        board.DeleteAllTrackFiles(ContestDirectory(contestId));
         return removed;
     }
 
-    public IReadOnlyList<ChronoEntry> GetAllScoredEntries(string contestId)
-    {
-        lock (_gate)
-        {
-            if (!_scores.TryGetValue(contestId, out var board))
-                return [];
+    public IReadOnlyList<ChronoEntry> GetAllScoredEntries(string contestId) =>
+        GetBoard(contestId)?.GetAllScoredEntries() ?? [];
 
-            return board.Values
-                .SelectMany(list => list)
-                .Where(s => s.BestLapMs is > 0)
-                .OrderBy(s => s.TrackName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(s => s.BestLapMs)
-                .ThenBy(s => s.StartedAt)
-                .ToList();
-        }
-    }
-
-    public int EntryCount(string contestId)
-    {
-        lock (_gate)
-        {
-            return _scores.TryGetValue(contestId, out var board)
-                ? board.Values.Sum(list => list.Count(s => s.BestLapMs is > 0))
-                : 0;
-        }
-    }
+    public int EntryCount(string contestId) => GetBoard(contestId)?.EntryCount ?? 0;
 
     public IScoreBoardView AsScoreBoard(string contestId) => new ContestScoreBoardView(this, contestId);
 
@@ -452,79 +292,46 @@ public sealed class ContestStore : IDisposable
 
         _disposed = true;
         FlushDirty();
-        _saveTimer.Dispose();
-    }
 
-    private IEnumerable<LeaderboardRow> RankedLaps(
-        string contestId,
-        int trackId,
-        bool bestPerPlayer = false,
-        string? playerName = null)
-    {
-        List<ChronoEntry> snapshot;
         lock (_gate)
         {
-            if (!_scores.TryGetValue(contestId, out var board) ||
-                !board.TryGetValue(trackId, out var list) ||
-                list.Count == 0)
-                return [];
-
-            snapshot = list.ToList();
+            foreach (var board in _boards.Values)
+                board.BecameDirty -= OnBoardBecameDirty;
         }
 
-        return LeaderboardQuery.ToRows(LeaderboardQuery.Filter(snapshot, bestPerPlayer, playerName));
+        _flush.Dispose();
     }
 
-    private void ScheduleSave()
+    private TrackScoreBoard? GetBoard(string contestId)
     {
-        if (_disposed)
-            return;
-
-        try
-        {
-            _saveTimer.Change(SaveDelay, Timeout.InfiniteTimeSpan);
-        }
-        catch (ObjectDisposedException)
-        {
-            // shutting down
-        }
+        lock (_gate)
+            return _boards.TryGetValue(contestId, out var board) ? board : null;
     }
+
+    private void OnBoardBecameDirty() => _flush.Schedule();
 
     private void FlushDirty()
     {
-        List<(string ContestId, int TrackId)> dirty;
         bool saveIndex;
         List<Contest> contestsSnapshot;
-        Dictionary<(string, int), List<ChronoEntry>> trackSnapshots;
+        List<(string ContestId, TrackScoreBoard Board)> boards;
 
         lock (_gate)
         {
-            if (_dirty.Count == 0 && !_indexDirty)
-                return;
-
-            dirty = _dirty.ToList();
-            _dirty.Clear();
             saveIndex = _indexDirty;
             _indexDirty = false;
             contestsSnapshot = _contests.ToList();
-            _saveTimer.Change(Timeout.Infinite, Timeout.Infinite);
-
-            trackSnapshots = dirty.ToDictionary(
-                d => d,
-                d =>
-                {
-                    if (_scores.TryGetValue(d.ContestId, out var board) &&
-                        board.TryGetValue(d.TrackId, out var list))
-                        return list.ToList();
-                    return [];
-                });
+            boards = _boards.Select(kv => (kv.Key, kv.Value)).ToList();
         }
 
         if (saveIndex)
             PersistIndex(contestsSnapshot);
 
-        foreach (var key in dirty)
-            PersistTrack(key.ContestId, key.TrackId, trackSnapshots[key]);
+        foreach (var (contestId, board) in boards)
+        {
+            if (board.HasDirty)
+                board.PersistDirty(ContestDirectory(contestId));
+        }
     }
 
     private void PersistIndex(List<Contest> contests)
@@ -537,71 +344,8 @@ public sealed class ContestStore : IDisposable
         File.Move(tmp, path, overwrite: true);
     }
 
-    private void PersistTrack(string contestId, int trackId, List<ChronoEntry> entries)
-    {
-        var dir = ContestDirectory(contestId);
-        Directory.CreateDirectory(dir);
-        var path = Path.Combine(dir, $"track-{trackId}.json");
-        var tmp = path + ".tmp";
-
-        if (entries.Count == 0)
-        {
-            try
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
-            }
-            catch { /* best effort */ }
-
-            try
-            {
-                if (File.Exists(tmp))
-                    File.Delete(tmp);
-            }
-            catch { /* best effort */ }
-
-            return;
-        }
-
-        var json = JsonSerializer.Serialize(new ChronoDatabase { Sessions = entries }, JsonOptions);
-        File.WriteAllText(tmp, json);
-        File.Move(tmp, path, overwrite: true);
-    }
-
     private string ContestDirectory(string contestId) =>
         Path.Combine(_contestsDirectory, contestId);
-
-    private static List<ChronoEntry> ReadTrackFile(string path)
-    {
-        try
-        {
-            var json = File.ReadAllText(path);
-            var db = JsonSerializer.Deserialize<ChronoDatabase>(json, JsonOptions);
-            return db?.Sessions ?? [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
-
-    private static bool TryParseTrackId(string path, out int trackId)
-    {
-        trackId = -1;
-        var name = Path.GetFileNameWithoutExtension(path);
-        if (!name.StartsWith("track-", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        return int.TryParse(name.AsSpan("track-".Length), out trackId) && trackId >= 0;
-    }
-
-    private static List<ChronoEntry> CapEntries(IEnumerable<ChronoEntry> entries) =>
-        entries
-            .Where(s => s.BestLapMs is > 0)
-            .OrderBy(s => s.BestLapMs)
-            .ThenBy(s => s.StartedAt)
-            .Take(SessionStore.MaxEntriesPerTrack)
-            .ToList();
 
     private sealed class ContestScoreBoardView(ContestStore store, string contestId) : IScoreBoardView
     {

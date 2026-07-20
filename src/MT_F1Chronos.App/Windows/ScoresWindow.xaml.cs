@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using MT_F1Chronos.App.Services;
+using MT_F1Chronos.App.ViewModels;
 using MT_F1Chronos.Core.Models;
 using MT_F1Chronos.Core.Services;
 
@@ -12,11 +13,10 @@ public partial class ScoresWindow : Window
 {
     private const string AllPlayersLabel = "Tous les joueurs";
 
-    private readonly SessionStore _globalStore;
-    private readonly ContestStore _contests;
+    private readonly BoardSourceViewModel _source;
     private readonly int? _preferredTrackId;
 
-    private IScoreBoardView _board;
+    private IScoreBoardQuery _board;
     private IReadOnlyList<TrackSummary> _tracks = [];
     private int _currentIndex;
     private bool _ready;
@@ -32,11 +32,10 @@ public partial class ScoresWindow : Window
         AppController? controller = null)
     {
         _ = controller;
-        _globalStore = globalStore;
-        _contests = contests;
+        _source = new BoardSourceViewModel(globalStore, contests, initialContestId);
         _preferredTrackId = initialTrackId;
         _bestPerPlayer = bestPerPlayer;
-        _board = globalStore;
+        _board = _source.Query;
 
         InitializeComponent();
         SyncBestPerPlayerButton();
@@ -48,35 +47,34 @@ public partial class ScoresWindow : Window
     private void PopulateSources(string? initialContestId)
     {
         SourceCombo.Items.Clear();
-        SourceCombo.Items.Add(new SourceOption(null, "Global"));
-
         var selectedIndex = 0;
-        var index = 1;
-        foreach (var contest in _contests.List())
+        var index = 0;
+        foreach (var option in _source.ListSources())
         {
-            SourceCombo.Items.Add(new SourceOption(contest.Id, $"Concours — {contest.Name}"));
+            SourceCombo.Items.Add(option);
             if (!string.IsNullOrWhiteSpace(initialContestId) &&
-                string.Equals(contest.Id, initialContestId, StringComparison.Ordinal))
+                string.Equals(option.ContestId, initialContestId, StringComparison.Ordinal))
                 selectedIndex = index;
             index++;
         }
 
-        SourceCombo.DisplayMemberPath = nameof(SourceOption.Label);
+        SourceCombo.DisplayMemberPath = nameof(BoardSourceOption.Label);
         SourceCombo.SelectedIndex = selectedIndex;
     }
 
     private void ApplySelectedSource(int? keepTrackId)
     {
-        var option = SourceCombo.SelectedItem as SourceOption;
-        if (option?.ContestId is { Length: > 0 } contestId)
+        var option = SourceCombo.SelectedItem as BoardSourceOption;
+        _source.Select(option?.ContestId);
+        _board = _source.Query;
+
+        if (option?.ContestId is { Length: > 0 })
         {
-            _board = _contests.AsScoreBoard(contestId);
             WindowTitleText.Text = option.Label;
             Title = option.Label;
         }
         else
         {
-            _board = _globalStore;
             WindowTitleText.Text = "Scores par circuit";
             Title = "Scores par circuit";
         }
@@ -158,9 +156,9 @@ public partial class ScoresWindow : Window
             return;
         }
 
-        ScoresPanel.Children.Add(CreateHeader());
+        ScoresPanel.Children.Add(LeaderboardRowUi.CreateHeader());
         foreach (var score in scores)
-            ScoresPanel.Children.Add(CreateRow(score));
+            ScoresPanel.Children.Add(LeaderboardRowUi.CreateRow(score));
     }
 
     private void SyncBestPerPlayerButton()
@@ -229,63 +227,6 @@ public partial class ScoresWindow : Window
             LineHeight = 20,
         };
 
-    private static UIElement CreateHeader()
-    {
-        var grid = CreateGrid();
-        AddCell(grid, 0, "#FFC5CAD3", "Rang", FontWeights.Bold);
-        AddCell(grid, 1, "#FFC5CAD3", "Nom", FontWeights.Bold);
-        AddCell(grid, 2, "#FFC5CAD3", "Temps", FontWeights.Bold, HorizontalAlignment.Right);
-        return grid;
-    }
-
-    private static UIElement CreateRow(LeaderboardRow score)
-    {
-        var grid = CreateGrid();
-        var rankColor = score.Rank switch
-        {
-            1 => "#FFFFD700",
-            2 => "#FFC0C7D1",
-            3 => "#FFE8A87C",
-            _ => "#FFE10600",
-        };
-        AddCell(grid, 0, rankColor, $"{score.Rank}.", FontWeights.Bold);
-        AddCell(grid, 1, "#FFFFFFFF", score.Name, FontWeights.SemiBold);
-        AddCell(grid, 2, "#FFFFFFFF", score.FormattedTime, FontWeights.Bold, HorizontalAlignment.Right);
-        return grid;
-    }
-
-    private static Grid CreateGrid()
-    {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
-        return grid;
-    }
-
-    private static void AddCell(
-        Grid grid,
-        int column,
-        string color,
-        string text,
-        FontWeight weight,
-        HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left)
-    {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontFamily = new FontFamily(column == 2 ? "Consolas" : "Segoe UI"),
-            FontSize = 13,
-            FontWeight = weight,
-            Foreground = UiBrushes.FromHex(color),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            HorizontalAlignment = horizontalAlignment,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        Grid.SetColumn(block, column);
-        grid.Children.Add(block);
-    }
-
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 
     private void OnHeaderDrag(object sender, MouseButtonEventArgs e)
@@ -295,6 +236,4 @@ public partial class ScoresWindow : Window
 
         DragMove();
     }
-
-    private sealed record SourceOption(string? ContestId, string Label);
 }

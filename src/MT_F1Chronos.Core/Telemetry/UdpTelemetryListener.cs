@@ -4,20 +4,32 @@ namespace MT_F1Chronos.Core.Telemetry;
 
 public sealed class UdpTelemetryListener : IDisposable
 {
-    private readonly TelemetryState _state = new();
+    private readonly TelemetryState _working = new();
     private readonly F1UdpPacketParser _parser = new();
+    private readonly object _snapshotGate = new();
+    private TelemetryState _latestSnapshot = new();
     private UdpClient? _client;
     private CancellationTokenSource? _cts;
 
     public event Action<TelemetryUpdate>? UpdateReceived;
 
-    public TelemetryState State => _state;
+    /// <summary>Last published immutable snapshot (safe to read from the UI thread).</summary>
+    public TelemetryState State
+    {
+        get
+        {
+            lock (_snapshotGate)
+                return _latestSnapshot;
+        }
+    }
+
     public F1UdpPacketParser Parser => _parser;
 
     public void SetFormat(ushort format)
     {
         _parser.SetFormat(format);
-        _state.ConfiguredFormat = format;
+        _working.ConfiguredFormat = format;
+        PublishSnapshot(_working.Clone());
     }
 
     public void Start(int port = F1UdpConstants.DefaultPort)
@@ -32,8 +44,6 @@ public sealed class UdpTelemetryListener : IDisposable
         }
         catch
         {
-            // Port already in use (another instance/tool) or unavailable.
-            // Leave the listener stopped and let the caller surface the error.
             cts.Dispose();
             throw;
         }
@@ -51,7 +61,8 @@ public sealed class UdpTelemetryListener : IDisposable
         _client = null;
         _cts?.Dispose();
         _cts = null;
-        _state.IsReceiving = false;
+        _working.IsReceiving = false;
+        PublishSnapshot(_working.Clone());
     }
 
     private async Task ListenLoop(CancellationToken token)
@@ -61,8 +72,11 @@ public sealed class UdpTelemetryListener : IDisposable
             try
             {
                 var result = await _client.ReceiveAsync(token);
-                if (_parser.TryParse(result.Buffer, _state, out var update) && update is not null)
+                if (_parser.TryParse(result.Buffer, _working, out var update) && update is not null)
+                {
+                    PublishSnapshot(update.State);
                     UpdateReceived?.Invoke(update);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -73,6 +87,12 @@ public sealed class UdpTelemetryListener : IDisposable
                 // Ignore transient socket errors while listening.
             }
         }
+    }
+
+    private void PublishSnapshot(TelemetryState snapshot)
+    {
+        lock (_snapshotGate)
+            _latestSnapshot = snapshot;
     }
 
     public void Dispose() => Stop();

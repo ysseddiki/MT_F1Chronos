@@ -1,9 +1,5 @@
-using System.Diagnostics;
-using System.IO;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using MT_F1Chronos.App.Windows;
 using MT_F1Chronos.Core.Models;
 using MT_F1Chronos.Core.Services;
@@ -13,15 +9,12 @@ namespace MT_F1Chronos.App.Services;
 
 public sealed class AppController : IDisposable
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     private readonly UdpTelemetryListener _listener = new();
     private readonly SessionStore _store = new();
     private readonly ContestStore _contests = new();
+    private readonly SettingsStore _settingsStore = new();
+    private readonly ScoreExportService _export = new();
+    private readonly OverlayCoordinator _overlayUi;
     private readonly Dispatcher _dispatcher;
     private readonly AppSettings _settings;
     private readonly DispatcherTimer _refreshTimer;
@@ -33,10 +26,16 @@ public sealed class AppController : IDisposable
     public AppController()
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
-        _settings = LoadSettings();
+        _settings = _settingsStore.Load();
         _store.Load();
         _contests.Load();
         NormalizeOverlayContestSetting();
+        _overlayUi = new OverlayCoordinator(
+            _store,
+            _contests,
+            _settings,
+            () => _listener.State,
+            SaveSettings);
         _listener.SetFormat((ushort)_settings.UdpFormat);
         _listener.UpdateReceived += OnTelemetryUpdate;
 
@@ -57,6 +56,8 @@ public sealed class AppController : IDisposable
 
         _overlay.Show();
         PositionOverlay();
+
+        AdminPassword.EnsureConfigured(_overlay);
 
         // Ask for the player name on every launch (pre-filled with the last used name).
         PromptPlayerName(required: true);
@@ -93,10 +94,7 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        var workArea = SystemParameters.WorkArea;
-        _overlay.Width = _settings.OverlayWidth;
-        _overlay.Left = workArea.Right - _settings.OverlayRight - _settings.OverlayWidth;
-        _overlay.Top = workArea.Top + _settings.OverlayTop;
+        _overlayUi.Position(_overlay);
     }
 
     public void SetOverlayWidth(double width)
@@ -417,65 +415,7 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        if (entries.Count == 0)
-        {
-            MessageBox.Show(_overlay, "Aucun score à exporter.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-        var dialog = new SaveFileDialog
-        {
-            Title = "Exporter les scores",
-            FileName = $"MT_F1Chronos-{filePrefix}-{stamp}",
-            Filter = format switch
-            {
-                "csv" => "CSV (*.csv)|*.csv",
-                "json" => "JSON (*.json)|*.json",
-                _ => "HTML (*.html)|*.html",
-            },
-            DefaultExt = format,
-            AddExtension = true,
-        };
-
-        if (dialog.ShowDialog(_overlay) != true)
-            return;
-
-        try
-        {
-            switch (format)
-            {
-                case "csv":
-                    ScoreExporter.ExportCsv(entries, dialog.FileName);
-                    break;
-                case "json":
-                    ScoreExporter.ExportJson(entries, dialog.FileName);
-                    break;
-                default:
-                    ScoreExporter.ExportHtml(entries, dialog.FileName);
-                    break;
-            }
-
-            var open = MessageBox.Show(
-                _overlay,
-                $"Export terminé :\n{dialog.FileName}\n\nOuvrir le fichier ?",
-                "Export",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-
-            if (open == MessageBoxResult.Yes)
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = dialog.FileName,
-                    UseShellExecute = true,
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(_overlay, $"Échec de l'export :\n{ex.Message}", "Export", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        _export.Export(_overlay, entries, format, filePrefix);
     }
 
     public void ResetCurrentTrackScores()
@@ -529,6 +469,8 @@ public sealed class AppController : IDisposable
     {
         if (_overlay is null)
             return false;
+
+        AdminPassword.EnsureConfigured(_overlay);
 
         var prompt = new PasswordPromptWindow(title, message) { Owner = _overlay };
         if (prompt.ShowDialog() != true)
@@ -632,54 +574,7 @@ public sealed class AppController : IDisposable
         if (_overlay is null)
             return;
 
-        var size = LeaderboardSizes.Normalize(_settings.LeaderboardSize);
-        var contestSize = LeaderboardSizes.Normalize(_settings.ContestLeaderboardSize);
-        var showContest = false;
-        var contestLabel = string.Empty;
-        IReadOnlyList<LeaderboardRow> contestBoard = [];
-
-        if (_settings.ShowContestOnOverlay && !string.IsNullOrWhiteSpace(_settings.OverlayContestId))
-        {
-            var contest = _contests.Get(_settings.OverlayContestId);
-            if (contest is null)
-            {
-                _settings.OverlayContestId = string.Empty;
-                SaveSettings();
-            }
-            else if (contest.Status == ContestStatus.Active)
-            {
-                // Stopped / draft contests stay selectable as principal and visible
-                // in Scores, but must not appear on the live overlay.
-                showContest = true;
-                contestLabel = contest.Name;
-                var trackId = _store.ResolveOverlayTrackId(_listener.State);
-                if (trackId < 0)
-                    trackId = _contests.GetTracksWithScores(contest.Id).FirstOrDefault()?.TrackId ?? -1;
-
-                contestBoard = trackId >= 0
-                    ? _contests.GetLeaderboard(contest.Id, trackId, contestSize, _settings.BestPerPlayer)
-                    : [];
-            }
-        }
-
-        // If the principal contest is stopped, fall back to showing global even
-        // in "contest only" display mode so the overlay is never blank.
-        var showGlobal = !(showContest && _settings.HideGlobalWhenContest);
-
-        // With an active contest on screen, keep global to TOP 3 to leave room.
-        if (showContest && showGlobal)
-            size = LeaderboardSizes.Compact;
-
-        _overlay.UpdateSnapshot(_store.BuildSnapshot(
-            _listener.State,
-            _settings.PlayerName,
-            size,
-            showGlobalLeaderboard: showGlobal,
-            showContestLeaderboard: showContest,
-            contestLabel: contestLabel,
-            contestLeaderboardSize: contestSize,
-            contestLeaderboard: contestBoard,
-            bestPerPlayer: _settings.BestPerPlayer));
+        _overlayUi.Refresh(_overlay);
     }
 
     private void NormalizeOverlayContestSetting()
@@ -691,46 +586,7 @@ public sealed class AppController : IDisposable
             _settings.OverlayContestId = string.Empty;
     }
 
-    private static string SettingsPath =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "MT_F1Chronos",
-            "settings.json");
-
-    private static AppSettings LoadSettings()
-    {
-        if (!File.Exists(SettingsPath))
-            return new AppSettings();
-
-        try
-        {
-            var json = File.ReadAllText(SettingsPath);
-            var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
-            settings.UdpFormat = settings.UdpFormat is 2026 ? 2026 : 2025;
-            settings.LeaderboardSize = LeaderboardSizes.Normalize(settings.LeaderboardSize);
-            settings.ContestLeaderboardSize = settings.ContestLeaderboardSize <= 0
-                ? LeaderboardSizes.Extended
-                : LeaderboardSizes.Normalize(settings.ContestLeaderboardSize);
-            settings.OverlayWidth = Math.Clamp(
-                settings.OverlayWidth <= 0 ? OverlaySizes.Default : settings.OverlayWidth,
-                OverlaySizes.Default,
-                OverlaySizes.Max);
-            if (!string.IsNullOrEmpty(settings.PlayerName) &&
-                settings.PlayerName.Length > OverlaySizes.MaxPlayerNameLength)
-                settings.PlayerName = settings.PlayerName[..OverlaySizes.MaxPlayerNameLength];
-            return settings;
-        }
-        catch
-        {
-            return new AppSettings();
-        }
-    }
-
-    private void SaveSettings()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(_settings, JsonOptions));
-    }
+    private void SaveSettings() => _settingsStore.Save(_settings);
 
     public void Dispose()
     {
