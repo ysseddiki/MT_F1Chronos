@@ -1,6 +1,7 @@
 using MT_F1Chronos.Core.Models;
 using MT_F1Chronos.Core.Services;
 using MT_F1Chronos.Core.Telemetry;
+using Xunit;
 
 namespace MT_F1Chronos.Tests;
 

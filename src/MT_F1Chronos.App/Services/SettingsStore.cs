@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using MT_F1Chronos.Core.Models;
 
@@ -45,7 +46,7 @@ public sealed class SettingsStore
 
     public void Save(AppSettings settings)
     {
-        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_path)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         File.WriteAllText(_path, JsonSerializer.Serialize(Migrate(settings), JsonOptions));
     }
 
