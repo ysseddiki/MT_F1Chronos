@@ -331,6 +331,9 @@ public partial class AdminWindow : Window
 
     private void OnManageScoresClick(object sender, RoutedEventArgs e) => _controller.ShowManageScores();
 
+    private void OnChangePasswordClick(object sender, RoutedEventArgs e) =>
+        _controller.ChangeAdminPassword(this);
+
     private void OnExportCsvClick(object sender, RoutedEventArgs e) => RunExport("csv");
     private void OnExportJsonClick(object sender, RoutedEventArgs e) => RunExport("json");
     private void OnExportHtmlClick(object sender, RoutedEventArgs e) => RunExport("html");

@@ -326,6 +326,18 @@
                                TextWrapping="Wrap"
                                Visibility="Collapsed"/>
 
+                    <!-- Security -->
+                    <TextBlock Text="SÉCURITÉ"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#FFE10600"
+                               Margin="0,0,0,8"/>
+                    <Button Content="Changer le mot de passe admin…"
+                            Click="OnChangePasswordClick"/>
+
+                    <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
+
                     <!-- Debug -->
                     <TextBlock Text="DIAGNOSTIC"
                                FontFamily="Segoe UI"

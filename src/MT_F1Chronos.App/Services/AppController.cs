@@ -466,12 +466,29 @@ public sealed class AppController : IDisposable
         MessageBox.Show(_overlay, $"{removed} score(s) supprimé(s).", "Scores", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+    public void ChangeAdminPassword(Window owner)
+    {
+        if (!AdminPassword.TrySetPassword(
+                owner,
+                title: "Changer le mot de passe admin",
+                message: "Saisis un nouveau mot de passe (au moins 4 caractères), puis confirme-le."))
+            return;
+
+        MessageBox.Show(
+            owner,
+            "Mot de passe admin mis à jour.",
+            "Administration",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
     private bool ConfirmAdminPassword(string title, string message)
     {
         if (_overlay is null)
             return false;
 
-        AdminPassword.EnsureConfigured(_overlay);
+        if (!AdminPassword.EnsureConfigured(_overlay))
+            return false;
 
         var prompt = new PasswordPromptWindow(title, message) { Owner = _overlay };
         if (prompt.ShowDialog() != true)

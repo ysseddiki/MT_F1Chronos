@@ -8,14 +8,13 @@ namespace MT_F1Chronos.App.Services;
 
 /// <summary>
 /// Admin password stored as PBKDF2-SHA256 (salt + hash) under LocalAppData.
-/// No embedded secret: if the file is missing, a password is generated on first use.
+/// No embedded secret: on first use the user chooses their own password.
 /// </summary>
 internal static class AdminPassword
 {
     private const int Iterations = 100_000;
     private const int HashLength = 32;
     private const int SaltLength = 16;
-    private const int GeneratedLength = 14;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
@@ -28,27 +27,36 @@ internal static class AdminPassword
     public static bool IsConfigured => File.Exists(StorePath);
 
     /// <summary>
-    /// Ensures a local password file exists. On first run, generates a password,
-    /// shows it once to the user, then persists only salt+hash.
+    /// Ensures a local password file exists. On first run, asks the user to choose one.
+    /// Returns false if the user cancelled without setting a password.
     /// </summary>
-    public static void EnsureConfigured(Window? owner)
+    public static bool EnsureConfigured(Window? owner)
     {
         if (IsConfigured)
-            return;
+            return true;
 
-        var password = GeneratePassword();
-        Save(password);
+        return TrySetPassword(
+            owner,
+            title: "Créer le mot de passe admin",
+            message: "Aucun mot de passe admin n’est encore configuré.\n" +
+                     "Choisis le tien (au moins 4 caractères) — il sera demandé pour ouvrir l’administration.\n\n" +
+                     "Stocké uniquement sous forme de hash local.",
+            allowCancel: true);
+    }
 
-        var prompt = new PasswordPromptWindow(
-            "Mot de passe admin généré",
-            "Aucun mot de passe admin n’était configuré.\n\n" +
-            "Note-le maintenant — il ne sera plus réaffiché.\n" +
-            "(Stocké uniquement sous forme de hash local.)",
-            revealPassword: password)
-        {
-            Owner = owner,
-        };
-        prompt.ShowDialog();
+    /// <summary>Opens the set/confirm dialog and replaces the stored hash.</summary>
+    public static bool TrySetPassword(
+        Window? owner,
+        string title,
+        string message,
+        bool allowCancel = true)
+    {
+        var prompt = new SetPasswordWindow(title, message, allowCancel) { Owner = owner };
+        if (prompt.ShowDialog() != true)
+            return false;
+
+        Save(prompt.Password);
+        return true;
     }
 
     public static bool Verify(string? password)
@@ -105,16 +113,6 @@ internal static class AdminPassword
         var tmp = StorePath + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(payload, JsonOptions));
         File.Move(tmp, StorePath, overwrite: true);
-    }
-
-    private static string GeneratePassword()
-    {
-        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-        var bytes = RandomNumberGenerator.GetBytes(GeneratedLength);
-        var chars = new char[GeneratedLength];
-        for (var i = 0; i < GeneratedLength; i++)
-            chars[i] = alphabet[bytes[i] % alphabet.Length];
-        return new string(chars);
     }
 
     private sealed class AdminSecretFile
