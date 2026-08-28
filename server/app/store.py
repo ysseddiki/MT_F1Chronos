@@ -324,7 +324,10 @@ class ResultsStore:
         out = []
         for row in rows:
             job = dict(row)
-            job["payload"] = json.loads(job["payload_json"])
+            try:
+                job["payload"] = json.loads(job["payload_json"])
+            except (json.JSONDecodeError, TypeError):
+                job["payload"] = {}
             job["can_revert"] = job["status"] in ("pending", "delivered", "applied")
             out.append(job)
         return out
