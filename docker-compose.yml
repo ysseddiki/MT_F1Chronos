@@ -3,6 +3,9 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+      # Réseau hôte pendant pip install : évite les timeouts PyPI sur petits VPS
+      # (docker compose build n’a pas de flag --network sur toutes les versions).
+      network: host
     image: mt-f1chronos-results:latest
     container_name: f1chronos-results
     expose:

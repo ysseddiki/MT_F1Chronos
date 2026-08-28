@@ -212,15 +212,15 @@ Si `ERR_SSL_PROTOCOL_ERROR` : Caddy n’écoute pas en TLS (souvent `RESULTS_DOM
 **Build Docker : `Read timed out` / `No matching distribution found for fastapi`** : PyPI est trop lent depuis le VPS (timeout réseau, pas une version manquante). Le `Dockerfile` utilise déjà des timeouts pip allongés (300 s). Si ça échoue encore :
 
 ```bash
-# Réseau hôte pendant le build (souvent plus fiable sur petit VPS)
-sudo docker compose build --network=host results
+# Le compose utilise déjà network: host pour le build (pip → PyPI).
+sudo docker compose build
 sudo docker compose up -d
 
 # Tester l’accès PyPI depuis le serveur
 curl -I --max-time 30 https://pypi.org/simple/fastapi/
 
-# Miroir PyPI optionnel (build-arg)
-sudo docker compose build --build-arg PIP_INDEX_URL=https://pypi.org/simple results
+# Sans compose : build Docker classique (flag --network ici, pas sur compose build)
+sudo docker build --network=host -t mt-f1chronos-results:latest -f server/Dockerfile server
 ```
 
 Vérifie aussi pare-feu / DNS (`8.8.8.8` en resolver) et qu’aucun proxy ne bloque le HTTPS sortant.
