@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import secrets as _secrets
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
@@ -350,6 +351,40 @@ def get_sim_contest(request: Request, sim_id: str, contest_id: str):
     if contest is None:
         raise HTTPException(404, "Concours introuvable.")
     return {"ok": True, "contest": contest_out(contest)}
+
+
+# ---------------------------------------------------------------------------
+# Flux live (SSE) : un battement « les données ont changé », sans contenu.
+# Les clients re-téléchargent ensuite leur vue via les endpoints filtrés.
+# ---------------------------------------------------------------------------
+
+
+# Durée de vie bornée : le client (EventSource) reconnecte automatiquement,
+# ce qui purge les connexions zombies à travers les proxies et simplifie les tests.
+STREAM_POLL_SECONDS = float(os.environ.get("RESULTS_STREAM_POLL", "2"))
+STREAM_MAX_SECONDS = float(os.environ.get("RESULTS_STREAM_MAX_AGE", "300"))
+
+
+@app.get("/api/v1/stream")
+async def stream(request: Request):
+    async def events():
+        last = -1
+        elapsed = 0.0
+        while elapsed < STREAM_MAX_SECONDS:
+            if await request.is_disconnected():
+                break
+            version = deps.store().data_version
+            if version != last:
+                last = version
+                yield f"data: {version}\n\n"
+            await asyncio.sleep(STREAM_POLL_SECONDS)
+            elapsed += STREAM_POLL_SECONDS
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no"},
+    )
 
 
 # ---------------------------------------------------------------------------

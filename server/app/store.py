@@ -39,6 +39,15 @@ def format_lap(ms: int) -> str:
 class ResultsStore:
     def __init__(self, conn: sqlite3.Connection):
         self._conn = conn
+        self._data_version = 0
+
+    @property
+    def data_version(self) -> int:
+        """Compteur monotone bumpé à chaque mutation — pilote le flux live (SSE)."""
+        return self._data_version
+
+    def _touch(self) -> None:
+        self._data_version += 1
 
     # --- tenants ---
 
@@ -66,6 +75,7 @@ class ResultsStore:
             (tenant_id, label, visibility, db.utcnow()),
         )
         self._conn.commit()
+        self._touch()
         tenant = self.get_tenant(tenant_id)
         assert tenant is not None
         return tenant
@@ -90,6 +100,7 @@ class ResultsStore:
                 "UPDATE tenants SET visibility = ? WHERE id = ?", (visibility, tenant_id)
             )
         self._conn.commit()
+        self._touch()
         updated = self.get_tenant(tenant_id)
         assert updated is not None
         return updated
@@ -107,6 +118,7 @@ class ResultsStore:
         self._conn.execute("DELETE FROM user_tenant_access WHERE tenant_id = ?", (tenant_id,))
         self._conn.execute("DELETE FROM tenants WHERE id = ?", (tenant_id,))
         self._conn.commit()
+        self._touch()
 
     def list_simulators_for_tenant(self, tenant_id: str) -> list[dict[str, Any]]:
         rows = self._conn.execute(
@@ -145,6 +157,7 @@ class ResultsStore:
                 "UPDATE simulators SET tenant_id = ? WHERE id = ?", (tenant_id, sim_id)
             )
         self._conn.commit()
+        self._touch()
         updated = self.get_simulator(sim_id)
         assert updated is not None
         return updated
@@ -157,6 +170,7 @@ class ResultsStore:
         self._conn.execute("DELETE FROM jobs WHERE simulator_id = ?", (sim_id,))
         self._conn.execute("DELETE FROM simulators WHERE id = ?", (sim_id,))
         self._conn.commit()
+        self._touch()
         return True
 
     def regenerate_token(self, sim_id: str) -> str | None:
@@ -218,6 +232,7 @@ class ResultsStore:
             (sim_id, tenant_id, label.strip() or "Simulateur", hash_token(token), client_id),
         )
         self._conn.commit()
+        self._touch()
         sim = self.get_simulator(sim_id)
         assert sim is not None
         return sim
@@ -248,6 +263,7 @@ class ResultsStore:
                 (hash_token(token), label, existing["id"]),
             )
             self._conn.commit()
+            self._touch()
             sim = self.get_simulator(existing["id"])
             tenant = self.get_tenant(existing["tenant_id"])
             assert sim is not None and tenant is not None
@@ -298,6 +314,7 @@ class ResultsStore:
             ),
         )
         self._conn.commit()
+        self._touch()
         return self.pending_jobs(sim_id)
 
     def _upsert_contest(self, sim_id: str, contest: dict[str, Any]) -> None:
@@ -612,6 +629,7 @@ class ResultsStore:
             (job_id, sim_id, job_type, json.dumps(payload), revert_of, db.utcnow()),
         )
         self._conn.commit()
+        self._touch()
         return job_id
 
     def admin_delete_entry(self, sim_id: str, entry_id: str) -> bool:
@@ -709,6 +727,7 @@ class ResultsStore:
                 (now, job_id),
             )
             self._conn.commit()
+            self._touch()
             return None
 
         inverse = self._inverse_job(job["type"], payload)

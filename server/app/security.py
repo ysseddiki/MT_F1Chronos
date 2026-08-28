@@ -3,9 +3,7 @@ from __future__ import annotations
 import time
 from collections import deque
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.datastructures import MutableHeaders
 
 CSP = (
     "default-src 'self'; "
@@ -21,18 +19,32 @@ CSP = (
 )
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Strict headers on every response; API responses are never cached."""
+class SecurityHeadersMiddleware:
+    """Pure-ASGI : n'enveloppe que http.response.start, donc les flux SSE
+    (StreamingResponse infini) passent sans être bufferisés — contrairement
+    à BaseHTTPMiddleware qui consomme le corps et bloque les flux infinis."""
 
-    async def dispatch(self, request: Request, call_next) -> Response:
-        response = await call_next(request)
-        response.headers["Content-Security-Policy"] = CSP
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "same-origin"
-        if request.url.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "no-store"
-        return response
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        is_api = scope.get("path", "").startswith("/api/")
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["Content-Security-Policy"] = CSP
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["X-Frame-Options"] = "DENY"
+                headers["Referrer-Policy"] = "same-origin"
+                if is_api:
+                    headers["Cache-Control"] = "no-store"
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 
 class LoginRateLimiter:

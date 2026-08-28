@@ -652,9 +652,9 @@ public sealed class AppController : IDisposable
             appliedCommandIds);
     }
 
-    private void ApplyResultsCommands(IReadOnlyList<ResultsCommand> commands)
+    private IReadOnlyList<string> ApplyResultsCommands(IReadOnlyList<ResultsCommand> commands)
     {
-        ResultsCommandApplier.Apply(_store, _contests, commands, name =>
+        var applied = ResultsCommandApplier.Apply(_store, _contests, commands, name =>
         {
             // Job admin « setPlayerName » : le pseudo de session change côté serveur.
             if (string.IsNullOrWhiteSpace(name))
@@ -663,6 +663,7 @@ public sealed class AppController : IDisposable
             SaveSettings();
         });
         RefreshOverlay();
+        return applied;
     }
 
     private void EnsureSimulatorIdentity()

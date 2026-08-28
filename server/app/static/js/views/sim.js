@@ -2,7 +2,7 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { presence } from '../components.js';
+import { presence, sessionPseudoEditor } from '../components.js';
 import { renderBoardPage } from './board_page.js';
 
 export async function simView(container, [simId], query) {
@@ -31,7 +31,8 @@ export async function simView(container, [simId], query) {
                 h('h1', {}, sim.label),
                 h('div', { class: 'flex' },
                     presence(sim),
-                    sim.playerName ? h('span', { class: 'muted' }, `· Pilote : ${sim.playerName}`) : null,
+                    sessionPseudoEditor(sim)
+                        || (sim.playerName ? h('span', { class: 'muted' }, `· Pilote : ${sim.playerName}`) : null),
                     sim.currentTrackName ? h('span', { class: 'muted' }, `· En piste : ${sim.currentTrackName}`) : null,
                 ),
             ),

@@ -30,7 +30,7 @@ public sealed class ResultsSyncClient : IDisposable
 
     private readonly Dispatcher _dispatcher;
     private readonly Func<IReadOnlyList<string>, ResultsSyncRequest> _buildSnapshot;
-    private readonly Action<IReadOnlyList<ResultsCommand>> _applyCommands;
+    private readonly Func<IReadOnlyList<ResultsCommand>, IReadOnlyList<string>> _applyCommands;
     private readonly Action<IReadOnlyList<string>> _acknowledgeDeleted;
     private readonly Action<string>? _onTokenReceived;
     private readonly DispatcherTimer _heartbeat;
@@ -49,7 +49,7 @@ public sealed class ResultsSyncClient : IDisposable
     public ResultsSyncClient(
         Dispatcher dispatcher,
         Func<IReadOnlyList<string>, ResultsSyncRequest> buildSnapshot,
-        Action<IReadOnlyList<ResultsCommand>> applyCommands,
+        Func<IReadOnlyList<ResultsCommand>, IReadOnlyList<string>> applyCommands,
         Action<IReadOnlyList<string>> acknowledgeDeleted,
         Action<string>? onTokenReceived = null)
     {
@@ -206,8 +206,9 @@ public sealed class ResultsSyncClient : IDisposable
             IReadOnlyList<string> applied = [];
             if (payload.Commands.Count > 0)
             {
-                await _dispatcher.InvokeAsync(() => _applyCommands(payload.Commands));
-                applied = payload.Commands.Select(c => c.Id).ToList();
+                // Seules les commandes réellement appliquées sont ACKées : une commande
+                // ignorée (type inconnu, handler absent) reste pending et sera renvoyée.
+                applied = await _dispatcher.InvokeAsync(() => _applyCommands(payload.Commands));
             }
 
             _appliedIds = applied.ToList();

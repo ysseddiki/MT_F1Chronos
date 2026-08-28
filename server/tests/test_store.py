@@ -10,6 +10,19 @@ def _store(tmp_path: Path) -> ResultsStore:
     return ResultsStore(connect(tmp_path / "t.sqlite"))
 
 
+def test_data_version_bumps_on_mutations(tmp_path: Path):
+    store = _store(tmp_path)
+    assert store.data_version == 0
+    sim, _ = store.create_simulator("Box")
+    v = store.data_version
+    assert v > 0
+    store.ingest(sim, {"simulatorId": "cli", "global": {"tracks": []}, "contests": []})
+    assert store.data_version > v
+    v = store.data_version
+    store.enqueue_set_player_name(sim["id"], "Nouveau")
+    assert store.data_version > v
+
+
 def test_wipe_db_does_not_enqueue_jobs(tmp_path: Path):
     store = _store(tmp_path)
     sim, token = store.create_simulator("Box")

@@ -33,3 +33,21 @@ export function isAdmin() {
 export function isAuthenticated() {
     return !!state.me?.authenticated;
 }
+
+// --- Flux live : un EventSource global, les vues s'abonnent ----------
+
+let eventSource = null;
+const changeListeners = new Set();
+
+export function subscribeChanges(fn) {
+    changeListeners.add(fn);
+    if (!eventSource && typeof EventSource !== 'undefined') {
+        eventSource = new EventSource('/api/v1/stream');
+        eventSource.onmessage = () => {
+            changeListeners.forEach((listener) => {
+                try { listener(); } catch { /* ignore */ }
+            });
+        };
+    }
+    return () => changeListeners.delete(fn);
+}

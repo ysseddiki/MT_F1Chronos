@@ -93,6 +93,39 @@ export function visibilityBadge(visibility) {
         : h('span', { class: 'badge public' }, 'Public');
 }
 
+// ---------- Pseudo de session (admin) ----------
+
+const PENCIL_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
+
+export function pencilIcon() {
+    const span = h('span', { class: 'icon', 'aria-hidden': 'true' });
+    span.innerHTML = PENCIL_SVG; // SVG statique interne, aucune donnée utilisateur
+    return span;
+}
+
+export function sessionPseudoEditor(sim) {
+    if (!isAdmin()) return null;
+    return h('button', {
+        class: 'btn-ghost btn-sm',
+        type: 'button',
+        title: 'Changer le pseudo de la session en cours sur ce simulateur',
+        onclick: async () => {
+            const name = await promptDialog('Pseudo de la session en cours', {
+                label: `Nouveau pseudo pour « ${sim.label} » (appliqué par le simu à sa prochaine sync)`,
+                value: sim.playerName || '',
+                maxlength: 20,
+            });
+            if (!name) return;
+            try {
+                const res = await post(`/api/v1/admin/simulators/${sim.id}/player-name`, { new_name: name });
+                toast(res.message, 'success');
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        },
+    }, `Pseudo : ${sim.playerName || '—'}`, pencilIcon());
+}
+
 // ---------- Segmented (switch Tous les tours / Meilleur par joueur) ----------
 
 export function segmented(options, current, onChange) {

@@ -95,6 +95,40 @@ public class ResultsSyncTests
     }
 
     [Fact]
+    public void CommandApplier_SetPlayerName_RequiresHandler()
+    {
+        var root = NewTempRoot();
+        try
+        {
+            var store = new SessionStore(root);
+            store.Load();
+            var contests = new ContestStore(root);
+            contests.Load();
+
+            var command = new ResultsCommand
+            {
+                Id = "sp1",
+                Type = ResultsCommandTypes.SetPlayerName,
+                NewName = "NouveauPseudo",
+            };
+
+            // Sans handler (ancien build) : la commande est skippée et ne doit pas être ACKée.
+            var appliedSansHandler = ResultsCommandApplier.Apply(store, contests, [command]);
+            Assert.Empty(appliedSansHandler);
+
+            // Avec handler : appliquée, ACKée, pseudo borné à MaxPlayerNameLength.
+            string? received = null;
+            var applied = ResultsCommandApplier.Apply(store, contests, [command], name => received = name);
+            Assert.Equal(["sp1"], applied);
+            Assert.Equal("NouveauPseudo", received);
+        }
+        finally
+        {
+            TryDelete(root);
+        }
+    }
+
+    [Fact]
     public void CommandApplier_IgnoresUnknownType()
     {
         var root = NewTempRoot();

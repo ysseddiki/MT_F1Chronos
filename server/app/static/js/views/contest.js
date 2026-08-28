@@ -2,6 +2,7 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
+import { sessionPseudoEditor } from '../components.js';
 import { renderBoardPage } from './board_page.js';
 import { statusLabel } from './contests.js';
 
@@ -28,7 +29,10 @@ export async function contestView(container, [simId, contestId], query) {
             h('a', { class: 'back-link', href: `/contests?sim=${simId}`, 'data-link': true }, '← Concours'),
             h('p', { class: 'kicker' }, `Concours · ${statusLabel(contest.status)}`),
             h('h1', {}, contest.name),
-            h('p', { class: 'lede' }, sim.label),
+            h('div', { class: 'flex' },
+                h('p', { class: 'lede', style: 'margin:0' }, sim.label),
+                sessionPseudoEditor(sim),
+            ),
         ),
     );
 

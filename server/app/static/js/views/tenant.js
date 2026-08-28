@@ -2,7 +2,7 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { presence, visibilityBadge } from '../components.js';
+import { presence, visibilityBadge, sessionPseudoEditor } from '../components.js';
 import { renderBoardPage } from './board_page.js';
 
 export async function tenantView(container, [tenantId], query) {
@@ -34,12 +34,15 @@ export async function tenantView(container, [tenantId], query) {
         sims.length ? h('div', { class: 'panel' },
             h('h2', {}, 'Simulateurs'),
             h('div', { class: 'flex' },
-                sims.map((s) => h('a', {
-                    class: 'btn btn-sm',
-                    href: `/sim/${s.id}`,
-                    'data-link': true,
-                    style: 'justify-content:flex-start',
-                }, s.label, ' — ', presence(s))),
+                sims.map((s) => h('span', { class: 'flex' },
+                    h('a', {
+                        class: 'btn btn-sm',
+                        href: `/sim/${s.id}`,
+                        'data-link': true,
+                        style: 'justify-content:flex-start',
+                    }, s.label, ' — ', presence(s)),
+                    sessionPseudoEditor(s),
+                )),
             ),
         ) : null,
     );

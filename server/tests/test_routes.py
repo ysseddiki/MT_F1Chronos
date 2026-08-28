@@ -7,6 +7,9 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("RESULTS_DATA", str(tmp_path))
+    # Flux SSE borné très court en test : le générateur se termine tout seul.
+    monkeypatch.setenv("RESULTS_STREAM_POLL", "0.02")
+    monkeypatch.setenv("RESULTS_STREAM_MAX_AGE", "0.1")
     from app import deps
     from app.main import app
 
@@ -61,6 +64,16 @@ def test_health(client):
     r = client.get("/api/v1/health")
     assert r.status_code == 200
     assert r.json()["ok"] is True
+
+
+def test_stream_emits_data_version(client):
+    with client.stream("GET", "/api/v1/stream") as r:
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/event-stream")
+        lines = [line for line in r.iter_lines() if line]
+    assert lines, "le flux SSE doit émettre au moins la version courante"
+    assert lines[0].startswith("data: ")
+    assert lines[0].removeprefix("data: ").strip().isdigit()
 
 
 def test_spa_fallback_serves_index(client):

@@ -1,11 +1,13 @@
 // Moteur commun des pages de classement : chips circuit en haut, switch best/all,
-// tableau complet paginé (20/page), auto-refresh 45 s.
+// tableau complet paginé (20/page), mises à jour live via SSE (repli 60 s).
 
 import { h, clear } from '../dom.js';
 import { segmented, trackChips, boardTable, pagination, banner } from '../components.js';
 import { setQuery, replace, onCleanup } from '../router.js';
+import { subscribeChanges } from '../state.js';
 
-export const AUTO_REFRESH_MS = 45_000;
+export const FALLBACK_REFRESH_MS = 60_000;
+const LIVE_DEBOUNCE_MS = 1500;
 
 export function renderBoardPage(container, query, ctx) {
     // ctx: { head: Node, tracks: [], focusTrackId: number|null, showSim: bool,
@@ -58,10 +60,26 @@ export function renderBoardPage(container, query, ctx) {
 
     loadBoard();
 
-    const timer = setInterval(() => {
+    // Live : le serveur pousse un signal à chaque sync/mutation → re-render.
+    // Repli : intervalle lent si EventSource est indisponible ou déconnecté.
+    const reload = () => {
         if (!document.hidden) replace(location.pathname + location.search);
-    }, AUTO_REFRESH_MS);
-    onCleanup(() => clearInterval(timer));
+    };
+    let lastLiveEvent = 0;
+    const unsubscribe = subscribeChanges(() => {
+        const now = Date.now();
+        if (now - lastLiveEvent < LIVE_DEBOUNCE_MS) return;
+        lastLiveEvent = now;
+        reload();
+    });
+    const fallback = setInterval(reload, FALLBACK_REFRESH_MS);
+    const onVisible = () => { if (!document.hidden) reload(); };
+    document.addEventListener('visibilitychange', onVisible);
+    onCleanup(() => {
+        unsubscribe();
+        clearInterval(fallback);
+        document.removeEventListener('visibilitychange', onVisible);
+    });
 
     document.title = `${trackName ? `${trackName} — ` : ''}F1 Chronos — Résultats`;
 }
