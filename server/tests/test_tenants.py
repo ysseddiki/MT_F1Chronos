@@ -69,18 +69,19 @@ def test_tenant_leaderboard_aggregates(tmp_path: Path):
                 },
             },
         )
-    rows = store.tenant_leaderboard(tenant["id"], 1)
-    assert len(rows) == 2
-    assert rows[0]["name"] == "Bob"
+    board = store.tenant_leaderboard(tenant["id"], 1)
+    assert board["total"] == 2
+    assert board["rows"][0]["name"] == "Bob"
+    assert board["rows"][0]["sim_label"] == "B"
 
 
 def test_register_api(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("RESULTS_DATA", str(tmp_path))
-    import app.main as main
+    from app import deps
+    from app.main import app
 
-    main._store = None
-    main._auth = None
-    client = TestClient(main.app)
+    deps.reset_state()
+    client = TestClient(app)
     r = client.post(
         "/api/v1/register",
         json={"simulatorId": "cli-99", "simulatorLabel": "Auto Box"},

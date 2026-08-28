@@ -654,7 +654,14 @@ public sealed class AppController : IDisposable
 
     private void ApplyResultsCommands(IReadOnlyList<ResultsCommand> commands)
     {
-        ResultsCommandApplier.Apply(_store, _contests, commands);
+        ResultsCommandApplier.Apply(_store, _contests, commands, name =>
+        {
+            // Job admin « setPlayerName » : le pseudo de session change côté serveur.
+            if (string.IsNullOrWhiteSpace(name))
+                return;
+            _settings.PlayerName = name;
+            SaveSettings();
+        });
         RefreshOverlay();
     }
 

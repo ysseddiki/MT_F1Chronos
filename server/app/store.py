@@ -11,8 +11,21 @@ from . import db
 from .online import is_simulator_connected
 
 
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+MAX_PLAYER_NAME_LENGTH = 20
+
+TENANT_VISIBILITIES = ("public", "private")
+
+
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _normalize_page(page: int, page_size: int) -> tuple[int, int]:
+    page = max(1, int(page))
+    page_size = max(1, min(int(page_size), MAX_PAGE_SIZE))
+    return page, page_size
 
 
 def format_lap(ms: int) -> str:
@@ -43,17 +56,57 @@ class ResultsStore:
         row = self._conn.execute("SELECT * FROM tenants WHERE id = ?", (tenant_id,)).fetchone()
         return dict(row) if row else None
 
-    def create_tenant(self, label: str) -> dict[str, Any]:
+    def create_tenant(self, label: str, visibility: str = "public") -> dict[str, Any]:
         tenant_id = uuid.uuid4().hex
         label = (label or "Organisation").strip() or "Organisation"
+        if visibility not in TENANT_VISIBILITIES:
+            visibility = "public"
         self._conn.execute(
-            "INSERT INTO tenants (id, label, created_at) VALUES (?, ?, ?)",
-            (tenant_id, label, db.utcnow()),
+            "INSERT INTO tenants (id, label, visibility, created_at) VALUES (?, ?, ?, ?)",
+            (tenant_id, label, visibility, db.utcnow()),
         )
         self._conn.commit()
         tenant = self.get_tenant(tenant_id)
         assert tenant is not None
         return tenant
+
+    def update_tenant(
+        self, tenant_id: str, label: str | None = None, visibility: str | None = None
+    ) -> dict[str, Any]:
+        tenant = self.get_tenant(tenant_id)
+        if tenant is None:
+            raise ValueError("Organisation introuvable.")
+        if label is not None:
+            label = label.strip()
+            if not label:
+                raise ValueError("Le nom ne peut pas être vide.")
+            self._conn.execute(
+                "UPDATE tenants SET label = ? WHERE id = ?", (label[:60], tenant_id)
+            )
+        if visibility is not None:
+            if visibility not in TENANT_VISIBILITIES:
+                raise ValueError("Visibilité invalide.")
+            self._conn.execute(
+                "UPDATE tenants SET visibility = ? WHERE id = ?", (visibility, tenant_id)
+            )
+        self._conn.commit()
+        updated = self.get_tenant(tenant_id)
+        assert updated is not None
+        return updated
+
+    def delete_tenant(self, tenant_id: str) -> None:
+        if self.get_tenant(tenant_id) is None:
+            raise ValueError("Organisation introuvable.")
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM simulators WHERE tenant_id = ?", (tenant_id,)
+        ).fetchone()[0]
+        if count:
+            raise ValueError(
+                "Organisation non vide : déplace ou supprime d'abord ses simulateurs."
+            )
+        self._conn.execute("DELETE FROM user_tenant_access WHERE tenant_id = ?", (tenant_id,))
+        self._conn.execute("DELETE FROM tenants WHERE id = ?", (tenant_id,))
+        self._conn.commit()
 
     def list_simulators_for_tenant(self, tenant_id: str) -> list[dict[str, Any]]:
         rows = self._conn.execute(
@@ -71,6 +124,51 @@ class ResultsStore:
         )
         self._conn.commit()
         return True
+
+    def update_simulator(
+        self, sim_id: str, label: str | None = None, tenant_id: str | None = None
+    ) -> dict[str, Any]:
+        sim = self.get_simulator(sim_id)
+        if sim is None:
+            raise ValueError("Simulateur introuvable.")
+        if label is not None:
+            label = label.strip()
+            if not label:
+                raise ValueError("Le nom ne peut pas être vide.")
+            self._conn.execute(
+                "UPDATE simulators SET label = ? WHERE id = ?", (label[:40], sim_id)
+            )
+        if tenant_id is not None and tenant_id != sim.get("tenant_id"):
+            if self.get_tenant(tenant_id) is None:
+                raise ValueError("Organisation introuvable.")
+            self._conn.execute(
+                "UPDATE simulators SET tenant_id = ? WHERE id = ?", (tenant_id, sim_id)
+            )
+        self._conn.commit()
+        updated = self.get_simulator(sim_id)
+        assert updated is not None
+        return updated
+
+    def delete_simulator(self, sim_id: str) -> bool:
+        if self.get_simulator(sim_id) is None:
+            return False
+        self._conn.execute("DELETE FROM laps WHERE simulator_id = ?", (sim_id,))
+        self._conn.execute("DELETE FROM contests WHERE simulator_id = ?", (sim_id,))
+        self._conn.execute("DELETE FROM jobs WHERE simulator_id = ?", (sim_id,))
+        self._conn.execute("DELETE FROM simulators WHERE id = ?", (sim_id,))
+        self._conn.commit()
+        return True
+
+    def regenerate_token(self, sim_id: str) -> str | None:
+        if self.get_simulator(sim_id) is None:
+            return None
+        token = secrets.token_urlsafe(32)
+        self._conn.execute(
+            "UPDATE simulators SET token_hash = ? WHERE id = ?",
+            (hash_token(token), sim_id),
+        )
+        self._conn.commit()
+        return token
 
     # --- simulators ---
 
@@ -350,10 +448,12 @@ class ResultsStore:
         tenant_id: str,
         track_id: int,
         best_per_player: bool = False,
-    ) -> list[dict[str, Any]]:
+        page: int = 1,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> dict[str, Any]:
         sim_ids = self._sim_ids_for_tenant(tenant_id)
         if not sim_ids:
-            return []
+            return self._paginate([], page, page_size)
         labels = {
             s["id"]: s["label"]
             for s in self.list_simulators_for_tenant(tenant_id)
@@ -369,20 +469,39 @@ class ResultsStore:
         entries = [dict(r) for r in rows]
         for e in entries:
             e["sim_label"] = labels.get(e["simulator_id"], "")
-        if best_per_player:
-            best: dict[str, dict[str, Any]] = {}
-            for e in entries:
-                key = e["name"].casefold()
-                prev = best.get(key)
-                if prev is None or e["best_lap_ms"] < prev["best_lap_ms"]:
-                    best[key] = e
-            entries = sorted(best.values(), key=lambda x: (x["best_lap_ms"], x["started_at"]))
-        return self._rank_entries(entries)
+        entries = self._dedupe_best(entries) if best_per_player else entries
+        return self._paginate(entries, page, page_size)
 
-    def _rank_entries(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    @staticmethod
+    def _dedupe_best(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        best: dict[str, dict[str, Any]] = {}
+        for e in entries:
+            key = e["name"].casefold()
+            prev = best.get(key)
+            if prev is None or e["best_lap_ms"] < prev["best_lap_ms"]:
+                best[key] = e
+        return sorted(best.values(), key=lambda x: (x["best_lap_ms"], x["started_at"]))
+
+    def _paginate(
+        self, entries: list[dict[str, Any]], page: int, page_size: int
+    ) -> dict[str, Any]:
+        page, page_size = _normalize_page(page, page_size)
+        total = len(entries)
+        start = (page - 1) * page_size
+        return {
+            "rows": self._rank_entries(entries[start : start + page_size], start),
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "pages": max(1, -(-total // page_size)),
+        }
+
+    def _rank_entries(
+        self, entries: list[dict[str, Any]], offset: int = 0
+    ) -> list[dict[str, Any]]:
         ranked = []
         for i, e in enumerate(entries, start=1):
-            e["rank"] = i
+            e["rank"] = offset + i
             e["formatted"] = format_lap(int(e["best_lap_ms"]))
             ranked.append(e)
         return ranked
@@ -393,7 +512,9 @@ class ResultsStore:
         track_id: int,
         contest_id: str | None = None,
         best_per_player: bool = False,
-    ) -> list[dict[str, Any]]:
+        page: int = 1,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> dict[str, Any]:
         if contest_id:
             rows = self._conn.execute(
                 """SELECT * FROM laps
@@ -410,16 +531,8 @@ class ResultsStore:
             ).fetchall()
 
         entries = [dict(r) for r in rows]
-        if best_per_player:
-            best: dict[str, dict[str, Any]] = {}
-            for e in entries:
-                key = e["name"].casefold()
-                prev = best.get(key)
-                if prev is None or e["best_lap_ms"] < prev["best_lap_ms"]:
-                    best[key] = e
-            entries = sorted(best.values(), key=lambda x: (x["best_lap_ms"], x["started_at"]))
-
-        return self._rank_entries(entries)
+        entries = self._dedupe_best(entries) if best_per_player else entries
+        return self._paginate(entries, page, page_size)
 
     def get_lap(self, sim_id: str, entry_id: str) -> dict[str, Any] | None:
         row = self._conn.execute(
@@ -653,6 +766,30 @@ class ResultsStore:
                          AND name = ? COLLATE NOCASE""",
                     (payload.get("playerName") or "", sim_id, payload.get("newName") or ""),
                 )
+
+    def enqueue_set_player_name(self, sim_id: str, new_name: str) -> bool:
+        """Session pseudo is owned by the sim: a job asks it to adopt a new one."""
+        new_name = (new_name or "").strip()[:MAX_PLAYER_NAME_LENGTH]
+        if not new_name or self.get_simulator(sim_id) is None:
+            return False
+        self._enqueue(sim_id, "setPlayerName", {"newName": new_name})
+        return True
+
+    # --- global settings ---
+
+    def get_public_access(self) -> bool:
+        row = self._conn.execute(
+            "SELECT value FROM settings WHERE key = 'public_access'"
+        ).fetchone()
+        return True if row is None else row["value"] == "1"
+
+    def set_public_access(self, enabled: bool) -> None:
+        self._conn.execute(
+            """INSERT INTO settings (key, value) VALUES ('public_access', ?)
+               ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
+            ("1" if enabled else "0",),
+        )
+        self._conn.commit()
 
     def _inverse_job(self, job_type: str, payload: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
         if job_type == "deleteEntry":

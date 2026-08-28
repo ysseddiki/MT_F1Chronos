@@ -11,6 +11,8 @@ services:
       RESULTS_DATA: /data
       RESULTS_ADMIN_PASSWORD: ${RESULTS_ADMIN_PASSWORD:-}
       RESULTS_SECRET: ${RESULTS_SECRET:-change-me-in-production}
+      # Présent ⇒ cookies de session Secure (HTTPS via Caddy).
+      RESULTS_DOMAIN: ${RESULTS_DOMAIN:-}
     volumes:
       - results-data:/data
     restart: unless-stopped

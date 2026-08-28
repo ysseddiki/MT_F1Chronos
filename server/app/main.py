@@ -1,87 +1,82 @@
 from __future__ import annotations
 
+import logging
 import os
-from pathlib import Path
+import secrets as _secrets
 
-from urllib.parse import quote
-
-from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import db
-from .auth import MIN_PASSWORD_LENGTH, AdminAuth
-from .store import ResultsStore, format_lap
+from . import db, deps
+from .admin_api import router as admin_router
+from .security import SecurityHeadersMiddleware
+from .serializers import board_out, contest_out, sim_out, tenant_out, track_out, user_out
+from .store import DEFAULT_PAGE_SIZE
 
-BASE = Path(__file__).resolve().parent
-DATA_DIR = Path(os.environ.get("RESULTS_DATA") or (BASE.parent / "data"))
-SECRET = os.environ.get("RESULTS_SECRET") or "dev-change-me"
+BASE = deps.BASE
+STATIC_DIR = BASE / "static"
 
-app = FastAPI(title="F1 Chronos — Résultats")
+logger = logging.getLogger("uvicorn.error")
+
+# RESULTS_SECRET signs session cookies. When unset, fall back to a random per-boot
+# secret (sessions die on restart) — never a publicly known constant.
+SECRET = os.environ.get("RESULTS_SECRET") or ""
+if not SECRET:
+    SECRET = _secrets.token_hex(32)
+    logger.warning("RESULTS_SECRET absent — secret de session aléatoire généré (sessions perdues au redémarrage).")
+
+app = FastAPI(title="F1 Chronos — Résultats", docs_url=None, redoc_url=None, openapi_url=None)
 # X-Forwarded-* : géré par uvicorn (--proxy-headers dans le Dockerfile), pas ici.
-app.add_middleware(SessionMiddleware, secret_key=SECRET, same_site="lax")
-app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
-templates = Jinja2Templates(directory=str(BASE / "templates"))
-templates.env.filters["lap"] = format_lap
+app.add_middleware(SecurityHeadersMiddleware)
+# Cookie Secure dès qu'un domaine public est configuré (Caddy sert alors en HTTPS).
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET,
+    same_site="lax",
+    https_only=bool(os.environ.get("RESULTS_DOMAIN")),
+)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-_store: ResultsStore | None = None
-_auth: AdminAuth | None = None
+
+# ---------------------------------------------------------------------------
+# Erreurs : JSON homogène {ok, message}
+# ---------------------------------------------------------------------------
+
+
+@app.exception_handler(HTTPException)
+async def http_exception(request: Request, exc: HTTPException):
+    return JSONResponse({"ok": False, "message": exc.detail}, status_code=exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception(request: Request, exc: RequestValidationError):
+    return JSONResponse({"ok": False, "message": "Requête invalide."}, status_code=400)
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception(request: Request, exc: Exception):
-    import logging
     import traceback
 
-    logging.getLogger("uvicorn.error").error(
+    logger.error(
         "Unhandled error on %s %s\n%s",
         request.method,
         request.url.path,
         traceback.format_exc(),
     )
-    if request.url.path.startswith("/api/"):
-        return JSONResponse({"ok": False, "message": "Erreur serveur."}, status_code=500)
-    return HTMLResponse(
-        "<h1>Erreur serveur</h1><p>Consulte les logs : <code>podman compose logs results</code></p>",
-        status_code=500,
-    )
+    return JSONResponse({"ok": False, "message": "Erreur serveur."}, status_code=500)
 
 
-def _ensure() -> tuple[ResultsStore, AdminAuth]:
-    global _store, _auth
-    if _store is None:
-        conn = db.connect(DATA_DIR / "results.sqlite")
-        _store = ResultsStore(conn)
-        _auth = AdminAuth(conn)
-        _auth.seed_from_env(os.environ.get("RESULTS_ADMIN_PASSWORD") or "")
-    assert _auth is not None
-    return _store, _auth
+def _err(exc: ValueError, status: int = 400) -> JSONResponse:
+    return JSONResponse({"ok": False, "message": str(exc)}, status_code=status)
 
 
-def store() -> ResultsStore:
-    return _ensure()[0]
-
-
-def auth() -> AdminAuth:
-    return _ensure()[1]
-
-
-def page(request: Request, name: str, ctx: dict) -> HTMLResponse:
-    return templates.TemplateResponse(request, name, ctx)
-
-
-def is_admin(request: Request) -> bool:
-    if not auth().has_password():
-        return True
-    return request.session.get("admin") is True
-
-
-def require_admin(request: Request) -> RedirectResponse | None:
-    if is_admin(request):
-        return None
-    return RedirectResponse("/admin/login", status_code=303)
+# ---------------------------------------------------------------------------
+# API simulateur (contrat figé — ne pas casser les clients déployés)
+# ---------------------------------------------------------------------------
 
 
 @app.get("/api/v1/health")
@@ -102,9 +97,9 @@ async def register(request: Request):
         return JSONResponse({"ok": False, "message": "simulatorId requis."}, status_code=400)
 
     try:
-        tenant, sim, token = store().register_simulator(label, client_id)
+        tenant, sim, token = deps.store().register_simulator(label, client_id)
     except ValueError as exc:
-        return JSONResponse({"ok": False, "message": str(exc)}, status_code=400)
+        return _err(exc)
 
     return {
         "ok": True,
@@ -119,10 +114,10 @@ async def register(request: Request):
 @app.post("/api/v1/sync")
 async def sync(request: Request):
     token = request.headers.get("X-Results-Token") or ""
-    auth = request.headers.get("Authorization") or ""
-    if auth.lower().startswith("bearer "):
-        token = auth[7:].strip()
-    sim = store().get_by_token(token)
+    auth_header = request.headers.get("Authorization") or ""
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+    sim = deps.store().get_by_token(token)
     if sim is None:
         return JSONResponse(
             {
@@ -136,360 +131,236 @@ async def sync(request: Request):
     except Exception:
         return JSONResponse({"ok": False, "message": "JSON invalide."}, status_code=400)
 
-    jobs = store().ingest(sim, payload)
+    jobs = deps.store().ingest(sim, payload)
     return {
         "ok": True,
         "serverTime": db.utcnow(),
-        "commands": store().jobs_as_commands(jobs),
+        "commands": deps.store().jobs_as_commands(jobs),
     }
 
 
-def _tenant_for_sim(sim: dict | None) -> dict | None:
-    if sim is None or not sim.get("tenant_id"):
-        return None
-    return store().get_tenant(sim["tenant_id"])
+# ---------------------------------------------------------------------------
+# Auth (session cookie signé)
+# ---------------------------------------------------------------------------
 
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    tenants = store().list_tenants()
-    if len(tenants) == 1 and tenants[0]["sim_count"] == 1:
-        sims = store().list_simulators_for_tenant(tenants[0]["id"])
-        if sims:
-            return RedirectResponse(f"/t/{tenants[0]['id']}", status_code=303)
-    return page(request, "tenants.html", {"tenants": tenants, "admin": is_admin(request)})
+class LoginIn(BaseModel):
+    email: str = Field(default="", max_length=254)
+    password: str = Field(default="", max_length=256)
 
 
-@app.get("/t/{tenant_id}", response_class=HTMLResponse)
-def tenant_home(request: Request, tenant_id: str, best: bool = False):
-    tenant = store().get_tenant(tenant_id)
-    if tenant is None:
-        raise HTTPException(404, "Organisation introuvable")
-    sims = store().list_simulators_for_tenant(tenant_id)
-    tracks = store().tenant_track_summaries(tenant_id)
-    preview = []
-    preview_name = ""
-    if tracks:
-        focus = tracks[0]["track_id"]
-        for s in sims:
-            if s["current_track_id"] >= 0:
-                focus = s["current_track_id"]
-                break
-        preview = store().tenant_leaderboard(tenant_id, focus, best_per_player=best)
-        preview_name = next((t["track_name"] for t in tracks if t["track_id"] == focus), "")
-    return page(
-        request,
-        "tenant.html",
-        {
-            "tenant": tenant,
-            "sims": sims,
-            "tracks": tracks,
-            "preview": preview,
-            "preview_name": preview_name,
-            "best": best,
-            "admin": is_admin(request),
-        },
-    )
+class SetupIn(BaseModel):
+    email: str = Field(default="", max_length=254)
+    password: str = Field(default="", max_length=256)
 
 
-@app.get("/t/{tenant_id}/tracks/{track_id}", response_class=HTMLResponse)
-def tenant_track_page(request: Request, tenant_id: str, track_id: int, best: bool = False):
-    tenant = store().get_tenant(tenant_id)
-    if tenant is None:
-        raise HTTPException(404)
-    sims = store().list_simulators_for_tenant(tenant_id)
-    rows = store().tenant_leaderboard(tenant_id, track_id, best_per_player=best)
-    name = rows[0]["track_name"] if rows else f"Circuit {track_id}"
-    return page(
-        request,
-        "tenant_track.html",
-        {
-            "tenant": tenant,
-            "sims": sims,
-            "track_id": track_id,
-            "track_name": name,
-            "rows": rows,
-            "best": best,
-            "admin": is_admin(request),
-        },
-    )
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(default="", max_length=256)
+    new_password: str = Field(default="", max_length=256)
 
 
-@app.get("/sim/{sim_id}", response_class=HTMLResponse)
-def sim_home(request: Request, sim_id: str, best: bool = False):
-    sim = store().get_simulator(sim_id)
-    if sim is None:
-        raise HTTPException(404, "Simulateur introuvable")
-    tracks = store().track_summaries(sim_id)
-    preview = []
-    preview_name = ""
-    if tracks:
-        focus = sim["current_track_id"] if sim["current_track_id"] >= 0 else tracks[0]["track_id"]
-        preview = store().leaderboard(sim_id, focus, best_per_player=best)
-        preview_name = next((t["track_name"] for t in tracks if t["track_id"] == focus), "")
-    return page(request,
-        "index.html",
-        {
-            "sims": store().list_simulators(),
-            "sim": sim,
-            "tenant": _tenant_for_sim(sim),
-            "tracks": tracks,
-            "preview": preview,
-            "preview_name": preview_name,
-            "best": best,
-            "admin": is_admin(request),
-        },
-    )
+def _client_key(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
 
 
-@app.get("/sim/{sim_id}/tracks/{track_id}", response_class=HTMLResponse)
-def track_page(request: Request, sim_id: str, track_id: int, best: bool = False):
-    sim = store().get_simulator(sim_id)
-    if sim is None:
-        raise HTTPException(404)
-    rows = store().leaderboard(sim_id, track_id, best_per_player=best)
-    name = rows[0]["track_name"] if rows else f"Circuit {track_id}"
-    return page(request,
-        "track.html",
-        {"sim": sim, "track_id": track_id, "track_name": name, "rows": rows, "best": best, "admin": is_admin(request)},
-    )
+@app.get("/api/v1/auth/me")
+def auth_me(request: Request):
+    user = deps.current_user(request)
+    return {
+        "ok": True,
+        "authenticated": user is not None,
+        "setupRequired": not deps.auth().has_users(),
+        "publicAccess": deps.store().get_public_access(),
+        "user": user_out(user) if user else None,
+    }
 
 
-@app.get("/contests", response_class=HTMLResponse)
-def contests_index(request: Request, sim: str | None = None):
-    sims = store().list_simulators()
-    current = next((s for s in sims if s["id"] == sim), None) or (sims[0] if sims else None)
-    contests = store().list_contests(current["id"]) if current else []
-    return page(request,
-        "contests.html",
-        {"sims": sims, "sim": current, "contests": contests, "admin": is_admin(request)},
-    )
+@app.post("/api/v1/auth/setup")
+def auth_setup(request: Request, body: SetupIn):
+    """Bootstrap du premier admin — refusé dès qu'un compte existe."""
+    if deps.auth().has_users():
+        raise HTTPException(403, "Le premier compte existe déjà.")
+    key = f"setup:{_client_key(request)}"
+    if deps.limiter().blocked(key):
+        raise HTTPException(429, "Trop de tentatives. Réessaie dans quelques minutes.")
+    try:
+        user = deps.auth().create_user(body.email, body.password, "admin")
+    except ValueError as exc:
+        deps.limiter().hit(key)
+        return _err(exc)
+    deps.limiter().reset(key)
+    request.session["user_id"] = user["id"]
+    return {"ok": True, "user": user_out(user)}
 
 
-@app.get("/sim/{sim_id}/contests/{contest_id}", response_class=HTMLResponse)
-def contest_page(request: Request, sim_id: str, contest_id: str, track_id: int | None = None, best: bool = False):
-    sim = store().get_simulator(sim_id)
-    contest = store().get_contest(sim_id, contest_id)
-    if sim is None or contest is None:
-        raise HTTPException(404)
-    tracks = store().track_summaries(sim_id, contest_id)
-    tid = track_id if track_id is not None else (tracks[0]["track_id"] if tracks else None)
-    rows = store().leaderboard(sim_id, tid, contest_id, best) if tid is not None else []
-    tname = next((t["track_name"] for t in tracks if t["track_id"] == tid), "")
-    return page(request,
-        "contest.html",
-        {
-            "sim": sim,
-            "contest": contest,
-            "tracks": tracks,
-            "track_id": tid,
-            "track_name": tname,
-            "rows": rows,
-            "best": best,
-            "admin": is_admin(request),
-        },
-    )
-
-
-@app.get("/admin/login", response_class=HTMLResponse)
-def admin_login_get(request: Request):
-    if is_admin(request):
-        return RedirectResponse("/admin", status_code=303)
-    return page(request, "admin_login.html", {"error": None})
-
-
-@app.post("/admin/login")
-def admin_login_post(request: Request, password: str = Form("")):
-    if auth().has_password() and not auth().verify(password):
-        return page(
-            request, "admin_login.html", {"error": "Mot de passe incorrect."}
+@app.post("/api/v1/auth/login")
+def auth_login(request: Request, body: LoginIn):
+    key = f"login:{_client_key(request)}"
+    if deps.limiter().blocked(key):
+        raise HTTPException(429, "Trop de tentatives. Réessaie dans quelques minutes.")
+    user = deps.auth().verify_credentials(body.email, body.password)
+    if user is None:
+        deps.limiter().hit(key)
+        return JSONResponse(
+            {"ok": False, "message": "Identifiants incorrects."}, status_code=401
         )
-    request.session["admin"] = True
-    return RedirectResponse("/admin", status_code=303)
-
-
-@app.get("/admin/logout")
-def admin_logout(request: Request):
+    deps.limiter().reset(key)
     request.session.clear()
-    return RedirectResponse("/", status_code=303)
+    request.session["user_id"] = user["id"]
+    return {"ok": True, "user": user_out(user)}
 
 
-@app.get("/admin", response_class=HTMLResponse)
-def admin_home(
+@app.post("/api/v1/auth/logout")
+def auth_logout(request: Request):
+    request.session.clear()
+    return {"ok": True}
+
+
+@app.post("/api/v1/auth/change-password")
+def auth_change_password(request: Request, body: ChangePasswordIn):
+    user = deps.require_user(request)
+    try:
+        deps.auth().change_password(user["id"], body.current_password, body.new_password)
+    except ValueError as exc:
+        return _err(exc)
+    return {"ok": True, "message": "Mot de passe mis à jour."}
+
+
+# ---------------------------------------------------------------------------
+# API de lecture (filtrée par visibilité)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/v1/tenants")
+def list_tenants(request: Request):
+    user = deps.current_user(request)
+    return {
+        "ok": True,
+        "tenants": [tenant_out(t) for t in deps.visible_tenants(user)],
+        "publicAccess": deps.store().get_public_access(),
+    }
+
+
+@app.get("/api/v1/tenants/{tenant_id}")
+def get_tenant(request: Request, tenant_id: str):
+    user = deps.current_user(request)
+    tenant = deps.tenant_or_404(tenant_id, user)
+    sims = deps.store().list_simulators_for_tenant(tenant_id)
+    return {
+        "ok": True,
+        "tenant": tenant_out(tenant),
+        "sims": [sim_out(s) for s in sims],
+    }
+
+
+@app.get("/api/v1/tenants/{tenant_id}/tracks")
+def get_tenant_tracks(request: Request, tenant_id: str):
+    user = deps.current_user(request)
+    deps.tenant_or_404(tenant_id, user)
+    return {
+        "ok": True,
+        "tracks": [track_out(t) for t in deps.store().tenant_track_summaries(tenant_id)],
+    }
+
+
+@app.get("/api/v1/tenants/{tenant_id}/leaderboard")
+def get_tenant_leaderboard(
     request: Request,
-    sim: str | None = None,
-    contest_id: str | None = None,
-    track_id: int | None = None,
-    status: str | None = None,
-    new_token: str | None = None,
+    tenant_id: str,
+    track_id: int,
+    best: bool = False,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    sims = store().list_simulators()
-    tenants = store().list_tenants()
-    current = next((s for s in sims if s["id"] == sim), None) or (sims[0] if sims else None)
-    contests = store().list_contests(current["id"]) if current else []
-    tracks = store().track_summaries(current["id"], contest_id) if current else []
-    tid = track_id if track_id is not None else (tracks[0]["track_id"] if tracks else None)
-    rows = store().leaderboard(current["id"], tid, contest_id) if current and tid is not None else []
-    tname = next((t["track_name"] for t in tracks if t["track_id"] == tid), "")
-    jobs = store().list_jobs(current["id"]) if current else []
-    return page(request,
-        "admin.html",
-        {
-            "tenants": tenants,
-            "sims": sims,
-            "sim": current,
-            "tenant": _tenant_for_sim(current),
-            "contests": contests,
-            "contest_id": contest_id,
-            "tracks": tracks,
-            "track_id": tid,
-            "track_name": tname,
-            "rows": rows,
-            "jobs": jobs,
-            "status": status,
-            "new_token": new_token,
-            "admin": True,
-            "has_password": auth().has_password(),
-        },
+    user = deps.current_user(request)
+    deps.tenant_or_404(tenant_id, user)
+    board = deps.store().tenant_leaderboard(
+        tenant_id, track_id, best_per_player=best, page=page, page_size=page_size
     )
+    return {"ok": True, **board_out(board)}
 
 
-@app.post("/admin/tenants")
-def admin_create_tenant(request: Request, label: str = Form("Organisation")):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    tenant = store().create_tenant(label)
-    return RedirectResponse(
-        f"/admin?status={quote('Organisation créée — assigne des simulateurs ci-dessous.')}",
-        status_code=303,
-    )
+@app.get("/api/v1/sims")
+def list_sims(request: Request):
+    user = deps.current_user(request)
+    store = deps.store()
+    sims = []
+    for tenant in deps.visible_tenants(user):
+        for sim in store.list_simulators_for_tenant(tenant["id"]):
+            entry = sim_out(sim)
+            entry["tenantLabel"] = tenant["label"]
+            sims.append(entry)
+    return {"ok": True, "sims": sims}
 
 
-@app.post("/admin/simulators")
-def admin_create_sim(
-    request: Request,
-    label: str = Form("Simulateur"),
-    tenant_id: str = Form(""),
-):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    tid = tenant_id.strip() or None
-    created, token = store().create_simulator(label, tenant_id=tid)
-    return RedirectResponse(
-        f"/admin?sim={created['id']}&new_token={token}&status=Simulateur créé — copie le jeton dans l’admin F1 Chronos (ou laisse vide pour l’auto-enregistrement).",
-        status_code=303,
-    )
+@app.get("/api/v1/sims/{sim_id}")
+def get_sim(request: Request, sim_id: str):
+    user = deps.current_user(request)
+    sim = deps.sim_or_404(sim_id, user)
+    tenant = None
+    if sim.get("tenant_id"):
+        t = deps.store().get_tenant(sim["tenant_id"])
+        tenant = tenant_out(t) if t else None
+    return {"ok": True, "sim": sim_out(sim), "tenant": tenant}
 
 
-@app.post("/admin/simulators/{sim_id}/tenant")
-def admin_assign_sim_tenant(
+@app.get("/api/v1/sims/{sim_id}/tracks")
+def get_sim_tracks(request: Request, sim_id: str, contest_id: str | None = None):
+    user = deps.current_user(request)
+    deps.sim_or_404(sim_id, user)
+    return {
+        "ok": True,
+        "tracks": [track_out(t) for t in deps.store().track_summaries(sim_id, contest_id)],
+    }
+
+
+@app.get("/api/v1/sims/{sim_id}/leaderboard")
+def get_sim_leaderboard(
     request: Request,
     sim_id: str,
-    tenant_id: str = Form(...),
-    sim: str = Form(""),
+    track_id: int,
+    contest_id: str | None = None,
+    best: bool = False,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    ok = store().assign_simulator_to_tenant(sim_id, tenant_id)
-    msg = "Simulateur déplacé." if ok else "Déplacement impossible."
-    target = sim or sim_id
-    return RedirectResponse(f"/admin?sim={target}&status={quote(msg)}", status_code=303)
+    user = deps.current_user(request)
+    deps.sim_or_404(sim_id, user)
+    board = deps.store().leaderboard(
+        sim_id, track_id, contest_id, best_per_player=best, page=page, page_size=page_size
+    )
+    return {"ok": True, **board_out(board)}
 
 
-@app.post("/admin/laps/{entry_id}/delete")
-def admin_delete(
-    request: Request,
-    entry_id: str,
-    sim: str = Form(...),
-    contest_id: str = Form(""),
-    track_id: str = Form(""),
-):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    store().admin_delete_entry(sim, entry_id)
-    q = _admin_qs(sim, contest_id, track_id, "Chrono retiré — job en file pour le simu.")
-    return RedirectResponse(f"/admin?{q}", status_code=303)
+@app.get("/api/v1/sims/{sim_id}/contests")
+def get_sim_contests(request: Request, sim_id: str):
+    user = deps.current_user(request)
+    deps.sim_or_404(sim_id, user)
+    return {
+        "ok": True,
+        "contests": [contest_out(c) for c in deps.store().list_contests(sim_id)],
+    }
 
 
-@app.post("/admin/laps/{entry_id}/rename")
-def admin_rename_one(
-    request: Request,
-    entry_id: str,
-    sim: str = Form(...),
-    new_name: str = Form(...),
-    contest_id: str = Form(""),
-    track_id: str = Form(""),
-):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    store().admin_rename_entry(sim, entry_id, new_name)
-    q = _admin_qs(sim, contest_id, track_id, "Pseudo modifié (ce chrono) — job en file.")
-    return RedirectResponse(f"/admin?{q}", status_code=303)
+@app.get("/api/v1/sims/{sim_id}/contests/{contest_id}")
+def get_sim_contest(request: Request, sim_id: str, contest_id: str):
+    user = deps.current_user(request)
+    deps.sim_or_404(sim_id, user)
+    contest = deps.store().get_contest(sim_id, contest_id)
+    if contest is None:
+        raise HTTPException(404, "Concours introuvable.")
+    return {"ok": True, "contest": contest_out(contest)}
 
 
-@app.post("/admin/players/rename")
-def admin_rename_all(
-    request: Request,
-    sim: str = Form(...),
-    old_name: str = Form(...),
-    new_name: str = Form(...),
-    contest_id: str = Form(""),
-    track_id: str = Form(""),
-):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    cid = contest_id or None
-    store().admin_rename_player(sim, cid, old_name, new_name)
-    q = _admin_qs(sim, contest_id, track_id, "Pseudo modifié (tous les temps) — job en file.")
-    return RedirectResponse(f"/admin?{q}", status_code=303)
+# ---------------------------------------------------------------------------
+# Admin + SPA
+# ---------------------------------------------------------------------------
+
+app.include_router(admin_router)
 
 
-@app.post("/admin/password")
-def admin_change_password(
-    request: Request,
-    current_password: str = Form(""),
-    new_password: str = Form(""),
-    confirm_password: str = Form(""),
-):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    if auth().has_password() and not auth().verify(current_password):
-        msg = "Mot de passe actuel incorrect."
-    elif len(new_password) < MIN_PASSWORD_LENGTH:
-        msg = f"Le nouveau mot de passe doit faire au moins {MIN_PASSWORD_LENGTH} caractères."
-    elif new_password != confirm_password:
-        msg = "La confirmation ne correspond pas."
-    else:
-        auth().set_password(new_password)
-        request.session["admin"] = True
-        msg = "Mot de passe admin mis à jour. Le .env n’est plus utilisé pour le login."
-    return RedirectResponse(f"/admin?status={quote(msg)}", status_code=303)
-
-
-@app.post("/admin/jobs/{job_id}/revert")
-def admin_revert(request: Request, job_id: str, sim: str = Form(...)):
-    gate = require_admin(request)
-    if gate:
-        return gate
-    err = store().revert_job(sim, job_id)
-    msg = "Job revert." if err is None else f"Revert impossible : {err}"
-    return RedirectResponse(f"/admin?sim={sim}&status={msg}", status_code=303)
-
-
-def _admin_qs(sim: str, contest_id: str, track_id: str, status: str) -> str:
-    parts = [f"sim={sim}", f"status={quote(status)}"]
-    if contest_id:
-        parts.append(f"contest_id={contest_id}")
-    if track_id:
-        parts.append(f"track_id={track_id}")
-    return "&".join(parts)
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa(full_path: str):
+    if full_path.startswith("api/"):
+        raise HTTPException(404, "Introuvable.")
+    return FileResponse(STATIC_DIR / "index.html")

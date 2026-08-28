@@ -136,6 +136,9 @@ public static class ResultsCommandTypes
     public const string RenameEntry = "renameEntry";
     public const string RenamePlayer = "renamePlayer";
     public const string RestoreEntry = "restoreEntry";
+
+    /// <summary>Server asks the sim to adopt a new session player name (NewName).</summary>
+    public const string SetPlayerName = "setPlayerName";
 }
 
 public sealed class ResultsCommand

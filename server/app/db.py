@@ -70,6 +70,21 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'visitor')),
+    disabled INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_tenant_access (
+    user_id TEXT NOT NULL,
+    tenant_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, tenant_id)
+);
 """
 
 
@@ -84,6 +99,14 @@ def migrate(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(simulators)").fetchall()}
     if "tenant_id" not in cols:
         conn.execute("ALTER TABLE simulators ADD COLUMN tenant_id TEXT")
+
+    tenant_cols = {row[1] for row in conn.execute("PRAGMA table_info(tenants)").fetchall()}
+    if "visibility" not in tenant_cols:
+        conn.execute("ALTER TABLE tenants ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'")
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_user_tenant_access_tenant ON user_tenant_access (tenant_id)"
+    )
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_simulators_tenant ON simulators (tenant_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_simulators_client ON simulators (client_id)")

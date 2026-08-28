@@ -371,19 +371,35 @@ Services satellitaires :
 
 ### 2.9 Serveur de résultats (`server/` — FastAPI / Linux)
 
-Le simulateur **initie** toujours `POST /api/v1/sync` (NAT). Le VPS ne ouvre aucune connexion vers le simu.
+Le simulateur **initie** toujours `POST /api/v1/sync` (NAT). Le VPS n’ouvre aucune connexion vers le simu.
+
+**Architecture** : backend = API JSON pure ; frontend = SPA statique en vanilla JS (modules ES, **sans build ni CDN**) servie depuis `server/app/static/`. Toute route non-`/api` renvoie `index.html` (routage history côté client). Plus de rendu Jinja.
+
+API simulateur (contrat figé) :
 
 | Méthode | Chemin | Rôle |
 |---|---|---|
 | `GET` | `/api/v1/health` | Test de visibilité |
+| `POST` | `/api/v1/register` | Auto-enregistrement (crée simu + tenant, retourne jeton) |
 | `POST` | `/api/v1/sync` | Snapshot + `deletedEntryIds` + ACK jobs → jobs `pending` en réponse |
-| Pages | `/`, `/sim/{id}`, `/admin` | Consultation publique + gestion (jobs revertibles, **changement du mot de passe admin**) |
 
-Jobs (`deleteEntry`, `renameEntry`, `renamePlayer`, `restoreEntry`) : créés **uniquement** par bouton admin. Wipe DB VPS ≠ job. Revert pending = annule + restore replica ; revert applied = job inverse.
+API web (JSON, camelCase) :
+
+| Préfixe | Accès | Rôle |
+|---|---|---|
+| `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si `RESULTS_DOMAIN`) |
+| `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max) |
+| `/api/v1/admin/*` | rôle `admin` | CRUD tenants/sims/users, gestion chronos, jobs, réglages |
+
+**Comptes** : table `users` (email unique, hash PBKDF2, rôle `admin`/`visitor`, `disabled`) + `user_tenant_access` (visiteur → tenants assignés). Premier compte : hash legacy migré, sinon seed `RESULTS_ADMIN_PASSWORD` → `admin@localhost`, sinon formulaire de bootstrap (`/auth/setup`, refusé dès qu’un compte existe). Le dernier admin actif ne peut être ni rétrogradé, ni désactivé, ni supprimé. Login rate-limité (5 échecs / 5 min / IP).
+
+**Visibilité** : tenant `public` (lisible anonymement si `public_access` global actif, sinon compte requis) ou `private` (admin + visiteurs assignés). `public_access` = réglage global admin.
+
+Jobs (`deleteEntry`, `renameEntry`, `renamePlayer`, `restoreEntry`, `setPlayerName`) : créés **uniquement** par action admin. Wipe DB VPS ≠ job. Revert pending = annule + restore replica ; revert applied = job inverse (`setPlayerName` non revertible). `setPlayerName` demande au simu d’adopter un nouveau pseudo de session (le simu reste maître de `PlayerName`, appliqué à la réception puis renvoyé aux syncs suivantes).
 
 Présence simu : hors ligne si `now - lastSeen > 2 × syncIntervalSeconds`.
 
-`RESULTS_ADMIN_PASSWORD` (`.env`, via `./scripts/init-env.sh`) **sème uniquement** le premier hash SQLite. Ensuite le mot de passe se change dans `/admin`. Relancer le script / modifier l’env ne change pas le login. Wipe du volume SQLite = retour au mot de passe env. Vide + aucune base = admin ouvert (à éviter en VPS).
+Sécurité HTTP : CSP stricte `default-src 'self'` (aucune ressource externe), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Cache-Control: no-store` sur `/api/*`. `RESULTS_SECRET` signe les sessions ; absent → secret aléatoire par boot (sessions perdues au redémarrage, jamais de constante connue).
 
 Docker : `docker compose up --build` / `podman compose up --build`. Caddy public **443** (et **80** ACME) ; FastAPI interne **8080** (non publié). Volume `/data`. Hostname `RESULTS_DOMAIN` obligatoire pour Let’s Encrypt.
 
@@ -474,10 +490,11 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 - Un échec de sync **ne bloque jamais** l’enregistrement local (BR-01) ni l’overlay.
 - Le simu **pull** (NAT) : snapshot + jobs à chaque mutation (debounce 1 s) **et** selon `ResultsSyncIntervalSeconds`.
 - Jobs admin revertibles ; wipe DB serveur **sans** job vers le simu.
+- Job `setPlayerName` : renomme le pseudo de session du simu (`AppSettings.PlayerName` mis à jour à réception, cf. BR-09).
 - Overlay : LED serveur à côté de la télémétrie.
 - Transport : `ResultsSyncClient` utilise `ResultsServerUrl` normalisée en `https://host` (TCP **443**). Pas de sync sur le 8080 public.
 - VPS : simu hors ligne après **2 ×** l’intervalle annoncé, sans sync.
-- Admin web : mot de passe hashé en SQLite (PBKDF2) ; `RESULTS_ADMIN_PASSWORD` = seed initial seulement.
+- Admin web : comptes en SQLite (`users`, PBKDF2, rôles admin/visiteur) ; `RESULTS_ADMIN_PASSWORD` = seed initial seulement ; visiteur limité à ses tenants assignés ; accès public anonyme = option globale + visibilité par tenant.
 
 ---
 
@@ -532,10 +549,10 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 
 ### 4.6 Non-objectifs de cette baseline
 
-- Pas d’authentification cloud / comptes distants
+- Pas d’authentification cloud / comptes distants (les comptes du serveur Results restent locaux à ce serveur)
 - Pas d’installeur MSI documenté ici (script `build.ps1` + raccourcis)
 - Throttle UDP→UI (#3 architecture) **non implémenté** dans cette baseline
-- Le serveur Results est une réplique LAN optionnelle, pas un backend multi-tenant
+- Le serveur Results reste une archive optionnelle : les tenants y sont des regroupements logiques de simus, pas une isolation multi-clients chiffrée
 
 ---
 
@@ -548,6 +565,8 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | BEST | Mode meilleur chrono par joueur |
 | Snapshot | Copie immuable de `TelemetryState` publiée hors thread UDP |
 | Principal | Concours sélectionné pour l’overlay (`OverlayContestId`) |
+| Tenant / Organisation | Regroupement de simulateurs côté serveur Results (visibilité public/privé) |
+| Visiteur | Compte serveur en lecture seule, limité à ses tenants assignés |
 
 ---
 

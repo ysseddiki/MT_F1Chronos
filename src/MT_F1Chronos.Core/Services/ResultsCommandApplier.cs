@@ -7,10 +7,15 @@ namespace MT_F1Chronos.Core.Services;
 /// </summary>
 public static class ResultsCommandApplier
 {
+    /// <param name="onSetPlayerName">
+    /// Called when the server asks to rename the current session pseudo (setPlayerName).
+    /// Without a handler the command stays pending (not ACKed).
+    /// </param>
     public static IReadOnlyList<string> Apply(
         SessionStore store,
         ContestStore contests,
-        IEnumerable<ResultsCommand> commands)
+        IEnumerable<ResultsCommand> commands,
+        Action<string>? onSetPlayerName = null)
     {
         var applied = new List<string>();
 
@@ -58,6 +63,16 @@ public static class ResultsCommandApplier
                         store.RenamePlayer(command.PlayerName, command.NewName);
                     else
                         contests.RenamePlayer(command.ContestId, command.PlayerName, command.NewName);
+                    applied.Add(command.Id);
+                    break;
+
+                case ResultsCommandTypes.SetPlayerName:
+                    if (string.IsNullOrWhiteSpace(command.NewName) || onSetPlayerName is null)
+                        break;
+                    var sessionName = command.NewName.Trim();
+                    if (sessionName.Length > ResultsSyncProtocol.MaxPlayerNameLength)
+                        sessionName = sessionName[..ResultsSyncProtocol.MaxPlayerNameLength];
+                    onSetPlayerName(sessionName);
                     applied.Add(command.Id);
                     break;
 
