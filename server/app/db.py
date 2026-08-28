@@ -6,6 +6,12 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS tenants (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS simulators (
     id TEXT PRIMARY KEY,
     label TEXT NOT NULL,
@@ -71,6 +77,35 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def migrate(conn: sqlite3.Connection) -> None:
+    """Light migrations for existing VPS databases."""
+    import uuid
+
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(simulators)").fetchall()}
+    if "tenant_id" not in cols:
+        conn.execute("ALTER TABLE simulators ADD COLUMN tenant_id TEXT")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_simulators_tenant ON simulators (tenant_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_simulators_client ON simulators (client_id)")
+    conn.execute(
+        """CREATE UNIQUE INDEX IF NOT EXISTS idx_simulators_client_unique
+           ON simulators(client_id) WHERE client_id IS NOT NULL AND client_id != ''"""
+    )
+
+    orphans = conn.execute(
+        "SELECT id, label FROM simulators WHERE tenant_id IS NULL OR tenant_id = ''"
+    ).fetchall()
+    for row in orphans:
+        tenant_id = uuid.uuid4().hex
+        label = (row["label"] or "Organisation").strip() or "Organisation"
+        conn.execute(
+            "INSERT INTO tenants (id, label, created_at) VALUES (?, ?, ?)",
+            (tenant_id, label, utcnow()),
+        )
+        conn.execute("UPDATE simulators SET tenant_id = ? WHERE id = ?", (tenant_id, row["id"]))
+    conn.commit()
+
+
 def connect(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, check_same_thread=False)
@@ -78,7 +113,7 @@ def connect(path: Path) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.executescript(SCHEMA)
-    conn.commit()
+    migrate(conn)
     return conn
 
 

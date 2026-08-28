@@ -23,7 +23,7 @@ def test_home_empty_db(tmp_path: Path, monkeypatch):
     client = TestClient(app)
     r = client.get("/")
     assert r.status_code == 200
-    assert "Classements" in r.text
+    assert "Organisations" in r.text
 
 
 def test_admin_without_password(tmp_path: Path, monkeypatch):

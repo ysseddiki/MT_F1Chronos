@@ -1,14 +1,15 @@
-{% macro board(rows) %}
+{% macro board(rows, show_sim=false) %}
 <table class="board">
-    <thead><tr><th>#</th><th>Pilote</th><th class="time">Temps</th></tr></thead>
+    <thead><tr><th>#</th><th>Pilote</th>{% if show_sim %}<th>Simu</th>{% endif %}<th class="time">Temps</th></tr></thead>
     <tbody>
     {% if not rows %}
-        <tr><td colspan="3" class="lede">Aucun chrono.</td></tr>
+        <tr><td colspan="{% if show_sim %}4{% else %}3{% endif %}" class="lede">Aucun chrono.</td></tr>
     {% else %}
         {% for row in rows %}
         <tr>
             <td class="{% if row.rank == 1 %}p1{% elif row.rank == 2 %}p2{% elif row.rank == 3 %}p3{% endif %}">P{{ row.rank }}</td>
             <td>{{ row.name }}</td>
+            {% if show_sim %}<td>{{ row.sim_label or '—' }}</td>{% endif %}
             <td class="time">{{ row.formatted }}</td>
         </tr>
         {% endfor %}

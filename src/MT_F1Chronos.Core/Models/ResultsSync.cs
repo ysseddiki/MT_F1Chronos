@@ -8,6 +8,7 @@ public static class ResultsSyncProtocol
 {
     public const int Version = 1;
     public const string HealthPath = "/api/v1/health";
+    public const string RegisterPath = "/api/v1/register";
     public const string SyncPath = "/api/v1/sync";
     public const string TokenHeader = "X-Results-Token";
     public const int MaxPlayerNameLength = 20;
@@ -76,6 +77,17 @@ public sealed class ResultsSyncResponse
     public DateTime ServerTime { get; set; } = DateTime.UtcNow;
     public string? Message { get; set; }
     public List<ResultsCommand> Commands { get; set; } = [];
+}
+
+public sealed class ResultsRegisterResponse
+{
+    public bool Ok { get; set; } = true;
+    public string? Message { get; set; }
+    public string? Token { get; set; }
+    public string? SimulatorId { get; set; }
+    public string? TenantId { get; set; }
+    public string? TenantLabel { get; set; }
+    public DateTime ServerTime { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class ResultsHealthResponse

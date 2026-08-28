@@ -32,6 +32,7 @@ public sealed class ResultsSyncClient : IDisposable
     private readonly Func<IReadOnlyList<string>, ResultsSyncRequest> _buildSnapshot;
     private readonly Action<IReadOnlyList<ResultsCommand>> _applyCommands;
     private readonly Action<IReadOnlyList<string>> _acknowledgeDeleted;
+    private readonly Action<string>? _onTokenReceived;
     private readonly DispatcherTimer _heartbeat;
     private readonly DispatcherTimer _debounce;
     private readonly object _gate = new();
@@ -49,12 +50,14 @@ public sealed class ResultsSyncClient : IDisposable
         Dispatcher dispatcher,
         Func<IReadOnlyList<string>, ResultsSyncRequest> buildSnapshot,
         Action<IReadOnlyList<ResultsCommand>> applyCommands,
-        Action<IReadOnlyList<string>> acknowledgeDeleted)
+        Action<IReadOnlyList<string>> acknowledgeDeleted,
+        Action<string>? onTokenReceived = null)
     {
         _dispatcher = dispatcher;
         _buildSnapshot = buildSnapshot;
         _applyCommands = applyCommands;
         _acknowledgeDeleted = acknowledgeDeleted;
+        _onTokenReceived = onTokenReceived;
 
         _heartbeat = new DispatcherTimer
         {
@@ -116,7 +119,7 @@ public sealed class ResultsSyncClient : IDisposable
             Status.Connected = true;
             Status.Message = "Connecté";
             Status.LastOkUtc = DateTime.UtcNow;
-            return "Serveur joignable. Le jeton est vérifié à la sync.";
+            return "Serveur joignable. Sans jeton, l’enregistrement se fait à la première sync.";
         }
         catch (Exception ex)
         {
@@ -183,6 +186,9 @@ public sealed class ResultsSyncClient : IDisposable
 
         try
         {
+            if (!await EnsureRegisteredAsync(http))
+                return;
+
             using var response = await http.PostAsJsonAsync(ResultsSyncProtocol.SyncPath, request, JsonOptions);
             var payload = await response.Content.ReadFromJsonAsync<ResultsSyncResponse>(JsonOptions);
             if (!response.IsSuccessStatusCode)
@@ -215,6 +221,36 @@ public sealed class ResultsSyncClient : IDisposable
         {
             SetStatus(false, ex.Message);
         }
+    }
+
+    private async Task<bool> EnsureRegisteredAsync(HttpClient http)
+    {
+        if (!string.IsNullOrWhiteSpace(_settings.ResultsServerToken))
+            return true;
+
+        var body = new
+        {
+            simulatorId = _settings.SimulatorId,
+            simulatorLabel = string.IsNullOrWhiteSpace(_settings.SimulatorLabel)
+                ? "Simulateur"
+                : _settings.SimulatorLabel.Trim(),
+            syncIntervalSeconds = ResultsSyncProtocol.NormalizeSyncInterval(_settings.ResultsSyncIntervalSeconds),
+        };
+
+        using var response = await http.PostAsJsonAsync(ResultsSyncProtocol.RegisterPath, body, JsonOptions);
+        var payload = await response.Content.ReadFromJsonAsync<ResultsRegisterResponse>(JsonOptions);
+        if (!response.IsSuccessStatusCode || payload is null || !payload.Ok || string.IsNullOrWhiteSpace(payload.Token))
+        {
+            SetStatus(false, payload?.Message ?? $"Enregistrement HTTP {(int)response.StatusCode}");
+            return false;
+        }
+
+        _settings.ResultsServerToken = payload.Token.Trim();
+        _onTokenReceived?.Invoke(_settings.ResultsServerToken);
+        http.DefaultRequestHeaders.Remove(ResultsSyncProtocol.TokenHeader);
+        http.DefaultRequestHeaders.TryAddWithoutValidation(
+            ResultsSyncProtocol.TokenHeader, _settings.ResultsServerToken);
+        return true;
     }
 
     private void RecreateHttp()

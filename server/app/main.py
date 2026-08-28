@@ -89,6 +89,33 @@ def health():
     return {"ok": True, "protocolVersion": 1, "authRequired": True}
 
 
+@app.post("/api/v1/register")
+async def register(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "message": "JSON invalide."}, status_code=400)
+
+    client_id = (payload.get("simulatorId") or "").strip()
+    label = (payload.get("simulatorLabel") or "Simulateur").strip() or "Simulateur"
+    if not client_id:
+        return JSONResponse({"ok": False, "message": "simulatorId requis."}, status_code=400)
+
+    try:
+        tenant, sim, token = store().register_simulator(label, client_id)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "message": str(exc)}, status_code=400)
+
+    return {
+        "ok": True,
+        "token": token,
+        "simulatorId": sim["id"],
+        "tenantId": tenant["id"],
+        "tenantLabel": tenant["label"],
+        "serverTime": db.utcnow(),
+    }
+
+
 @app.post("/api/v1/sync")
 async def sync(request: Request):
     token = request.headers.get("X-Results-Token") or ""
@@ -98,7 +125,10 @@ async def sync(request: Request):
     sim = store().get_by_token(token)
     if sim is None:
         return JSONResponse(
-            {"ok": False, "message": "Jeton invalide. Crée le simulateur dans l’admin web."},
+            {
+                "ok": False,
+                "message": "Jeton invalide. Laisse le champ jeton vide dans F1 Chronos pour l’auto-enregistrement.",
+            },
             status_code=401,
         )
     try:
@@ -114,25 +144,71 @@ async def sync(request: Request):
     }
 
 
+def _tenant_for_sim(sim: dict | None) -> dict | None:
+    if sim is None or not sim.get("tenant_id"):
+        return None
+    return store().get_tenant(sim["tenant_id"])
+
+
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request, best: bool = False):
-    sims = store().list_simulators()
-    current = sims[0] if len(sims) == 1 else None
-    tracks = store().track_summaries(current["id"]) if current else []
+def home(request: Request):
+    tenants = store().list_tenants()
+    if len(tenants) == 1 and tenants[0]["sim_count"] == 1:
+        sims = store().list_simulators_for_tenant(tenants[0]["id"])
+        if sims:
+            return RedirectResponse(f"/t/{tenants[0]['id']}", status_code=303)
+    return page(request, "tenants.html", {"tenants": tenants, "admin": is_admin(request)})
+
+
+@app.get("/t/{tenant_id}", response_class=HTMLResponse)
+def tenant_home(request: Request, tenant_id: str, best: bool = False):
+    tenant = store().get_tenant(tenant_id)
+    if tenant is None:
+        raise HTTPException(404, "Organisation introuvable")
+    sims = store().list_simulators_for_tenant(tenant_id)
+    tracks = store().tenant_track_summaries(tenant_id)
     preview = []
     preview_name = ""
-    if current and tracks:
-        focus = current["current_track_id"] if current["current_track_id"] >= 0 else tracks[0]["track_id"]
-        preview = store().leaderboard(current["id"], focus, best_per_player=best)
+    if tracks:
+        focus = tracks[0]["track_id"]
+        for s in sims:
+            if s["current_track_id"] >= 0:
+                focus = s["current_track_id"]
+                break
+        preview = store().tenant_leaderboard(tenant_id, focus, best_per_player=best)
         preview_name = next((t["track_name"] for t in tracks if t["track_id"] == focus), "")
-    return page(request,
-        "index.html",
+    return page(
+        request,
+        "tenant.html",
         {
+            "tenant": tenant,
             "sims": sims,
-            "sim": current,
             "tracks": tracks,
             "preview": preview,
             "preview_name": preview_name,
+            "best": best,
+            "admin": is_admin(request),
+        },
+    )
+
+
+@app.get("/t/{tenant_id}/tracks/{track_id}", response_class=HTMLResponse)
+def tenant_track_page(request: Request, tenant_id: str, track_id: int, best: bool = False):
+    tenant = store().get_tenant(tenant_id)
+    if tenant is None:
+        raise HTTPException(404)
+    sims = store().list_simulators_for_tenant(tenant_id)
+    rows = store().tenant_leaderboard(tenant_id, track_id, best_per_player=best)
+    name = rows[0]["track_name"] if rows else f"Circuit {track_id}"
+    return page(
+        request,
+        "tenant_track.html",
+        {
+            "tenant": tenant,
+            "sims": sims,
+            "track_id": track_id,
+            "track_name": name,
+            "rows": rows,
             "best": best,
             "admin": is_admin(request),
         },
@@ -156,6 +232,7 @@ def sim_home(request: Request, sim_id: str, best: bool = False):
         {
             "sims": store().list_simulators(),
             "sim": sim,
+            "tenant": _tenant_for_sim(sim),
             "tracks": tracks,
             "preview": preview,
             "preview_name": preview_name,
@@ -250,6 +327,7 @@ def admin_home(
     if gate:
         return gate
     sims = store().list_simulators()
+    tenants = store().list_tenants()
     current = next((s for s in sims if s["id"] == sim), None) or (sims[0] if sims else None)
     contests = store().list_contests(current["id"]) if current else []
     tracks = store().track_summaries(current["id"], contest_id) if current else []
@@ -260,8 +338,10 @@ def admin_home(
     return page(request,
         "admin.html",
         {
+            "tenants": tenants,
             "sims": sims,
             "sim": current,
+            "tenant": _tenant_for_sim(current),
             "contests": contests,
             "contest_id": contest_id,
             "tracks": tracks,
@@ -277,16 +357,49 @@ def admin_home(
     )
 
 
-@app.post("/admin/simulators")
-def admin_create_sim(request: Request, label: str = Form("Simulateur")):
+@app.post("/admin/tenants")
+def admin_create_tenant(request: Request, label: str = Form("Organisation")):
     gate = require_admin(request)
     if gate:
         return gate
-    created, token = store().create_simulator(label)
+    tenant = store().create_tenant(label)
     return RedirectResponse(
-        f"/admin?sim={created['id']}&new_token={token}&status=Simulateur créé — copie le jeton dans l’admin F1 Chronos.",
+        f"/admin?status={quote('Organisation créée — assigne des simulateurs ci-dessous.')}",
         status_code=303,
     )
+
+
+@app.post("/admin/simulators")
+def admin_create_sim(
+    request: Request,
+    label: str = Form("Simulateur"),
+    tenant_id: str = Form(""),
+):
+    gate = require_admin(request)
+    if gate:
+        return gate
+    tid = tenant_id.strip() or None
+    created, token = store().create_simulator(label, tenant_id=tid)
+    return RedirectResponse(
+        f"/admin?sim={created['id']}&new_token={token}&status=Simulateur créé — copie le jeton dans l’admin F1 Chronos (ou laisse vide pour l’auto-enregistrement).",
+        status_code=303,
+    )
+
+
+@app.post("/admin/simulators/{sim_id}/tenant")
+def admin_assign_sim_tenant(
+    request: Request,
+    sim_id: str,
+    tenant_id: str = Form(...),
+    sim: str = Form(""),
+):
+    gate = require_admin(request)
+    if gate:
+        return gate
+    ok = store().assign_simulator_to_tenant(sim_id, tenant_id)
+    msg = "Simulateur déplacé." if ok else "Déplacement impossible."
+    target = sim or sim_id
+    return RedirectResponse(f"/admin?sim={target}&status={quote(msg)}", status_code=303)
 
 
 @app.post("/admin/laps/{entry_id}/delete")

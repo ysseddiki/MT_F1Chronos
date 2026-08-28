@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Organisations{% endblock %}
+{% block body %}
+<p class="kicker">SERVEUR DE RÉSULTATS</p>
+<h1>Organisations</h1>
+<p class="lede">Chaque organisation regroupe un ou plusieurs simulateurs. Les classements peuvent être vus par organisation ou par simu.</p>
+
+{% if not tenants %}
+<p class="lede">Aucune organisation. Active la sync dans F1 Chronos (le jeton est créé automatiquement) ou crée une organisation dans l’admin.</p>
+{% else %}
+<div class="grid">
+    {% for t in tenants %}
+    <a class="card" href="/t/{{ t.id }}">
+        <h2>{{ t.label }}</h2>
+        <p><span class="count">{{ t.sim_count }}</span> simulateur(s)</p>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

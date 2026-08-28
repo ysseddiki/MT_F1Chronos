@@ -37,7 +37,12 @@ public sealed class AppController : IDisposable
             _dispatcher,
             BuildResultsSnapshot,
             ApplyResultsCommands,
-            ids => ResultsSnapshotBuilder.AcknowledgeDeleted(_store, _contests, ids));
+            ids => ResultsSnapshotBuilder.AcknowledgeDeleted(_store, _contests, ids),
+            token =>
+            {
+                _settings.ResultsServerToken = token;
+                SaveSettings();
+            });
         _resultsSync.ApplySettings(_settings);
         _overlayUi = new OverlayCoordinator(
             _store,

@@ -10,11 +10,41 @@
 <div class="banner"><strong>Jeton (à copier maintenant) :</strong><br>{{ new_token }}</div>
 {% endif %}
 
+<div class="card" style="margin-bottom:16px">
+    <h2 style="margin-top:0">Organisations</h2>
+    <p class="lede">Une organisation regroupe un ou plusieurs simulateurs. Chaque nouveau simu F1 Chronos crée sa propre organisation ; tu peux ensuite les fusionner.</p>
+    <form method="post" action="/admin/tenants" style="margin-bottom:12px">
+        <div class="field">
+            <label for="tenant_label">Nouvelle organisation</label>
+            <input id="tenant_label" name="label" type="text" placeholder="Club Sim Racing" maxlength="60"/>
+        </div>
+        <button type="submit" class="primary">Créer une organisation</button>
+    </form>
+    {% if tenants %}
+    <div class="toolbar">
+        {% for t in tenants %}
+        <span class="pill">{{ t.label }} ({{ t.sim_count }} simu)</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
 <form method="post" action="/admin/simulators" class="card" style="margin-bottom:16px">
     <div class="field">
         <label for="label">Nouveau simulateur</label>
         <input id="label" name="label" type="text" placeholder="Box 1" maxlength="40"/>
     </div>
+    {% if tenants %}
+    <div class="field">
+        <label for="tenant_id">Organisation (vide = nouvelle organisation dédiée)</label>
+        <select id="tenant_id" name="tenant_id">
+            <option value="">— Nouvelle organisation —</option>
+            {% for t in tenants %}
+            <option value="{{ t.id }}">{{ t.label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
     <button type="submit" class="primary">Créer et générer un jeton</button>
 </form>
 
@@ -30,6 +60,24 @@
 <p class="lede">Crée un simulateur pour commencer.</p>
 {% else %}
 <div class="meta">{{ presence(sim) }}</div>
+
+{% if tenants|length > 1 %}
+<form method="post" action="/admin/simulators/{{ sim.id }}/tenant" class="card" style="margin-bottom:16px">
+    <input type="hidden" name="sim" value="{{ sim.id }}"/>
+    <div class="field">
+        <label for="move_tenant">Organisation de ce simulateur</label>
+        <select id="move_tenant" name="tenant_id">
+            {% for t in tenants %}
+            <option value="{{ t.id }}" {% if tenant and t.id == tenant.id %}selected{% endif %}>{{ t.label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Déplacer vers cette organisation</button>
+    {% if tenant %}<p class="lede">Actuellement : <a href="/t/{{ tenant.id }}">{{ tenant.label }}</a></p>{% endif %}
+</form>
+{% elif tenant %}
+<p class="lede">Organisation : <a href="/t/{{ tenant.id }}">{{ tenant.label }}</a></p>
+{% endif %}
 
 <div class="toolbar">
     <a class="btn {% if not contest_id %}primary{% endif %}" href="/admin?sim={{ sim.id }}{% if track_id %}&track_id={{ track_id }}{% endif %}">Global</a>

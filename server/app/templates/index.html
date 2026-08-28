@@ -14,8 +14,11 @@
 {% endif %}
 
 {% if not sim %}
-<p class="lede">En attente d’un simulateur. Dans l’admin web, crée un simulateur, copie le jeton dans F1 Chronos, puis active la connexion.</p>
+<p class="lede">En attente d’un simulateur. Active la sync dans F1 Chronos (jeton auto) ou crée un simulateur dans l’admin.</p>
 {% else %}
+{% if tenant %}
+<p class="kicker"><a href="/t/{{ tenant.id }}">← {{ tenant.label }}</a></p>
+{% endif %}
 <p class="lede">{{ sim.label }} — réplique des scores. Source de vérité : le PC simulateur.</p>
 <div class="meta">{{ presence(sim) }}</div>
 <div class="toolbar">
