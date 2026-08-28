@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from . import db
 from .auth import MIN_PASSWORD_LENGTH, AdminAuth
@@ -20,6 +21,8 @@ DATA_DIR = Path(os.environ.get("RESULTS_DATA") or (BASE.parent / "data"))
 SECRET = os.environ.get("RESULTS_SECRET") or "dev-change-me"
 
 app = FastAPI(title="F1 Chronos — Résultats")
+# Caddy termine TLS ; faire confiance aux en-têtes X-Forwarded-* pour les redirects / cookies.
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 app.add_middleware(SessionMiddleware, secret_key=SECRET, same_site="lax")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))

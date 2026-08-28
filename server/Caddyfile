@@ -1,9 +1,26 @@
 {
-	email {$CADDY_EMAIL:}
+	# Let's Encrypt — contact ACME (obligatoire en prod pour les rappels).
+	email {$CADDY_EMAIL}
+
+	# Certificats persistés dans le volume caddy-data (/data/caddy).
+	# HTTPS automatique pour tout bloc site avec un nom de domaine public.
+	admin off
 }
 
-# Public HTTPS on 443 (Let's Encrypt when RESULTS_DOMAIN is a real hostname).
-# The FastAPI app stays internal on 8080; Caddy is the only listener on the host.
+# Site public : TLS Let's Encrypt (challenge HTTP-01 sur :80, service sur :443).
+# RESULTS_DOMAIN doit être le FQDN (ex. simracing-dc.yseddiki.fr), pas localhost ni une IP.
 {$RESULTS_DOMAIN} {
-	reverse_proxy results:8080
+	encode gzip zstd
+
+	reverse_proxy results:8080 {
+		transport http {
+			read_timeout 60s
+			write_timeout 60s
+		}
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
+	}
 }

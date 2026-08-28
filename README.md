@@ -187,16 +187,27 @@ assets/             → Icône F1 Chronos (app.ico)
 
 Le overlay du simulateur **reste autonome**. Le VPS est une archive / vitrine. Le simu (derrière NAT) **initie** toujours HTTP ; le serveur ne rappelle jamais le PC.
 
-Caddy écoute **80** (redirect / ACME) et **443** (HTTPS). FastAPI reste interne au réseau Docker (8080 non publié).
+Caddy écoute **80** (ACME Let's Encrypt + redirect) et **443** (HTTPS). FastAPI reste interne au réseau Docker (8080 non publié).
 
 ```bash
 ./scripts/init-env.sh   # génère .env (mdp admin + secret cookie aléatoires)
-# édite RESULTS_DOMAIN et CADDY_EMAIL
-docker compose up --build
-# ou : podman compose up --build
+# édite .env :
+#   RESULTS_DOMAIN=simracing-dc.yseddiki.fr
+#   CADDY_EMAIL=ton@email.fr
+
+# Podman rootless (une fois, avec sudo) — sinon erreur « privileged port 80 » :
+sudo ./scripts/setup-podman-ports.sh
+
+docker compose up -d --build
+# ou : podman compose up -d --build
+
+# Vérifier TLS + health :
+./scripts/check-results-ssl.sh
 ```
 
-`RESULTS_DOMAIN` doit être un **hostname** (Let’s Encrypt refuse une IP brute). Pointe le DNS A/AAAA vers le VPS, ports 80 et 443 ouverts.
+`RESULTS_DOMAIN` doit être le **FQDN public** (Let's Encrypt refuse IP / `localhost`). DNS A/AAAA → VPS, ports **80** et **443** ouverts (`ufw allow 80,443/tcp`).
+
+Si `ERR_SSL_PROTOCOL_ERROR` : Caddy n’écoute pas en TLS (souvent `RESULTS_DOMAIN` incorrect, conteneur caddy arrêté, ou ports 80/443 bloqués). Voir `podman compose logs caddy`.
 
 `RESULTS_ADMIN_PASSWORD` n’est utilisé **qu’au premier démarrage** (hashé en SQLite). Ensuite, change-le dans `/admin`. Relancer le script ne change plus le login.
 

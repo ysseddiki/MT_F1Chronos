@@ -87,8 +87,11 @@ Serveur de résultats (Docker / Podman) :
 
 ```bash
 ./scripts/init-env.sh   # .env : mdp admin + secret cookie aléatoires
-docker compose up --build
-# ou : podman compose up --build
+# Édite RESULTS_DOMAIN + CADDY_EMAIL dans .env
+sudo ./scripts/setup-podman-ports.sh  # rootless Podman : ports 80/443
+docker compose up -d --build
+# ou : podman compose up -d --build
+./scripts/check-results-ssl.sh
 # Public : 443 (HTTPS) + 80 (ACME). FastAPI interne seulement.
 ```
 

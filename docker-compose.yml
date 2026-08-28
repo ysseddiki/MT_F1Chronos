@@ -14,6 +14,12 @@ services:
     volumes:
       - results-data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   caddy:
     image: docker.io/library/caddy:2-alpine
@@ -22,15 +28,19 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    env_file:
+      - .env
     environment:
-      RESULTS_DOMAIN: ${RESULTS_DOMAIN:-localhost}
-      CADDY_EMAIL: ${CADDY_EMAIL:-}
+      # Fail fast si le domaine n'est pas configuré (sinon Caddy sert localhost → ERR_SSL_*).
+      RESULTS_DOMAIN: ${RESULTS_DOMAIN:?Définis RESULTS_DOMAIN dans .env (ex. simracing-dc.yseddiki.fr)}
+      CADDY_EMAIL: ${CADDY_EMAIL:?Définis CADDY_EMAIL dans .env (contact Let's Encrypt)}
     volumes:
       - ./server/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - results
+      results:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
