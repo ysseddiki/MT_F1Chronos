@@ -209,6 +209,22 @@ docker compose up -d --build
 
 Si `ERR_SSL_PROTOCOL_ERROR` : Caddy n’écoute pas en TLS (souvent `RESULTS_DOMAIN` incorrect, conteneur caddy arrêté, ou ports 80/443 bloqués). Voir `podman compose logs caddy`.
 
+**Build Docker : `Read timed out` / `No matching distribution found for fastapi`** : PyPI est trop lent depuis le VPS (timeout réseau, pas une version manquante). Le `Dockerfile` utilise déjà des timeouts pip allongés (300 s). Si ça échoue encore :
+
+```bash
+# Réseau hôte pendant le build (souvent plus fiable sur petit VPS)
+sudo docker compose build --network=host results
+sudo docker compose up -d
+
+# Tester l’accès PyPI depuis le serveur
+curl -I --max-time 30 https://pypi.org/simple/fastapi/
+
+# Miroir PyPI optionnel (build-arg)
+sudo docker compose build --build-arg PIP_INDEX_URL=https://pypi.org/simple results
+```
+
+Vérifie aussi pare-feu / DNS (`8.8.8.8` en resolver) et qu’aucun proxy ne bloque le HTTPS sortant.
+
 `RESULTS_ADMIN_PASSWORD` n’est utilisé **qu’au premier démarrage** (hashé en SQLite). Ensuite, change-le dans `/admin`. Relancer le script ne change plus le login.
 
 1. Ouvre `https://<ton-domaine>/admin` → crée un simulateur → **copie le jeton**
