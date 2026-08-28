@@ -31,6 +31,24 @@ public sealed class AppSettings
 
     /// <summary>When true, overlay (and default scores filter) show only each player's best lap.</summary>
     public bool BestPerPlayer { get; set; }
+
+    /// <summary>Optional results server. Off by default — the overlay keeps working fully offline.</summary>
+    public bool ResultsServerEnabled { get; set; }
+
+    /// <summary>Base URL of the results server, e.g. <c>http://192.168.1.10:8080</c>.</summary>
+    public string ResultsServerUrl { get; set; } = "http://127.0.0.1:8080";
+
+    /// <summary>Shared token sent as <c>X-Results-Token</c>. Empty = no auth.</summary>
+    public string ResultsServerToken { get; set; } = string.Empty;
+
+    /// <summary>Stable id for this simulator, generated locally on first run.</summary>
+    public string SimulatorId { get; set; } = string.Empty;
+
+    /// <summary>Optional display name of this simulator on the results site.</summary>
+    public string SimulatorLabel { get; set; } = string.Empty;
+
+    /// <summary>Seconds between periodic sync pulls (jobs + snapshot). Clamped 15–600.</summary>
+    public int ResultsSyncIntervalSeconds { get; set; } = 120;
 }
 
 /// <summary>How global / contest leaderboards appear on the overlay.</summary>

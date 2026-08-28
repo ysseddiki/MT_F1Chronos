@@ -139,6 +139,16 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
 
     public IReadOnlyList<ChronoEntry> GetAllScoredEntries() => _board.GetAllScoredEntries();
 
+    public bool RenameEntry(string entryId, string newName) => _board.RenameEntry(entryId, newName);
+
+    public int RenamePlayer(string oldName, string newName) => _board.RenamePlayer(oldName, newName);
+
+    public bool RestoreEntry(ChronoEntry entry) => _board.RestoreEntry(entry);
+
+    public IReadOnlyList<string> PeekDeletedIds() => _board.PeekDeletedIds();
+
+    public void AcknowledgeDeletedIds(IEnumerable<string> ids) => _board.AcknowledgeDeletedIds(ids);
+
     public int ClearTrack(int trackId) => ClearScoresForTrack(trackId);
 
     public int ClearAll() => ClearAllScores();

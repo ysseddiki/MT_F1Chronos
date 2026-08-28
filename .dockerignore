@@ -1,0 +1,14 @@
+.git
+**/.vs
+**/bin
+**/obj
+**/dist
+**/.idea
+**/*.user
+src
+tests
+specs
+docs
+assets
+server/.venv
+server/data

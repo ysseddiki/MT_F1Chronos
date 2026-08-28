@@ -99,6 +99,7 @@ Menu ☰ → **Administration** (mot de passe requis) :
 | Exportation | Source (Global / concours) + circuit (tous / un) · CSV / JSON / HTML |
 | Affichage overlay | TOP 3 / 5 / 10 **global** (largeur auto) |
 | Concours | Contenu overlay (Global+Concours / Concours seul / Global seul), TOP 3/5/10, créer / gérer |
+| Serveur de résultats | Connexion **optionnelle** (URL, jeton, intervalle) — n’altère pas l’enregistrement local |
 | Diagnostic | Debug UDP |
 
 Chaque tour valide alimente le **global** et **tous les concours actifs**.  
@@ -127,7 +128,13 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "overlayContestId": "",
   "showContestOnOverlay": true,
   "contestLeaderboardSize": 10,
-  "hideGlobalWhenContest": false
+  "hideGlobalWhenContest": false,
+  "resultsServerEnabled": false,
+  "resultsServerUrl": "http://127.0.0.1:8080",
+  "resultsServerToken": "",
+  "simulatorId": "",
+  "simulatorLabel": "",
+  "resultsSyncIntervalSeconds": 120
 }
 ```
 
@@ -143,6 +150,11 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `showContestOnOverlay` | Afficher le concours principal (`false` = mode Global seul) |
 | `contestLeaderboardSize` | `5` ou `10` (classement **concours**) |
 | `hideGlobalWhenContest` | Masquer le TOP global (`true` = mode Concours seul) |
+| `resultsServerEnabled` | `false` par défaut — active l’envoi des tableaux vers le serveur |
+| `resultsServerUrl` | Base URL du serveur (`http://IP:8080`) |
+| `resultsServerToken` | Jeton généré dans l’admin web du VPS |
+| `simulatorLabel` | Nom affiché sur le site |
+| `resultsSyncIntervalSeconds` | 15–600 (défaut 120) — pull périodique des jobs |
 
 ## Données
 
@@ -165,10 +177,29 @@ Le TOP 3 / 5 / 10 n’est qu’un filtre d’affichage sur ces données.
 ## Architecture
 
 ```
-MT_F1Chronos.Core   → UDP F1 2025/2026, parsing, stockage, export
-MT_F1Chronos.App    → Overlay WPF, menus, hotkeys
+MT_F1Chronos.Core   → UDP F1 2025/2026, parsing, stockage, export, contrat sync
+MT_F1Chronos.App    → Overlay WPF, menus, hotkeys, client sync optionnel
+server/             → Serveur Linux FastAPI + SQLite (Docker/Podman)
 assets/             → Icône F1 Chronos (app.ico)
 ```
+
+## Serveur de résultats (optionnel, VPS Linux)
+
+Le overlay du simulateur **reste autonome**. Le VPS est une archive / vitrine. Le simu (derrière NAT) **initie** toujours HTTP ; le serveur ne rappelle jamais le PC.
+
+```bash
+cp .env.example .env   # RESULTS_ADMIN_PASSWORD, RESULTS_SECRET
+docker compose up --build
+# ou : podman compose up --build
+```
+
+1. Ouvre `http://<IP-VPS>:8080/admin` → crée un simulateur → **copie le jeton**
+2. Sur le PC F1 Chronos : Administration → Serveur de résultats → URL, jeton, intervalle de sync → Tester / Activer
+3. LED overlay : télémétrie (jeu) **et** serveur (VPS) à côté
+
+Le simu envoie un snapshot à chaque maj de tableau et selon l’intervalle choisi (15 s–10 min). Les suppressions / renames admin créent des **jobs** récupérés au pull. Un revert est possible tant que le job n’est pas annulé. **Vider la DB du VPS ne touche pas le simu.**
+
+Un simulateur est **hors ligne** s’il n’a rien envoyé pendant **2 × son intervalle** de sync.
 
 ## Debug UDP
 

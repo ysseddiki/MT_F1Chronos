@@ -326,6 +326,102 @@
                                TextWrapping="Wrap"
                                Visibility="Collapsed"/>
 
+                    <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
+
+                    <!-- Serveur de résultats -->
+                    <TextBlock Text="SERVEUR DE RÉSULTATS"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#FFE10600"
+                               Margin="0,0,0,8"/>
+                    <TextBlock Text="Optionnel. Le simulateur continue d’enregistrer les tours localement même si le serveur est injoignable."
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,8"
+                               TextWrapping="Wrap"/>
+                    <CheckBox x:Name="ResultsEnabledCheck"
+                              Content="Connecter au serveur"
+                              FontFamily="Segoe UI"
+                              FontSize="12"
+                              Foreground="White"
+                              Margin="0,0,0,10"
+                              Checked="OnResultsSettingsChanged"
+                              Unchecked="OnResultsSettingsChanged"/>
+                    <TextBlock Text="URL du serveur"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <TextBox x:Name="ResultsUrlBox"
+                             FontFamily="Segoe UI"
+                             FontSize="13"
+                             Padding="8,6"
+                             Background="#FF161B22"
+                             Foreground="White"
+                             BorderBrush="#33FFFFFF"
+                             CaretBrush="#FFE10600"
+                             Margin="0,0,0,8"
+                             LostFocus="OnResultsSettingsChanged"/>
+                    <TextBlock Text="Nom du simulateur (affichage)"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <TextBox x:Name="ResultsLabelBox"
+                             FontFamily="Segoe UI"
+                             FontSize="13"
+                             Padding="8,6"
+                             Background="#FF161B22"
+                             Foreground="White"
+                             BorderBrush="#33FFFFFF"
+                             CaretBrush="#FFE10600"
+                             Margin="0,0,0,8"
+                             LostFocus="OnResultsSettingsChanged"/>
+                    <TextBlock Text="Jeton (créé dans l’admin web du VPS)"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <PasswordBox x:Name="ResultsTokenBox"
+                                 FontFamily="Segoe UI"
+                                 FontSize="13"
+                                 Padding="8,6"
+                                 Background="#FF161B22"
+                                 Foreground="White"
+                                 BorderBrush="#33FFFFFF"
+                                 CaretBrush="#FFE10600"
+                                 Margin="0,0,0,8"
+                                 LostFocus="OnResultsSettingsChanged"/>
+                    <TextBlock Text="Intervalle entre chaque sync"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,4"/>
+                    <ComboBox x:Name="ResultsIntervalCombo"
+                              Style="{StaticResource DarkComboBox}"
+                              Margin="0,0,0,8"
+                              SelectionChanged="OnResultsIntervalChanged"/>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Content="Tester"
+                                Padding="12,6"
+                                Margin="0,0,8,0"
+                                HorizontalContentAlignment="Center"
+                                Click="OnTestResultsServerClick"/>
+                        <TextBlock x:Name="ResultsStatusText"
+                                   Grid.Column="1"
+                                   FontFamily="Segoe UI"
+                                   FontSize="11"
+                                   Foreground="#FFC5CAD3"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap"/>
+                    </Grid>
+
                     <!-- Security -->
                     <TextBlock Text="SÉCURITÉ"
                                FontFamily="Segoe UI"

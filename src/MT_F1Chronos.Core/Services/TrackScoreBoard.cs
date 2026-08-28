@@ -19,6 +19,7 @@ public sealed class TrackScoreBoard
 
     private readonly Dictionary<int, List<ChronoEntry>> _byTrack = new();
     private readonly HashSet<int> _dirty = new();
+    private readonly HashSet<string> _deletedIds = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
     public event Action? BecameDirty;
@@ -31,6 +32,7 @@ public sealed class TrackScoreBoard
         {
             _byTrack.Clear();
             _dirty.Clear();
+            _deletedIds.Clear();
 
             if (!Directory.Exists(directory))
                 return;
@@ -152,6 +154,7 @@ public sealed class TrackScoreBoard
                 var removed = list.RemoveAll(s => string.Equals(s.Id, entryId, StringComparison.Ordinal));
                 if (removed > 0)
                 {
+                    _deletedIds.Add(entryId);
                     dirtyTrack = trackId;
                     MarkDirtyLocked(trackId);
                     break;
@@ -177,11 +180,19 @@ public sealed class TrackScoreBoard
             if (!_byTrack.TryGetValue(trackId, out var list))
                 return 0;
 
+            var removedIds = list
+                .Where(s => string.Equals(s.Name, playerName.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Select(s => s.Id)
+                .ToList();
             removed = list.RemoveAll(s =>
                 string.Equals(s.Name, playerName.Trim(), StringComparison.OrdinalIgnoreCase));
 
             if (removed > 0)
+            {
+                foreach (var id in removedIds)
+                    _deletedIds.Add(id);
                 MarkDirtyLocked(trackId);
+            }
         }
 
         if (removed > 0)
@@ -202,6 +213,8 @@ public sealed class TrackScoreBoard
                 return 0;
 
             removed = list.Count;
+            foreach (var entry in list)
+                _deletedIds.Add(entry.Id);
             _byTrack.Remove(trackId);
             MarkDirtyLocked(trackId);
         }
@@ -223,6 +236,11 @@ public sealed class TrackScoreBoard
                 return 0;
 
             trackIds = _byTrack.Keys.ToList();
+            foreach (var list in _byTrack.Values)
+            {
+                foreach (var entry in list)
+                    _deletedIds.Add(entry.Id);
+            }
             _byTrack.Clear();
             foreach (var trackId in trackIds)
                 _dirty.Add(trackId);
@@ -230,6 +248,119 @@ public sealed class TrackScoreBoard
 
         BecameDirty?.Invoke();
         return removed;
+    }
+
+    public bool RenameEntry(string entryId, string newName)
+    {
+        var trimmed = ClampName(newName);
+        if (string.IsNullOrWhiteSpace(entryId) || string.IsNullOrWhiteSpace(trimmed))
+            return false;
+
+        lock (_gate)
+        {
+            foreach (var (trackId, list) in _byTrack)
+            {
+                var entry = list.FirstOrDefault(s => string.Equals(s.Id, entryId, StringComparison.Ordinal));
+                if (entry is null)
+                    continue;
+
+                entry.Name = trimmed;
+                MarkDirtyLocked(trackId);
+                BecameDirty?.Invoke();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public int RenamePlayer(string oldName, string newName)
+    {
+        var from = oldName?.Trim() ?? string.Empty;
+        var to = ClampName(newName);
+        if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to))
+            return 0;
+
+        var renamed = 0;
+        lock (_gate)
+        {
+            foreach (var (trackId, list) in _byTrack)
+            {
+                var hit = false;
+                foreach (var entry in list)
+                {
+                    if (!string.Equals(entry.Name, from, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    entry.Name = to;
+                    renamed++;
+                    hit = true;
+                }
+
+                if (hit)
+                    MarkDirtyLocked(trackId);
+            }
+        }
+
+        if (renamed > 0)
+            BecameDirty?.Invoke();
+        return renamed;
+    }
+
+    public bool RestoreEntry(ChronoEntry entry)
+    {
+        if (entry.TrackId < 0 || string.IsNullOrWhiteSpace(entry.Id) || entry.BestLapMs is not > 0)
+            return false;
+
+        lock (_gate)
+        {
+            if (!_byTrack.TryGetValue(entry.TrackId, out var list))
+            {
+                list = [];
+                _byTrack[entry.TrackId] = list;
+            }
+
+            if (list.Any(s => string.Equals(s.Id, entry.Id, StringComparison.Ordinal)))
+                return true;
+
+            list.Add(new ChronoEntry
+            {
+                Id = entry.Id,
+                Name = ClampName(entry.Name),
+                TrackId = entry.TrackId,
+                TrackName = entry.TrackName,
+                BestLapMs = entry.BestLapMs,
+                StartedAt = entry.StartedAt,
+                EndedAt = entry.EndedAt ?? entry.StartedAt,
+            });
+            _deletedIds.Remove(entry.Id);
+            MarkDirtyLocked(entry.TrackId);
+        }
+
+        BecameDirty?.Invoke();
+        return true;
+    }
+
+    public IReadOnlyList<string> PeekDeletedIds()
+    {
+        lock (_gate)
+            return _deletedIds.ToList();
+    }
+
+    public void AcknowledgeDeletedIds(IEnumerable<string> ids)
+    {
+        lock (_gate)
+        {
+            foreach (var id in ids)
+                _deletedIds.Remove(id);
+        }
+    }
+
+    private static string ClampName(string? name)
+    {
+        var trimmed = (name ?? string.Empty).Trim();
+        return trimmed.Length <= ResultsSyncProtocol.MaxPlayerNameLength
+            ? trimmed
+            : trimmed[..ResultsSyncProtocol.MaxPlayerNameLength];
     }
 
     public IReadOnlyList<ChronoEntry> GetAllScoredEntries()

@@ -16,19 +16,22 @@ internal sealed class OverlayCoordinator
     private readonly AppSettings _settings;
     private readonly Func<TelemetryState> _getState;
     private readonly Action _saveSettings;
+    private readonly Func<ResultsSyncStatus> _getSyncStatus;
 
     public OverlayCoordinator(
         SessionStore store,
         ContestStore contests,
         AppSettings settings,
         Func<TelemetryState> getState,
-        Action saveSettings)
+        Action saveSettings,
+        Func<ResultsSyncStatus> getSyncStatus)
     {
         _store = store;
         _contests = contests;
         _settings = settings;
         _getState = getState;
         _saveSettings = saveSettings;
+        _getSyncStatus = getSyncStatus;
     }
 
     public void Position(OverlayWindow overlay)
@@ -85,5 +88,6 @@ internal sealed class OverlayCoordinator
             contestLeaderboardSize: contestSize,
             contestLeaderboard: contestBoard,
             bestPerPlayer: _settings.BestPerPlayer));
+        overlay.UpdateResultsServerStatus(_getSyncStatus());
     }
 }

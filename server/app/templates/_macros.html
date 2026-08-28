@@ -1,0 +1,32 @@
+{% macro board(rows) %}
+<table class="board">
+    <thead><tr><th>#</th><th>Pilote</th><th class="time">Temps</th></tr></thead>
+    <tbody>
+    {% if not rows %}
+        <tr><td colspan="3" class="lede">Aucun chrono.</td></tr>
+    {% else %}
+        {% for row in rows %}
+        <tr>
+            <td class="{% if row.rank == 1 %}p1{% elif row.rank == 2 %}p2{% elif row.rank == 3 %}p3{% endif %}">P{{ row.rank }}</td>
+            <td>{{ row.name }}</td>
+            <td class="time">{{ row.formatted }}</td>
+        </tr>
+        {% endfor %}
+    {% endif %}
+    </tbody>
+</table>
+{% endmacro %}
+
+{% macro presence(sim) %}
+    {% if sim.connected %}
+        <span class="pill on">En ligne</span>
+    {% else %}
+        <span class="pill off">Hors ligne</span>
+    {% endif %}
+    {% if sim.last_seen_utc %}
+        <span class="pill">Dernière activité {{ sim.last_seen_utc.replace('T', ' ')[:19] }} UTC</span>
+    {% else %}
+        <span class="pill">Jamais synchronisé</span>
+    {% endif %}
+    <span class="pill">Intervalle {{ sim.sync_interval_seconds }} s · déco après {{ sim.sync_interval_seconds * 2 }} s</span>
+{% endmacro %}

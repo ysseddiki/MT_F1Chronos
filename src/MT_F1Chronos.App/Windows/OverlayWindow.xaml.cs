@@ -464,6 +464,41 @@ public partial class OverlayWindow : Window
         SetStatusPulse(pulse);
     }
 
+    public void UpdateResultsServerStatus(ResultsSyncStatus status)
+    {
+        Color accent;
+        string tooltip;
+
+        if (!status.Enabled)
+        {
+            accent = (Color)ColorConverter.ConvertFromString("#FF8899AA")!;
+            tooltip = "Serveur de résultats désactivé";
+        }
+        else if (status.Connected)
+        {
+            accent = (Color)ColorConverter.ConvertFromString(StatusGreen)!;
+            var last = status.LastOkUtc is DateTime utc
+                ? $" · OK {utc.ToLocalTime():HH:mm:ss}"
+                : string.Empty;
+            tooltip = $"Serveur joignable{last}";
+        }
+        else
+        {
+            accent = (Color)ColorConverter.ConvertFromString(StatusRed)!;
+            tooltip = string.IsNullOrWhiteSpace(status.Message)
+                ? "Serveur injoignable"
+                : $"Serveur : {status.Message}";
+        }
+
+        var brush = new SolidColorBrush(accent);
+        brush.Freeze();
+        ServerGlow.Fill = brush;
+        ServerCore.Fill = brush;
+        ServerGlow.Opacity = status.Enabled && status.Connected ? 0.7 : 0.45;
+        ServerGlowBlur.Radius = status.Enabled && status.Connected ? 8 : 6;
+        ServerBadge.ToolTip = tooltip;
+    }
+
     private void SetStatusPulse(bool enabled)
     {
         if (_statusPulseActive == enabled)

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_macros.html" import board, presence %}
+{% block title %}{{ track_name }}{% endblock %}
+{% block body %}
+<p class="kicker"><a href="/sim/{{ sim.id }}">← Classements</a></p>
+<h1>{{ track_name }}</h1>
+<div class="meta">{{ presence(sim) }}</div>
+<div class="toolbar">
+    <a class="btn {% if not best %}primary{% endif %}" href="/sim/{{ sim.id }}/tracks/{{ track_id }}">Tous les tours</a>
+    <a class="btn {% if best %}primary{% endif %}" href="/sim/{{ sim.id }}/tracks/{{ track_id }}?best=true">Meilleur / joueur</a>
+</div>
+{{ board(rows) }}
+{% endblock %}

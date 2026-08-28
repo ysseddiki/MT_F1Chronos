@@ -22,6 +22,7 @@ public partial class AdminWindow : Window
 
     private readonly AppController _controller;
     private readonly AppSettings _settings;
+    private bool _ready;
 
     public AdminWindow(AppController controller, AppSettings settings)
     {
@@ -31,6 +32,100 @@ public partial class AdminWindow : Window
         SyncDisplayButtons();
         RefreshContestList();
         RefreshExportSelectors();
+        LoadResultsServerFields();
+        _ready = true;
+    }
+
+    private void LoadResultsServerFields()
+    {
+        ResultsEnabledCheck.IsChecked = _settings.ResultsServerEnabled;
+        ResultsUrlBox.Text = string.IsNullOrWhiteSpace(_settings.ResultsServerUrl)
+            ? "http://127.0.0.1:8080"
+            : _settings.ResultsServerUrl;
+        ResultsLabelBox.Text = _settings.SimulatorLabel;
+        ResultsTokenBox.Password = _settings.ResultsServerToken;
+        PopulateResultsIntervalCombo();
+        RefreshResultsStatus();
+    }
+
+    private void PopulateResultsIntervalCombo()
+    {
+        ResultsIntervalCombo.SelectionChanged -= OnResultsIntervalChanged;
+        ResultsIntervalCombo.Items.Clear();
+        (int Seconds, string Label)[] options =
+        [
+            (15, "15 secondes"),
+            (30, "30 secondes"),
+            (60, "1 minute"),
+            (120, "2 minutes"),
+            (300, "5 minutes"),
+            (600, "10 minutes"),
+        ];
+        var current = ResultsSyncProtocol.NormalizeSyncInterval(_settings.ResultsSyncIntervalSeconds);
+        var selected = 3;
+        for (var i = 0; i < options.Length; i++)
+        {
+            ResultsIntervalCombo.Items.Add(new IntervalOption(options[i].Seconds, options[i].Label));
+            if (options[i].Seconds == current)
+                selected = i;
+        }
+
+        ResultsIntervalCombo.DisplayMemberPath = nameof(IntervalOption.Label);
+        ResultsIntervalCombo.SelectedIndex = selected;
+        ResultsIntervalCombo.SelectionChanged += OnResultsIntervalChanged;
+    }
+
+    private void OnResultsIntervalChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready)
+            return;
+
+        PersistResultsServerSettings();
+        RefreshResultsStatus();
+    }
+
+    private void RefreshResultsStatus()
+    {
+        var status = _controller.GetResultsSyncStatus();
+        if (!status.Enabled)
+        {
+            ResultsStatusText.Text = "Désactivé — scores locaux uniquement.";
+            return;
+        }
+
+        var last = status.LastOkUtc is DateTime utc
+            ? $" · dernier OK {utc.ToLocalTime():HH:mm:ss}"
+            : string.Empty;
+        ResultsStatusText.Text = $"{status.Message}{last}";
+    }
+
+    private void OnResultsSettingsChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready)
+            return;
+
+        PersistResultsServerSettings();
+        RefreshResultsStatus();
+    }
+
+    private void PersistResultsServerSettings()
+    {
+        _controller.SaveResultsServerSettings(
+            ResultsEnabledCheck.IsChecked == true,
+            ResultsUrlBox.Text,
+            ResultsTokenBox.Password,
+            ResultsLabelBox.Text,
+            (ResultsIntervalCombo.SelectedItem as IntervalOption)?.Seconds
+                ?? ResultsSyncProtocol.DefaultSyncIntervalSeconds);
+    }
+
+    private async void OnTestResultsServerClick(object sender, RoutedEventArgs e)
+    {
+        PersistResultsServerSettings();
+        ResultsStatusText.Text = "Test en cours…";
+        var message = await _controller.TestResultsServerAsync();
+        ResultsStatusText.Text = message;
+        MessageBox.Show(this, message, "Serveur de résultats", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void SyncDisplayButtons()
@@ -432,4 +527,5 @@ public partial class AdminWindow : Window
 
     private sealed record ExportSourceOption(string? ContestId, string Label);
     private sealed record ExportTrackOption(int? TrackId, string Label);
+    private sealed record IntervalOption(int Seconds, string Label);
 }

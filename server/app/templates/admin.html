@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% from "_macros.html" import presence %}
+{% block title %}Gérer{% endblock %}
+{% block body %}
+<p class="kicker">ADMINISTRATION</p>
+<h1>Gérer les résultats</h1>
+<p class="lede">Chaque bouton crée un job. Le simulateur le récupère à sa prochaine sync. Vider la base VPS ne crée aucun job.</p>
+{% if status %}<div class="banner">{{ status }}</div>{% endif %}
+{% if new_token %}
+<div class="banner"><strong>Jeton (à copier maintenant) :</strong><br>{{ new_token }}</div>
+{% endif %}
+
+<form method="post" action="/admin/simulators" class="card" style="margin-bottom:16px">
+    <div class="field">
+        <label for="label">Nouveau simulateur</label>
+        <input id="label" name="label" type="text" placeholder="Box 1" maxlength="40"/>
+    </div>
+    <button type="submit" class="primary">Créer et générer un jeton</button>
+</form>
+
+{% if sims %}
+<div class="toolbar">
+    {% for s in sims %}
+    <a class="btn {% if sim and s.id == sim.id %}primary{% endif %}" href="/admin?sim={{ s.id }}">{{ s.label }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not sim %}
+<p class="lede">Crée un simulateur pour commencer.</p>
+{% else %}
+<div class="meta">{{ presence(sim) }}</div>
+
+<div class="toolbar">
+    <a class="btn {% if not contest_id %}primary{% endif %}" href="/admin?sim={{ sim.id }}{% if track_id %}&track_id={{ track_id }}{% endif %}">Global</a>
+    {% for c in contests %}
+    <a class="btn {% if contest_id == c.id %}primary{% endif %}" href="/admin?sim={{ sim.id }}&contest_id={{ c.id }}">{{ c.name }}</a>
+    {% endfor %}
+</div>
+<div class="toolbar">
+    {% for t in tracks %}
+    <a class="btn {% if track_id == t.track_id %}primary{% endif %}"
+       href="/admin?sim={{ sim.id }}{% if contest_id %}&contest_id={{ contest_id }}{% endif %}&track_id={{ t.track_id }}">{{ t.track_name }}</a>
+    {% endfor %}
+</div>
+
+{% if track_id is not none %}
+<h2>{{ track_name }}</h2>
+<table class="board">
+    <thead><tr><th>#</th><th>Pilote</th><th class="time">Temps</th><th></th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+    <tr>
+        <td>P{{ row.rank }}</td>
+        <td>{{ row.name }}</td>
+        <td class="time">{{ row.formatted }}</td>
+        <td class="actions">
+            <form method="post" action="/admin/laps/{{ row.id }}/delete" onsubmit="return confirm('Supprimer ce chrono ? Un job partira vers le simu.');">
+                <input type="hidden" name="sim" value="{{ sim.id }}"/>
+                <input type="hidden" name="contest_id" value="{{ contest_id or '' }}"/>
+                <input type="hidden" name="track_id" value="{{ track_id }}"/>
+                <button type="submit" class="danger">Supprimer</button>
+            </form>
+            <form method="post" action="/admin/laps/{{ row.id }}/rename">
+                <input type="hidden" name="sim" value="{{ sim.id }}"/>
+                <input type="hidden" name="contest_id" value="{{ contest_id or '' }}"/>
+                <input type="hidden" name="track_id" value="{{ track_id }}"/>
+                <input type="text" name="new_name" maxlength="20" placeholder="Nouveau pseudo" style="width:9rem;display:inline-block"/>
+                <button type="submit">Renommer ce temps</button>
+            </form>
+            <form method="post" action="/admin/players/rename">
+                <input type="hidden" name="sim" value="{{ sim.id }}"/>
+                <input type="hidden" name="contest_id" value="{{ contest_id or '' }}"/>
+                <input type="hidden" name="track_id" value="{{ track_id }}"/>
+                <input type="hidden" name="old_name" value="{{ row.name }}"/>
+                <input type="text" name="new_name" maxlength="20" placeholder="Tous ses temps" style="width:9rem;display:inline-block"/>
+                <button type="submit">Renommer le total</button>
+            </form>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">Aucun chrono.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<h2 style="margin-top:28px">Jobs</h2>
+{% if not jobs %}
+<p class="lede">Aucun job.</p>
+{% else %}
+<table class="board">
+    <thead><tr><th>Quand</th><th>Type</th><th>État</th><th></th></tr></thead>
+    <tbody>
+    {% for job in jobs %}
+    <tr>
+        <td class="job-row">{{ job.created_at.replace('T',' ')[:19] }}</td>
+        <td>{{ job.type }}</td>
+        <td>{{ job.status }}</td>
+        <td>
+            {% if job.can_revert %}
+            <form method="post" action="/admin/jobs/{{ job.id }}/revert">
+                <input type="hidden" name="sim" value="{{ sim.id }}"/>
+                <button type="submit">Revert</button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+<p style="margin-top:16px"><a href="/admin/logout">Déconnexion</a></p>
+{% endif %}
+{% endblock %}

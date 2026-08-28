@@ -281,6 +281,51 @@ public sealed class ContestStore : IDisposable
     public IReadOnlyList<ChronoEntry> GetAllScoredEntries(string contestId) =>
         GetBoard(contestId)?.GetAllScoredEntries() ?? [];
 
+    public bool RenameEntry(string contestId, string entryId, string newName)
+    {
+        var board = GetBoard(contestId);
+        if (board is null || !board.RenameEntry(entryId, newName))
+            return false;
+        FlushDirty();
+        return true;
+    }
+
+    public int RenamePlayer(string contestId, string oldName, string newName)
+    {
+        var board = GetBoard(contestId);
+        if (board is null)
+            return 0;
+        var renamed = board.RenamePlayer(oldName, newName);
+        if (renamed > 0)
+            FlushDirty();
+        return renamed;
+    }
+
+    public bool RestoreEntry(string contestId, ChronoEntry entry)
+    {
+        var board = GetBoard(contestId);
+        if (board is null || !board.RestoreEntry(entry))
+            return false;
+        FlushDirty();
+        return true;
+    }
+
+    public IReadOnlyList<string> PeekDeletedIds()
+    {
+        lock (_gate)
+            return _boards.Values.SelectMany(b => b.PeekDeletedIds()).Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    public void AcknowledgeDeletedIds(IEnumerable<string> ids)
+    {
+        var list = ids.ToList();
+        lock (_gate)
+        {
+            foreach (var board in _boards.Values)
+                board.AcknowledgeDeletedIds(list);
+        }
+    }
+
     public int EntryCount(string contestId) => GetBoard(contestId)?.EntryCount ?? 0;
 
     public IScoreBoardView AsScoreBoard(string contestId) => new ContestScoreBoardView(this, contestId);

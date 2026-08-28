@@ -64,6 +64,8 @@ public sealed class SettingsStore
         if (!string.IsNullOrEmpty(settings.PlayerName) &&
             settings.PlayerName.Length > OverlaySizes.MaxPlayerNameLength)
             settings.PlayerName = settings.PlayerName[..OverlaySizes.MaxPlayerNameLength];
+        settings.ResultsSyncIntervalSeconds =
+            ResultsSyncProtocol.NormalizeSyncInterval(settings.ResultsSyncIntervalSeconds);
         return settings;
     }
 }

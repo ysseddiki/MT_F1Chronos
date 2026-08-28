@@ -1,0 +1,81 @@
+from __future__ import annotations
+
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS simulators (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    client_id TEXT,
+    last_seen_utc TEXT,
+    sync_interval_seconds INTEGER NOT NULL DEFAULT 120,
+    player_name TEXT NOT NULL DEFAULT '',
+    current_track_id INTEGER NOT NULL DEFAULT -1,
+    current_track_name TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS contests (
+    simulator_id TEXT NOT NULL,
+    id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    track_filter INTEGER,
+    created_at TEXT,
+    started_at TEXT,
+    stopped_at TEXT,
+    PRIMARY KEY (simulator_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS laps (
+    simulator_id TEXT NOT NULL,
+    id TEXT NOT NULL,
+    contest_id TEXT,
+    track_id INTEGER NOT NULL,
+    track_name TEXT NOT NULL,
+    name TEXT NOT NULL,
+    best_lap_ms INTEGER NOT NULL,
+    started_at TEXT NOT NULL,
+    deleted_at TEXT,
+    PRIMARY KEY (simulator_id, id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_laps_sim_track ON laps (simulator_id, contest_id, track_id, deleted_at);
+
+CREATE TABLE IF NOT EXISTS jobs (
+    id TEXT PRIMARY KEY,
+    simulator_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    revert_of_job_id TEXT,
+    created_at TEXT NOT NULL,
+    delivered_at TEXT,
+    applied_at TEXT,
+    reverted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_jobs_sim_status ON jobs (simulator_id, status);
+"""
+
+
+def utcnow() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def connect(path: Path) -> sqlite3.Connection:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.executescript(SCHEMA)
+    conn.commit()
+    return conn
+
+
+def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    return dict(row) if row is not None else None

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Concours{% endblock %}
+{% block body %}
+<p class="kicker">CONCOURS</p>
+<h1>Concours</h1>
+{% if sims|length > 1 %}
+<div class="toolbar">
+    {% for s in sims %}
+    <a class="btn {% if sim and s.id == sim.id %}primary{% endif %}" href="/contests?sim={{ s.id }}">{{ s.label }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+{% if not sim %}
+<p class="lede">Aucun simulateur.</p>
+{% elif not contests %}
+<p class="lede">Aucun concours dans l’historique reçu.</p>
+{% else %}
+<div class="grid">
+    {% for c in contests %}
+    <a class="card" href="/sim/{{ sim.id }}/contests/{{ c.id }}">
+        <h2>{{ c.name }}</h2>
+        <p>{{ c.status }} · <span class="count">{{ c.score_count }}</span> chrono(s)</p>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

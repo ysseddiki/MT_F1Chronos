@@ -35,3 +35,6 @@ artifacts/
 # User-specific local data (never commit)
 settings.json
 sessions.json
+.env
+server/data/
+server/.venv/

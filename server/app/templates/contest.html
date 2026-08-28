@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import board %}
+{% block title %}{{ contest.name }}{% endblock %}
+{% block body %}
+<p class="kicker"><a href="/contests?sim={{ sim.id }}">← Concours</a></p>
+<h1>{{ contest.name }}</h1>
+<p class="lede">{{ contest.status }}</p>
+<div class="toolbar">
+    {% for t in tracks %}
+    <a class="btn {% if t.track_id == track_id %}primary{% endif %}"
+       href="/sim/{{ sim.id }}/contests/{{ contest.id }}?track_id={{ t.track_id }}{% if best %}&best=true{% endif %}">{{ t.track_name }}</a>
+    {% endfor %}
+    {% if track_id is not none %}
+    <a class="btn" href="/sim/{{ sim.id }}/contests/{{ contest.id }}?track_id={{ track_id }}{% if not best %}&best=true{% endif %}">
+        {% if best %}Tous les tours{% else %}Meilleur / joueur{% endif %}
+    </a>
+    {% endif %}
+</div>
+{% if track_id is not none %}
+<h2>{{ track_name }}</h2>
+{{ board(rows) }}
+{% else %}
+<p class="lede">Aucun chrono.</p>
+{% endif %}
+{% endblock %}

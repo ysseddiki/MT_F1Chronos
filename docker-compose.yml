@@ -1,0 +1,19 @@
+services:
+  results:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: mt-f1chronos-results:latest
+    container_name: f1chronos-results
+    ports:
+      - "8080:8080"
+    environment:
+      RESULTS_DATA: /data
+      RESULTS_ADMIN_PASSWORD: ${RESULTS_ADMIN_PASSWORD:-}
+      RESULTS_SECRET: ${RESULTS_SECRET:-change-me-in-production}
+    volumes:
+      - results-data:/data
+    restart: unless-stopped
+
+volumes:
+  results-data:

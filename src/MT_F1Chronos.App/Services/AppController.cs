@@ -19,6 +19,7 @@ public sealed class AppController : IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly AppSettings _settings;
     private readonly DispatcherTimer _refreshTimer;
+    private readonly ResultsSyncClient _resultsSync;
 
     private OverlayWindow? _overlay;
     private DebugWindow? _debugWindow;
@@ -30,13 +31,21 @@ public sealed class AppController : IDisposable
         _settings = _settingsStore.Load();
         _store.Load();
         _contests.Load();
+        EnsureSimulatorIdentity();
         NormalizeOverlayContestSetting();
+        _resultsSync = new ResultsSyncClient(
+            _dispatcher,
+            BuildResultsSnapshot,
+            ApplyResultsCommands,
+            ids => ResultsSnapshotBuilder.AcknowledgeDeleted(_store, _contests, ids));
+        _resultsSync.ApplySettings(_settings);
         _overlayUi = new OverlayCoordinator(
             _store,
             _contests,
             _settings,
             () => _listener.State,
-            SaveSettings);
+            SaveSettings,
+            () => _resultsSync.Status);
         _listener.SetFormat((ushort)_settings.UdpFormat);
         _listener.UpdateReceived += OnTelemetryUpdate;
 
@@ -150,6 +159,7 @@ public sealed class AppController : IDisposable
                 name = name[..OverlaySizes.MaxPlayerNameLength];
             _settings.PlayerName = name;
             SaveSettings();
+            _resultsSync.RequestSync();
         }
         else if (required && string.IsNullOrWhiteSpace(_settings.PlayerName))
         {
@@ -219,7 +229,11 @@ public sealed class AppController : IDisposable
         window.ShowDialog();
     }
 
-    public void NotifyScoresChanged() => RefreshOverlay();
+    public void NotifyScoresChanged()
+    {
+        RefreshOverlay();
+        _resultsSync.RequestSync();
+    }
 
     /// <summary>Dedicated score management UI — only reachable from admin (password-gated).</summary>
     public void ShowManageScores()
@@ -252,6 +266,7 @@ public sealed class AppController : IDisposable
         {
             var contest = _contests.Create(name, startImmediately: true);
             RefreshOverlay();
+            _resultsSync.RequestSync();
             return contest;
         }
         catch (Exception ex)
@@ -265,6 +280,7 @@ public sealed class AppController : IDisposable
     {
         var ok = _contests.Start(contestId);
         RefreshOverlay();
+        _resultsSync.RequestSync();
         return ok;
     }
 
@@ -272,6 +288,7 @@ public sealed class AppController : IDisposable
     {
         var ok = _contests.Stop(contestId);
         RefreshOverlay();
+        _resultsSync.RequestSync();
         return ok;
     }
 
@@ -299,6 +316,7 @@ public sealed class AppController : IDisposable
             SetOverlayContest(null);
 
         RefreshOverlay();
+        _resultsSync.RequestSync();
         return ok;
     }
 
@@ -443,6 +461,7 @@ public sealed class AppController : IDisposable
 
         var removed = _store.ClearScoresForTrack(trackId);
         RefreshOverlay();
+        _resultsSync.RequestSync();
         MessageBox.Show(_overlay, $"{removed} score(s) supprimé(s).", "Scores", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -463,6 +482,7 @@ public sealed class AppController : IDisposable
 
         var removed = _store.ClearAllScores();
         RefreshOverlay();
+        _resultsSync.RequestSync();
         MessageBox.Show(_overlay, $"{removed} score(s) supprimé(s).", "Scores", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -564,6 +584,7 @@ public sealed class AppController : IDisposable
                     update.CompletedLapMs.Value);
 
                 RefreshOverlay();
+                _resultsSync.RequestSync();
                 _overlay?.FlashLapRecorded(_settings.PlayerName);
                 return;
             }
@@ -595,6 +616,52 @@ public sealed class AppController : IDisposable
         _overlayUi.Refresh(_overlay);
     }
 
+    public ResultsSyncStatus GetResultsSyncStatus() => _resultsSync.Status;
+
+    public void SaveResultsServerSettings(bool enabled, string url, string token, string label, int syncIntervalSeconds)
+    {
+        _settings.ResultsServerEnabled = enabled;
+        _settings.ResultsServerUrl = string.IsNullOrWhiteSpace(url) ? "http://127.0.0.1:8080" : url.Trim();
+        _settings.ResultsServerToken = token?.Trim() ?? string.Empty;
+        _settings.SimulatorLabel = label?.Trim() ?? string.Empty;
+        _settings.ResultsSyncIntervalSeconds = ResultsSyncProtocol.NormalizeSyncInterval(syncIntervalSeconds);
+        EnsureSimulatorIdentity();
+        SaveSettings();
+        _resultsSync.ApplySettings(_settings);
+    }
+
+    public Task<string> TestResultsServerAsync() => _resultsSync.TestConnectionAsync();
+
+    private ResultsSyncRequest BuildResultsSnapshot(IReadOnlyList<string> appliedCommandIds)
+    {
+        var state = _listener.State;
+        return ResultsSnapshotBuilder.Build(
+            _settings.SimulatorId,
+            _settings.SimulatorLabel,
+            _settings.PlayerName,
+            state.TrackId,
+            state.TrackName,
+            _settings.ResultsSyncIntervalSeconds,
+            _store,
+            _contests,
+            appliedCommandIds);
+    }
+
+    private void ApplyResultsCommands(IReadOnlyList<ResultsCommand> commands)
+    {
+        ResultsCommandApplier.Apply(_store, _contests, commands);
+        RefreshOverlay();
+    }
+
+    private void EnsureSimulatorIdentity()
+    {
+        if (!string.IsNullOrWhiteSpace(_settings.SimulatorId))
+            return;
+
+        _settings.SimulatorId = Guid.NewGuid().ToString("N");
+        SaveSettings();
+    }
+
     private void NormalizeOverlayContestSetting()
     {
         if (string.IsNullOrWhiteSpace(_settings.OverlayContestId))
@@ -609,6 +676,7 @@ public sealed class AppController : IDisposable
     public void Dispose()
     {
         _refreshTimer.Stop();
+        _resultsSync.Dispose();
         _store.CloseActiveSession();
         _store.Dispose();
         _contests.Dispose();
