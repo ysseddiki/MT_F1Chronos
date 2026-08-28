@@ -22,6 +22,36 @@ public static class ResultsSyncProtocol
             return DefaultSyncIntervalSeconds;
         return Math.Clamp(seconds, MinSyncIntervalSeconds, MaxSyncIntervalSeconds);
     }
+
+    /// <summary>
+    /// HTTPS on 443 (no port in the URL). Bare hostnames get https://.
+    /// Legacy :8080 is dropped so the sim talks to Caddy on 443.
+    /// </summary>
+    public static string NormalizeServerUrl(string? url)
+    {
+        var trimmed = (url ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return string.Empty;
+
+        if (!trimmed.Contains("://", StringComparison.Ordinal))
+            trimmed = "https://" + trimmed;
+
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            return trimmed.TrimEnd('/');
+
+        var host = uri.IdnHost;
+        if (string.IsNullOrWhiteSpace(host))
+            host = uri.Host;
+        if (string.IsNullOrWhiteSpace(host))
+            return string.Empty;
+
+        var dropExplicitPort = !uri.IsDefaultPort && uri.Port is 80 or 443 or 8080;
+        if (uri.IsDefaultPort || dropExplicitPort)
+            return $"https://{host}";
+
+        return $"https://{host}:{uri.Port}";
+    }
 }
 
 public sealed class ResultsSyncRequest

@@ -349,7 +349,7 @@
                               Margin="0,0,0,10"
                               Checked="OnResultsSettingsChanged"
                               Unchecked="OnResultsSettingsChanged"/>
-                    <TextBlock Text="URL du serveur"
+                    <TextBlock Text="URL HTTPS du serveur (port 443)"
                                FontFamily="Segoe UI"
                                FontSize="11"
                                Foreground="#FFC5CAD3"
@@ -364,6 +364,12 @@
                              CaretBrush="#FFE10600"
                              Margin="0,0,0,8"
                              LostFocus="OnResultsSettingsChanged"/>
+                    <TextBlock Text="Ex. https://classement.exemple.com — sans :8080, le 443 est implicite."
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               Foreground="#FF8B909A"
+                               Margin="0,0,0,10"
+                               TextWrapping="Wrap"/>
                     <TextBlock Text="Nom du simulateur (affichage)"
                                FontFamily="Segoe UI"
                                FontSize="11"

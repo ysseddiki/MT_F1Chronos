@@ -40,7 +40,7 @@ public partial class AdminWindow : Window
     {
         ResultsEnabledCheck.IsChecked = _settings.ResultsServerEnabled;
         ResultsUrlBox.Text = string.IsNullOrWhiteSpace(_settings.ResultsServerUrl)
-            ? "http://127.0.0.1:8080"
+            ? "https://"
             : _settings.ResultsServerUrl;
         ResultsLabelBox.Text = _settings.SimulatorLabel;
         ResultsTokenBox.Password = _settings.ResultsServerToken;

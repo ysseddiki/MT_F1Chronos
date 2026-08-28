@@ -6,6 +6,22 @@ namespace MT_F1Chronos.Tests;
 
 public class ResultsSyncTests
 {
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    [InlineData("   ", "")]
+    [InlineData("classement.exemple.com", "https://classement.exemple.com")]
+    [InlineData("https://classement.exemple.com", "https://classement.exemple.com")]
+    [InlineData("https://classement.exemple.com:443", "https://classement.exemple.com")]
+    [InlineData("http://classement.exemple.com:8080", "https://classement.exemple.com")]
+    [InlineData("http://127.0.0.1:8080", "https://127.0.0.1")]
+    [InlineData("https://", "")]
+    [InlineData("https://classement.exemple.com:8443", "https://classement.exemple.com:8443")]
+    public void NormalizeServerUrl_UsesHttpsOn443(string? input, string expected)
+    {
+        Assert.Equal(expected, ResultsSyncProtocol.NormalizeServerUrl(input));
+    }
+
     [Fact]
     public void SnapshotBuilder_IncludesGlobalAndContests()
     {

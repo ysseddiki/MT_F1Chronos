@@ -1,0 +1,9 @@
+{
+	email {$CADDY_EMAIL:}
+}
+
+# Public HTTPS on 443 (Let's Encrypt when RESULTS_DOMAIN is a real hostname).
+# The FastAPI app stays internal on 8080; Caddy is the only listener on the host.
+{$RESULTS_DOMAIN} {
+	reverse_proxy results:8080
+}

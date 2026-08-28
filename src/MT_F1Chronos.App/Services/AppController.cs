@@ -621,7 +621,7 @@ public sealed class AppController : IDisposable
     public void SaveResultsServerSettings(bool enabled, string url, string token, string label, int syncIntervalSeconds)
     {
         _settings.ResultsServerEnabled = enabled;
-        _settings.ResultsServerUrl = string.IsNullOrWhiteSpace(url) ? "http://127.0.0.1:8080" : url.Trim();
+        _settings.ResultsServerUrl = ResultsSyncProtocol.NormalizeServerUrl(url);
         _settings.ResultsServerToken = token?.Trim() ?? string.Empty;
         _settings.SimulatorLabel = label?.Trim() ?? string.Empty;
         _settings.ResultsSyncIntervalSeconds = ResultsSyncProtocol.NormalizeSyncInterval(syncIntervalSeconds);

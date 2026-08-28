@@ -149,7 +149,7 @@ F1 (UDP :20888)
 | Champ | Défaut | Contrainte |
 |---|---|---|
 | `ResultsServerEnabled` | `false` | Off = aucun réseau, fonctionnement local inchangé |
-| `ResultsServerUrl` | `http://127.0.0.1:8080` | URL `http`/`https` du serveur Results |
+| `ResultsServerUrl` | `""` | HTTPS, port **443** implicite (`https://hostname`). Les `:80` / `:443` / `:8080` sont retirés au chargement. |
 | `ResultsServerToken` | `""` | Jeton créé sur le VPS |
 | `SimulatorId` | généré | Guid local stable |
 | `SimulatorLabel` | `""` | Nom affiché sur le site |
@@ -377,13 +377,15 @@ Le simulateur **initie** toujours `POST /api/v1/sync` (NAT). Le VPS ne ouvre auc
 |---|---|---|
 | `GET` | `/api/v1/health` | Test de visibilité |
 | `POST` | `/api/v1/sync` | Snapshot + `deletedEntryIds` + ACK jobs → jobs `pending` en réponse |
-| Pages | `/`, `/sim/{id}`, `/admin` | Consultation publique + gestion (jobs revertibles) |
+| Pages | `/`, `/sim/{id}`, `/admin` | Consultation publique + gestion (jobs revertibles, **changement du mot de passe admin**) |
 
 Jobs (`deleteEntry`, `renameEntry`, `renamePlayer`, `restoreEntry`) : créés **uniquement** par bouton admin. Wipe DB VPS ≠ job. Revert pending = annule + restore replica ; revert applied = job inverse.
 
 Présence simu : hors ligne si `now - lastSeen > 2 × syncIntervalSeconds`.
 
-Docker : `docker compose up --build` / `podman compose up --build` (port **8080**, volume `/data`).
+`RESULTS_ADMIN_PASSWORD` (`.env`, via `./scripts/init-env.sh`) **sème uniquement** le premier hash SQLite. Ensuite le mot de passe se change dans `/admin`. Relancer le script / modifier l’env ne change pas le login. Wipe du volume SQLite = retour au mot de passe env. Vide + aucune base = admin ouvert (à éviter en VPS).
+
+Docker : `docker compose up --build` / `podman compose up --build`. Caddy public **443** (et **80** ACME) ; FastAPI interne **8080** (non publié). Volume `/data`. Hostname `RESULTS_DOMAIN` obligatoire pour Let’s Encrypt.
 
 ---
 
@@ -473,7 +475,9 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 - Le simu **pull** (NAT) : snapshot + jobs à chaque mutation (debounce 1 s) **et** selon `ResultsSyncIntervalSeconds`.
 - Jobs admin revertibles ; wipe DB serveur **sans** job vers le simu.
 - Overlay : LED serveur à côté de la télémétrie.
+- Transport : `ResultsSyncClient` utilise `ResultsServerUrl` normalisée en `https://host` (TCP **443**). Pas de sync sur le 8080 public.
 - VPS : simu hors ligne après **2 ×** l’intervalle annoncé, sans sync.
+- Admin web : mot de passe hashé en SQLite (PBKDF2) ; `RESULTS_ADMIN_PASSWORD` = seed initial seulement.
 
 ---
 

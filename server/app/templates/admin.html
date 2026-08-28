@@ -110,6 +110,26 @@
     </tbody>
 </table>
 {% endif %}
-<p style="margin-top:16px"><a href="/admin/logout">Déconnexion</a></p>
 {% endif %}
+
+<form method="post" action="/admin/password" class="card" style="margin-top:28px">
+    <h2 style="margin-top:0">Mot de passe admin</h2>
+    <p class="lede">Le fichier .env ne définit que le mot de passe du premier démarrage. Ensuite, c’est ici.</p>
+    {% if has_password %}
+    <div class="field">
+        <label for="current_password">Mot de passe actuel</label>
+        <input id="current_password" name="current_password" type="password" autocomplete="current-password"/>
+    </div>
+    {% endif %}
+    <div class="field">
+        <label for="new_password">Nouveau mot de passe</label>
+        <input id="new_password" name="new_password" type="password" autocomplete="new-password" minlength="4"/>
+    </div>
+    <div class="field">
+        <label for="confirm_password">Confirmation</label>
+        <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" minlength="4"/>
+    </div>
+    <button type="submit" class="primary">{% if has_password %}Changer le mot de passe{% else %}Définir un mot de passe{% endif %}</button>
+</form>
+<p style="margin-top:16px"><a href="/admin/logout">Déconnexion</a></p>
 {% endblock %}

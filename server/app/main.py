@@ -12,11 +12,11 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import db
+from .auth import MIN_PASSWORD_LENGTH, AdminAuth
 from .store import ResultsStore, format_lap
 
 BASE = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("RESULTS_DATA") or (BASE.parent / "data"))
-ADMIN_PASSWORD = os.environ.get("RESULTS_ADMIN_PASSWORD") or ""
 SECRET = os.environ.get("RESULTS_SECRET") or "dev-change-me"
 
 app = FastAPI(title="F1 Chronos — Résultats")
@@ -24,16 +24,28 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET, same_site="lax")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 templates.env.filters["lap"] = format_lap
-templates.env.globals["is_connected"] = is_simulator_connected
 
 _store: ResultsStore | None = None
+_auth: AdminAuth | None = None
+
+
+def _ensure() -> tuple[ResultsStore, AdminAuth]:
+    global _store, _auth
+    if _store is None:
+        conn = db.connect(DATA_DIR / "results.sqlite")
+        _store = ResultsStore(conn)
+        _auth = AdminAuth(conn)
+        _auth.seed_from_env(os.environ.get("RESULTS_ADMIN_PASSWORD") or "")
+    assert _auth is not None
+    return _store, _auth
 
 
 def store() -> ResultsStore:
-    global _store
-    if _store is None:
-        _store = ResultsStore(db.connect(DATA_DIR / "results.sqlite"))
-    return _store
+    return _ensure()[0]
+
+
+def auth() -> AdminAuth:
+    return _ensure()[1]
 
 
 def page(request: Request, name: str, ctx: dict) -> HTMLResponse:
@@ -42,7 +54,7 @@ def page(request: Request, name: str, ctx: dict) -> HTMLResponse:
 
 
 def is_admin(request: Request) -> bool:
-    if not ADMIN_PASSWORD:
+    if not auth().has_password():
         return True
     return request.session.get("admin") is True
 
@@ -192,7 +204,7 @@ def admin_login_get(request: Request):
 
 @app.post("/admin/login")
 def admin_login_post(request: Request, password: str = Form("")):
-    if ADMIN_PASSWORD and password != ADMIN_PASSWORD:
+    if auth().has_password() and not auth().verify(password):
         return page(
             request, "admin_login.html", {"error": "Mot de passe incorrect."}
         )
@@ -241,6 +253,7 @@ def admin_home(
             "status": status,
             "new_token": new_token,
             "admin": True,
+            "has_password": auth().has_password(),
         },
     )
 
@@ -306,6 +319,29 @@ def admin_rename_all(
     store().admin_rename_player(sim, cid, old_name, new_name)
     q = _admin_qs(sim, contest_id, track_id, "Pseudo modifié (tous les temps) — job en file.")
     return RedirectResponse(f"/admin?{q}", status_code=303)
+
+
+@app.post("/admin/password")
+def admin_change_password(
+    request: Request,
+    current_password: str = Form(""),
+    new_password: str = Form(""),
+    confirm_password: str = Form(""),
+):
+    gate = require_admin(request)
+    if gate:
+        return gate
+    if auth().has_password() and not auth().verify(current_password):
+        msg = "Mot de passe actuel incorrect."
+    elif len(new_password) < MIN_PASSWORD_LENGTH:
+        msg = f"Le nouveau mot de passe doit faire au moins {MIN_PASSWORD_LENGTH} caractères."
+    elif new_password != confirm_password:
+        msg = "La confirmation ne correspond pas."
+    else:
+        auth().set_password(new_password)
+        request.session["admin"] = True
+        msg = "Mot de passe admin mis à jour. Le .env n’est plus utilisé pour le login."
+    return RedirectResponse(f"/admin?status={quote(msg)}", status_code=303)
 
 
 @app.post("/admin/jobs/{job_id}/revert")

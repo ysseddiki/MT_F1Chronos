@@ -130,7 +130,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
   "contestLeaderboardSize": 10,
   "hideGlobalWhenContest": false,
   "resultsServerEnabled": false,
-  "resultsServerUrl": "http://127.0.0.1:8080",
+  "resultsServerUrl": "https://classement.exemple.com",
   "resultsServerToken": "",
   "simulatorId": "",
   "simulatorLabel": "",
@@ -151,7 +151,7 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 | `contestLeaderboardSize` | `5` ou `10` (classement **concours**) |
 | `hideGlobalWhenContest` | Masquer le TOP global (`true` = mode Concours seul) |
 | `resultsServerEnabled` | `false` par défaut — active l’envoi des tableaux vers le serveur |
-| `resultsServerUrl` | Base URL du serveur (`http://IP:8080`) |
+| `resultsServerUrl` | Base URL HTTPS du serveur (`https://hostname`, port **443** implicite) |
 | `resultsServerToken` | Jeton généré dans l’admin web du VPS |
 | `simulatorLabel` | Nom affiché sur le site |
 | `resultsSyncIntervalSeconds` | 15–600 (défaut 120) — pull périodique des jobs |
@@ -187,15 +187,24 @@ assets/             → Icône F1 Chronos (app.ico)
 
 Le overlay du simulateur **reste autonome**. Le VPS est une archive / vitrine. Le simu (derrière NAT) **initie** toujours HTTP ; le serveur ne rappelle jamais le PC.
 
+Caddy écoute **80** (redirect / ACME) et **443** (HTTPS). FastAPI reste interne au réseau Docker (8080 non publié).
+
 ```bash
-cp .env.example .env   # RESULTS_ADMIN_PASSWORD, RESULTS_SECRET
+./scripts/init-env.sh   # génère .env (mdp admin + secret cookie aléatoires)
+# édite RESULTS_DOMAIN et CADDY_EMAIL
 docker compose up --build
 # ou : podman compose up --build
 ```
 
-1. Ouvre `http://<IP-VPS>:8080/admin` → crée un simulateur → **copie le jeton**
-2. Sur le PC F1 Chronos : Administration → Serveur de résultats → URL, jeton, intervalle de sync → Tester / Activer
+`RESULTS_DOMAIN` doit être un **hostname** (Let’s Encrypt refuse une IP brute). Pointe le DNS A/AAAA vers le VPS, ports 80 et 443 ouverts.
+
+`RESULTS_ADMIN_PASSWORD` n’est utilisé **qu’au premier démarrage** (hashé en SQLite). Ensuite, change-le dans `/admin`. Relancer le script ne change plus le login.
+
+1. Ouvre `https://<ton-domaine>/admin` → crée un simulateur → **copie le jeton**
+2. Sur le PC F1 Chronos : Administration → Serveur de résultats → URL `https://<ton-domaine>` (sans `:8080`), jeton, intervalle → Tester / Activer
 3. LED overlay : télémétrie (jeu) **et** serveur (VPS) à côté
+
+Le client normalise l’URL en **HTTPS / 443** (un ancien `:8080` est retiré). Les `POST /api/v1/sync` partent donc sur le 443.
 
 Le simu envoie un snapshot à chaque maj de tableau et selon l’intervalle choisi (15 s–10 min). Les suppressions / renames admin créent des **jobs** récupérés au pull. Un revert est possible tant que le job n’est pas annulé. **Vider la DB du VPS ne touche pas le simu.**
 

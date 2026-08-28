@@ -86,8 +86,10 @@ dotnet test tests/MT_F1Chronos.Tests/MT_F1Chronos.Tests.csproj
 Serveur de résultats (Docker / Podman) :
 
 ```bash
+./scripts/init-env.sh   # .env : mdp admin + secret cookie aléatoires
 docker compose up --build
 # ou : podman compose up --build
+# Public : 443 (HTTPS) + 80 (ACME). FastAPI interne seulement.
 ```
 
 ## Git

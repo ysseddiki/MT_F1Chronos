@@ -104,7 +104,7 @@ public sealed class ResultsSyncClient : IDisposable
     public async Task<string> TestConnectionAsync()
     {
         if (!TryCreateBaseUri(_settings.ResultsServerUrl, out var uri))
-            return "URL invalide. Exemple : http://192.168.1.10:8080";
+            return "URL invalide. Exemple : https://classement.exemple.com (HTTPS, port 443)";
 
         try
         {
@@ -246,7 +246,8 @@ public sealed class ResultsSyncClient : IDisposable
         uri = null!;
         if (string.IsNullOrWhiteSpace(url))
             return false;
-        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var parsed))
+        var normalized = ResultsSyncProtocol.NormalizeServerUrl(url);
+        if (!Uri.TryCreate(normalized, UriKind.Absolute, out var parsed))
             return false;
         if (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps)
             return false;

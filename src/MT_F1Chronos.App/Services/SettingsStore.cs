@@ -66,6 +66,7 @@ public sealed class SettingsStore
             settings.PlayerName = settings.PlayerName[..OverlaySizes.MaxPlayerNameLength];
         settings.ResultsSyncIntervalSeconds =
             ResultsSyncProtocol.NormalizeSyncInterval(settings.ResultsSyncIntervalSeconds);
+        settings.ResultsServerUrl = ResultsSyncProtocol.NormalizeServerUrl(settings.ResultsServerUrl);
         return settings;
     }
 }

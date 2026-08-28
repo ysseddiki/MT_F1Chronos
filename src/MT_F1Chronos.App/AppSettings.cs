@@ -35,8 +35,8 @@ public sealed class AppSettings
     /// <summary>Optional results server. Off by default — the overlay keeps working fully offline.</summary>
     public bool ResultsServerEnabled { get; set; }
 
-    /// <summary>Base URL of the results server, e.g. <c>http://192.168.1.10:8080</c>.</summary>
-    public string ResultsServerUrl { get; set; } = "http://127.0.0.1:8080";
+    /// <summary>Base URL of the results server, e.g. <c>https://classement.exemple.com</c> (HTTPS / port 443).</summary>
+    public string ResultsServerUrl { get; set; } = string.Empty;
 
     /// <summary>Shared token sent as <c>X-Results-Token</c>. Empty = no auth.</summary>
     public string ResultsServerToken { get; set; } = string.Empty;
