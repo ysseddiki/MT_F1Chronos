@@ -69,8 +69,7 @@ def auth() -> AdminAuth:
 
 
 def page(request: Request, name: str, ctx: dict) -> HTMLResponse:
-    ctx["request"] = request
-    return templates.TemplateResponse(name, ctx)
+    return templates.TemplateResponse(request, name, ctx)
 
 
 def is_admin(request: Request) -> bool:
