@@ -3,7 +3,7 @@
 
 import { h, clear } from '../dom.js';
 import { segmented, trackSelect, boardTable, pagination, banner, simToolbarStrip } from '../components.js';
-import { setQuery, replace, onCleanup } from '../router.js';
+import { setQuery, onCleanup } from '../router.js';
 import { subscribeChanges, mySimulatorPseudo, isAdmin } from '../state.js';
 import { boardRowManageMenu } from '../board_manage.js';
 
@@ -41,7 +41,7 @@ export function renderBoardPage(container, query, ctx) {
         ),
     );
 
-    const simStrip = simToolbarStrip(ctx.sims, { liveTrackId });
+    const simStrip = simToolbarStrip(ctx.sims, { liveTrackId: trackId });
     if (simStrip) container.append(simStrip);
 
     const slot = h('div', {}, h('p', { class: 'loading' }, 'Chargement du classement…'));
@@ -49,17 +49,20 @@ export function renderBoardPage(container, query, ctx) {
 
     const trackName = ctx.tracks.find((t) => t.trackId === trackId)?.trackName || '';
 
-    const reloadBoard = () => replace(location.pathname + location.search);
+    let loadGen = 0;
 
     async function loadBoard() {
+        const gen = ++loadGen;
         try {
             const board = await ctx.fetchBoard(trackId, best, page);
+            if (gen !== loadGen) return;
             clear(slot);
+            const refreshBoard = () => loadBoard();
             const manage = isAdmin()
                 ? (row) => boardRowManageMenu(row, {
                     simId: row.simId || ctx.defaultSimId,
                     contestId: ctx.contestId ?? null,
-                    onDone: reloadBoard,
+                    onDone: refreshBoard,
                 })
                 : null;
             slot.append(
@@ -71,6 +74,7 @@ export function renderBoardPage(container, query, ctx) {
                 pagination(board, (p) => setQuery({ page: p > 1 ? p : null })),
             );
         } catch (err) {
+            if (gen !== loadGen) return;
             clear(slot);
             slot.append(banner(err.message || 'Erreur de chargement.', 'error'));
         }
@@ -79,7 +83,7 @@ export function renderBoardPage(container, query, ctx) {
     loadBoard();
 
     const reload = () => {
-        if (!document.hidden) replace(location.pathname + location.search);
+        if (!document.hidden) loadBoard();
     };
     let lastLiveEvent = 0;
     const unsubscribe = subscribeChanges(() => {
