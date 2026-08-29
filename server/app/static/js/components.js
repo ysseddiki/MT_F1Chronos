@@ -20,7 +20,6 @@ export async function renderTopbar(activePath) {
 
     const nav = h('nav', {},
         navLink('/', 'Résultats', activePath === '/' || activePath.startsWith('/t/') || activePath.startsWith('/sim/')),
-        navLink('/contests', 'Concours', activePath.startsWith('/contests')),
         isAdmin() ? navLink('/admin', 'Administration', activePath.startsWith('/admin')) : null,
     );
 
@@ -227,7 +226,7 @@ export function simToolbarStrip(sims, { liveTrackId = null } = {}) {
     );
 }
 
-/** Menu contextuel compact (⋯). */
+/** Menu contextuel compact (⋯) — position fixe pour échapper au overflow des tableaux. */
 export function actionMenu(triggerLabel, items, { title = 'Actions' } = {}) {
     const wrap = h('div', { class: 'action-menu' });
     const btn = h('button', {
@@ -236,17 +235,7 @@ export function actionMenu(triggerLabel, items, { title = 'Actions' } = {}) {
         title,
         'aria-label': title,
         'aria-haspopup': 'true',
-        onclick: (e) => {
-            e.stopPropagation();
-            const open = wrap.classList.toggle('open');
-            if (open) {
-                const close = () => {
-                    wrap.classList.remove('open');
-                    document.removeEventListener('click', close);
-                };
-                setTimeout(() => document.addEventListener('click', close), 0);
-            }
-        },
+        'aria-expanded': 'false',
     }, triggerLabel);
     const list = h('div', { class: 'action-menu-list', role: 'menu' },
         items.map((item) => h('button', {
@@ -255,13 +244,93 @@ export function actionMenu(triggerLabel, items, { title = 'Actions' } = {}) {
             role: 'menuitem',
             onclick: (e) => {
                 e.stopPropagation();
-                wrap.classList.remove('open');
+                closeMenu();
                 item.onClick();
             },
         }, item.label)),
     );
+
+    let onDocClick = null;
+    let onScroll = null;
+    let onResize = null;
+
+    const placeMenu = () => {
+        if (!wrap.classList.contains('open')) return;
+        const rect = btn.getBoundingClientRect();
+        const listWidth = list.offsetWidth || 190;
+        const listHeight = list.offsetHeight || 120;
+        let left = rect.right - listWidth;
+        left = Math.max(8, Math.min(left, window.innerWidth - listWidth - 8));
+        let top = rect.bottom + 4;
+        if (top + listHeight > window.innerHeight - 8) {
+            top = Math.max(8, rect.top - listHeight - 4);
+        }
+        list.style.position = 'fixed';
+        list.style.top = `${top}px`;
+        list.style.left = `${left}px`;
+        list.style.right = 'auto';
+        list.style.zIndex = '1000';
+    };
+
+    const closeMenu = () => {
+        wrap.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+        list.removeAttribute('style');
+        if (onDocClick) document.removeEventListener('click', onDocClick);
+        if (onScroll) window.removeEventListener('scroll', onScroll, true);
+        if (onResize) window.removeEventListener('resize', onResize);
+        onDocClick = onScroll = onResize = null;
+    };
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (wrap.classList.contains('open')) {
+            closeMenu();
+            return;
+        }
+        wrap.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        list.style.display = 'block';
+        placeMenu();
+        onScroll = () => placeMenu();
+        onResize = () => placeMenu();
+        onDocClick = (ev) => {
+            if (wrap.contains(ev.target)) return;
+            closeMenu();
+        };
+        setTimeout(() => {
+            document.addEventListener('click', onDocClick);
+            window.addEventListener('scroll', onScroll, true);
+            window.addEventListener('resize', onResize);
+        }, 0);
+    });
+
     wrap.append(btn, list);
     return wrap;
+}
+
+export function contestStatusLabel(status) {
+    return { active: 'Actif', draft: 'Brouillon', stopped: 'Terminé' }[status] || status;
+}
+
+/** Sélecteur global / concours sur la page simulateur. */
+export function contestBoardSelect(contests, currentContestId, onChange) {
+    if (!contests?.length) return null;
+    const select = h('select', {
+        class: 'board-scope-select',
+        'aria-label': 'Tableau affiché',
+        onchange: (e) => onChange(e.target.value || null),
+    },
+        h('option', { value: '', selected: !currentContestId }, 'Classement global'),
+        contests.map((c) => h('option', {
+            value: c.id,
+            selected: c.id === currentContestId,
+        }, `${c.name} · ${contestStatusLabel(c.status)}`)),
+    );
+    return h('div', { class: 'board-scope panel' },
+        h('label', { class: 'board-scope-label' }, 'Tableau'),
+        select,
+    );
 }
 
 // ---------- Segmented (switch Tous les tours / Meilleur par joueur) ----------

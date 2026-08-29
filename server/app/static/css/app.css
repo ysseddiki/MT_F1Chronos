@@ -457,6 +457,24 @@ a.card:hover {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 .action-menu.open .action-menu-list { display: block; }
+
+.board-scope {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+}
+.board-scope-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+.board-scope-select {
+    width: 100%;
+    max-width: 420px;
+}
 .action-menu-item {
     display: block;
     width: 100%;
