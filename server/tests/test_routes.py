@@ -265,13 +265,26 @@ def test_leaderboard_best_per_player_default(client):
 
 def test_tenant_resolved_by_slug(client):
     _setup_admin(client)
-    tenant, _, _ = _make_tenant_with_sim(client, label="Sim Racing DC")
+    tenant, sim, token = _make_tenant_with_sim(client, label="Sim Racing DC")
     slug = tenant["slug"]
     assert slug
+    _sync_laps(client, token)
     anon = TestClient(client.app)
     by_slug = anon.get(f"/api/v1/tenants/{slug}")
     assert by_slug.status_code == 200
-    assert by_slug.json()["tenant"]["id"] == tenant["id"]
+    body = by_slug.json()
+    assert body["tenant"]["id"] == tenant["id"]
+    assert len(body["sims"]) == 1
+    assert body["sims"][0]["id"] == sim["id"]
+
+    tracks = anon.get(f"/api/v1/tenants/{slug}/tracks")
+    assert tracks.status_code == 200
+    assert len(tracks.json()["tracks"]) == 1
+
+    board = anon.get(f"/api/v1/tenants/{slug}/leaderboard?track_id=1")
+    assert board.status_code == 200
+    assert board.json()["total"] >= 1
+
     by_id = anon.get(f"/api/v1/tenants/{tenant['id']}")
     assert by_id.status_code == 200
 

@@ -278,7 +278,7 @@ def list_tenants(request: Request):
 def get_tenant(request: Request, tenant_id: str):
     user = deps.current_user(request)
     tenant = deps.tenant_or_404(tenant_id, user)
-    sims = deps.store().list_simulators_for_tenant(tenant_id)
+    sims = deps.store().list_simulators_for_tenant(tenant["id"])
     return {
         "ok": True,
         "tenant": tenant_out(tenant),
@@ -289,10 +289,10 @@ def get_tenant(request: Request, tenant_id: str):
 @app.get("/api/v1/tenants/{tenant_id}/tracks")
 def get_tenant_tracks(request: Request, tenant_id: str):
     user = deps.current_user(request)
-    deps.tenant_or_404(tenant_id, user)
+    tenant = deps.tenant_or_404(tenant_id, user)
     return {
         "ok": True,
-        "tracks": [track_out(t) for t in deps.store().tenant_track_summaries(tenant_id)],
+        "tracks": [track_out(t) for t in deps.store().tenant_track_summaries(tenant["id"])],
     }
 
 
@@ -306,9 +306,9 @@ def get_tenant_leaderboard(
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
     user = deps.current_user(request)
-    deps.tenant_or_404(tenant_id, user)
+    tenant = deps.tenant_or_404(tenant_id, user)
     board = deps.store().tenant_leaderboard(
-        tenant_id, track_id, best_per_player=best, page=page, page_size=page_size
+        tenant["id"], track_id, best_per_player=best, page=page, page_size=page_size
     )
     return {"ok": True, **board_out(board)}
 

@@ -56,7 +56,7 @@ export async function renderTopbar(activePath) {
         const roleLabel = user.role === 'admin' ? 'Admin'
             : user.role === 'simracer' ? 'SimRacer'
                 : 'Visiteur';
-        right.append(
+        const authActions = [
             isSimRacer()
                 ? h('a', { class: 'btn-ghost btn-sm', href: '/profile', 'data-link': true }, 'Profil')
                 : null,
@@ -75,7 +75,8 @@ export async function renderTopbar(activePath) {
                     location.reload();
                 },
             }, 'Déconnexion'),
-        );
+        ].filter(Boolean);
+        right.append(...authActions);
     } else {
         right.append(h('a', { class: 'btn btn-sm', href: '/login', 'data-link': true }, 'Connexion'));
     }
