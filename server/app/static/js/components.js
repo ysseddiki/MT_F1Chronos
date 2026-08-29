@@ -201,6 +201,69 @@ export function simPseudoControls(sim) {
     return h('span', { class: 'sim-pseudo-controls' }, ...parts);
 }
 
+/** Bandeau simulateur(s) : présence + contrôles pseudo sur la feuille de temps. */
+export function simToolbarStrip(sims, { liveTrackId = null } = {}) {
+    if (!sims?.length) return null;
+    return h('div', { class: 'sim-toolbar panel' },
+        h('h2', {}, sims.length > 1 ? 'Simulateurs' : 'Simulateur'),
+        h('div', { class: 'sim-toolbar-list' },
+            sims.map((sim) => {
+                const onTrack = liveTrackId != null && sim.currentTrackId === liveTrackId;
+                return h('div', { class: 'sim-toolbar-item' },
+                    h('div', { class: 'sim-toolbar-head' },
+                        h('a', {
+                            class: 'sim-toolbar-label',
+                            href: `/sim/${sim.id}`,
+                            'data-link': true,
+                        }, sim.label),
+                        presence(sim),
+                        onTrack ? h('span', { class: 'badge live-track' }, 'En piste ici') : null,
+                    ),
+                    simPseudoControls(sim)
+                        || (sim.playerName ? h('span', { class: 'muted' }, `Session : ${sim.playerName}`) : null),
+                );
+            }),
+        ),
+    );
+}
+
+/** Menu contextuel compact (⋯). */
+export function actionMenu(triggerLabel, items, { title = 'Actions' } = {}) {
+    const wrap = h('div', { class: 'action-menu' });
+    const btn = h('button', {
+        class: 'btn-sm btn-ghost action-menu-trigger',
+        type: 'button',
+        title,
+        'aria-label': title,
+        'aria-haspopup': 'true',
+        onclick: (e) => {
+            e.stopPropagation();
+            const open = wrap.classList.toggle('open');
+            if (open) {
+                const close = () => {
+                    wrap.classList.remove('open');
+                    document.removeEventListener('click', close);
+                };
+                setTimeout(() => document.addEventListener('click', close), 0);
+            }
+        },
+    }, triggerLabel);
+    const list = h('div', { class: 'action-menu-list', role: 'menu' },
+        items.map((item) => h('button', {
+            class: `action-menu-item${item.danger ? ' danger' : ''}`,
+            type: 'button',
+            role: 'menuitem',
+            onclick: (e) => {
+                e.stopPropagation();
+                wrap.classList.remove('open');
+                item.onClick();
+            },
+        }, item.label)),
+    );
+    wrap.append(btn, list);
+    return wrap;
+}
+
 // ---------- Segmented (switch Tous les tours / Meilleur par joueur) ----------
 
 export function segmented(options, current, onChange) {

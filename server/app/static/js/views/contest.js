@@ -39,6 +39,9 @@ export async function contestView(container, [simId, contestId], query) {
     renderBoardPage(container, query, {
         head,
         tracks,
+        sims: [sim],
+        defaultSimId: sim.id,
+        contestId,
         focusTrackId: contest.trackFilter != null && contest.trackFilter >= 0 ? contest.trackFilter : null,
         liveTrackId: sim.currentTrackId >= 0 ? sim.currentTrackId : null,
         showSim: false,

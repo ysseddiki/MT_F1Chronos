@@ -2,7 +2,7 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { presence, visibilityBadge, simPseudoControls } from '../components.js';
+import { visibilityBadge } from '../components.js';
 import { renderBoardPage } from './board_page.js';
 import { tenantPath } from '../paths.js';
 import { replace } from '../router.js';
@@ -39,25 +39,12 @@ export async function tenantView(container, [tenantKey], query) {
                     `Classement agrégé sur ${sims.length} simulateur${sims.length > 1 ? 's' : ''}.`),
             ),
         ),
-        sims.length ? h('div', { class: 'panel' },
-            h('h2', {}, 'Simulateurs'),
-            h('div', { class: 'flex' },
-                sims.map((s) => h('span', { class: 'flex' },
-                    h('a', {
-                        class: 'btn btn-sm',
-                        href: `/sim/${s.id}`,
-                        'data-link': true,
-                        style: 'justify-content:flex-start',
-                    }, s.label, ' — ', presence(s)),
-                    simPseudoControls(s),
-                )),
-            ),
-        ) : null,
     );
 
     renderBoardPage(container, query, {
         head,
         tracks,
+        sims,
         focusTrackId: focusSim?.currentTrackId ?? null,
         liveTrackId: focusSim?.currentTrackId >= 0 ? focusSim.currentTrackId : null,
         showSim: sims.length > 1,

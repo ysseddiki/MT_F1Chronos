@@ -2,15 +2,16 @@
 // tableau paginé (20/page), mises à jour live via SSE (repli 60 s).
 
 import { h, clear } from '../dom.js';
-import { segmented, trackSelect, boardTable, pagination, banner } from '../components.js';
+import { segmented, trackSelect, boardTable, pagination, banner, simToolbarStrip } from '../components.js';
 import { setQuery, replace, onCleanup } from '../router.js';
-import { subscribeChanges, mySimulatorPseudo } from '../state.js';
+import { subscribeChanges, mySimulatorPseudo, isAdmin } from '../state.js';
+import { boardRowManageMenu } from '../board_manage.js';
 
 export const FALLBACK_REFRESH_MS = 60_000;
 const LIVE_DEBOUNCE_MS = 1500;
 
 export function renderBoardPage(container, query, ctx) {
-    // ctx: { head, tracks, focusTrackId, liveTrackId, showSim, fetchBoard }
+    // ctx: { head, tracks, focusTrackId, liveTrackId, showSim, sims, defaultSimId, contestId, fetchBoard }
     clear(container);
 
     // Meilleur par pilote par défaut ; ?best=false pour tous les tours
@@ -40,19 +41,32 @@ export function renderBoardPage(container, query, ctx) {
         ),
     );
 
+    const simStrip = simToolbarStrip(ctx.sims, { liveTrackId });
+    if (simStrip) container.append(simStrip);
+
     const slot = h('div', {}, h('p', { class: 'loading' }, 'Chargement du classement…'));
     container.append(slot);
 
     const trackName = ctx.tracks.find((t) => t.trackId === trackId)?.trackName || '';
 
+    const reloadBoard = () => replace(location.pathname + location.search);
+
     async function loadBoard() {
         try {
             const board = await ctx.fetchBoard(trackId, best, page);
             clear(slot);
+            const manage = isAdmin()
+                ? (row) => boardRowManageMenu(row, {
+                    simId: row.simId || ctx.defaultSimId,
+                    contestId: ctx.contestId ?? null,
+                    onDone: reloadBoard,
+                })
+                : null;
             slot.append(
                 boardTable(board.rows, {
                     showSim: ctx.showSim,
                     highlightName: mySimulatorPseudo() || null,
+                    manage,
                 }),
                 pagination(board, (p) => setQuery({ page: p > 1 ? p : null })),
             );

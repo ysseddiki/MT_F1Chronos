@@ -43,6 +43,8 @@ export async function simView(container, [simId], query) {
     renderBoardPage(container, query, {
         head,
         tracks,
+        sims: [sim],
+        defaultSimId: sim.id,
         focusTrackId: sim.currentTrackId >= 0 ? sim.currentTrackId : null,
         liveTrackId: sim.currentTrackId >= 0 ? sim.currentTrackId : null,
         showSim: false,

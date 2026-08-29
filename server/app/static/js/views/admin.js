@@ -8,6 +8,7 @@ import {
     presence, trackSelect, boardTable, pagination, toast,
     openModal, confirmDialog, promptDialog,
 } from '../components.js';
+import { boardRowManageMenu } from '../board_manage.js';
 import { tenantsTab, usersTab } from './admin_org.js';
 import { settingsTab } from './admin_settings.js';
 
@@ -298,20 +299,11 @@ async function simDetail(sim, tenants, query) {
         wrap.lastChild.append(
             trackSelect(tracks, trackId, (id) => setQuery({ atrack: id, apage: null })),
             boardTable(board.rows, {
-                manage: (row) => [
-                    h('button', {
-                        class: 'btn-sm', type: 'button',
-                        onclick: () => renameEntry(sim.id, contestId, row),
-                    }, 'Renommer'),
-                    h('button', {
-                        class: 'btn-sm', type: 'button',
-                        onclick: () => renamePlayer(sim.id, contestId, row),
-                    }, 'Renommer partout'),
-                    h('button', {
-                        class: 'btn-sm btn-danger', type: 'button',
-                        onclick: () => deleteLap(sim.id, row),
-                    }, 'Supprimer'),
-                ],
+                manage: (row) => boardRowManageMenu(row, {
+                    simId: sim.id,
+                    contestId,
+                    onDone: refresh,
+                }),
             }),
             pagination(board, (p) => setQuery({ apage: p > 1 ? p : null })),
         );
@@ -350,42 +342,4 @@ async function simDetail(sim, tenants, query) {
 
 function jobStatusClass(status) {
     return { applied: 'ok', pending: 'warn', delivered: 'warn', cancelled: '', reverted: '' }[status] || '';
-}
-
-async function deleteLap(simId, row) {
-    if (!await confirmDialog(`Supprimer le chrono de ${row.name} (${row.formatted}) ? Un job partira vers le simu.`, { confirmLabel: 'Supprimer', danger: true })) return;
-    try {
-        const res = await post(`/api/v1/admin/laps/${row.id}/delete`, { sim_id: simId });
-        toast(res.message, 'success');
-        refresh();
-    } catch (err) { toast(err.message, 'error'); }
-}
-
-async function renameEntry(simId, contestId, row) {
-    const name = await promptDialog('Renommer ce chrono', { value: row.name, maxlength: 20 });
-    if (!name) return;
-    try {
-        const res = await post(`/api/v1/admin/laps/${row.id}/rename`, { sim_id: simId, new_name: name });
-        toast(res.message, 'success');
-        refresh();
-    } catch (err) { toast(err.message, 'error'); }
-}
-
-async function renamePlayer(simId, contestId, row) {
-    const name = await promptDialog(`Renommer « ${row.name} » sur tous ses chronos`, {
-        value: row.name,
-        maxlength: 20,
-        label: contestId ? 'Nouveau pseudo (ce concours)' : 'Nouveau pseudo (tableau global)',
-    });
-    if (!name) return;
-    try {
-        const res = await post('/api/v1/admin/players/rename', {
-            sim_id: simId,
-            contest_id: contestId || null,
-            old_name: row.name,
-            new_name: name,
-        });
-        toast(res.message, 'success');
-        refresh();
-    } catch (err) { toast(err.message, 'error'); }
 }
