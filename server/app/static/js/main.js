@@ -2,13 +2,14 @@
 
 import { route, setTopbarRenderer, startRouter, replace } from './router.js';
 import { renderTopbar } from './components.js';
-import { loadMe } from './state.js';
+import { loadMe, state } from './state.js';
 import { homeView } from './views/home.js';
 import { tenantView } from './views/tenant.js';
 import { simView } from './views/sim.js';
 import { contestsView } from './views/contests.js';
 import { contestView } from './views/contest.js';
 import { loginView } from './views/login.js';
+import { profileView } from './views/profile.js';
 import { adminView } from './views/admin.js';
 
 // Compatibilité anciennes URLs (signets)
@@ -22,6 +23,7 @@ route(/^\/sim\/([\w-]+)$/, (c, p, q) => simView(c, p, q));
 route(/^\/contests$/, (c, p, q) => contestsView(c, p, q));
 route(/^\/sim\/([\w-]+)\/contests\/([\w-]+)$/, (c, p, q) => contestView(c, p, q));
 route(/^\/login$/, (c) => loginView(c));
+route(/^\/profile$/, (c) => profileView(c));
 route(/^\/admin$/, (c, p, q) => adminView(c, p, q));
 
 setTopbarRenderer(renderTopbar);
@@ -29,6 +31,11 @@ setTopbarRenderer(renderTopbar);
 (async () => {
     try {
         await loadMe();
+        if (state.me?.profileRequired
+            && location.pathname !== '/profile'
+            && location.pathname !== '/login') {
+            replace('/profile');
+        }
     } catch {
         // serveur momentanément injoignable : les vues afficheront l'erreur
     }

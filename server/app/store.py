@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 import sqlite3
+import unicodedata
 import uuid
 from typing import Any
 
@@ -16,6 +18,15 @@ MAX_PAGE_SIZE = 100
 MAX_PLAYER_NAME_LENGTH = 20
 
 TENANT_VISIBILITIES = ("public", "private")
+
+# Chronos affichables : pas de circuit inconnu, pseudo vide, ou temps nul.
+LAP_VALID_SQL = "deleted_at IS NULL AND track_id >= 0 AND name != '' AND best_lap_ms > 0"
+
+
+def slugify(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    text = re.sub(r"[^a-zA-Z0-9]+", "-", text.lower()).strip("-")
+    return (text[:48] if text else "") or "organisation"
 
 
 def hash_token(token: str) -> str:
@@ -65,14 +76,43 @@ class ResultsStore:
         row = self._conn.execute("SELECT * FROM tenants WHERE id = ?", (tenant_id,)).fetchone()
         return dict(row) if row else None
 
+    def resolve_tenant(self, key: str) -> dict[str, Any] | None:
+        """Résout une organisation par slug friendly ou par id (rétrocompat)."""
+        if not key:
+            return None
+        row = self._conn.execute(
+            "SELECT * FROM tenants WHERE slug = ? OR id = ?", (key, key)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def _unique_slug(self, base: str, exclude_id: str | None = None) -> str:
+        slug = slugify(base)
+        candidate = slug
+        n = 2
+        while True:
+            if exclude_id:
+                row = self._conn.execute(
+                    "SELECT id FROM tenants WHERE slug = ? AND id != ?",
+                    (candidate, exclude_id),
+                ).fetchone()
+            else:
+                row = self._conn.execute(
+                    "SELECT id FROM tenants WHERE slug = ?", (candidate,)
+                ).fetchone()
+            if row is None:
+                return candidate
+            candidate = f"{slug}-{n}"
+            n += 1
+
     def create_tenant(self, label: str, visibility: str = "public") -> dict[str, Any]:
         tenant_id = uuid.uuid4().hex
         label = (label or "Organisation").strip() or "Organisation"
         if visibility not in TENANT_VISIBILITIES:
             visibility = "public"
+        slug = self._unique_slug(label)
         self._conn.execute(
-            "INSERT INTO tenants (id, label, visibility, created_at) VALUES (?, ?, ?, ?)",
-            (tenant_id, label, visibility, db.utcnow()),
+            "INSERT INTO tenants (id, label, visibility, slug, created_at) VALUES (?, ?, ?, ?, ?)",
+            (tenant_id, label, visibility, slug, db.utcnow()),
         )
         self._conn.commit()
         self._touch()
@@ -81,7 +121,11 @@ class ResultsStore:
         return tenant
 
     def update_tenant(
-        self, tenant_id: str, label: str | None = None, visibility: str | None = None
+        self,
+        tenant_id: str,
+        label: str | None = None,
+        visibility: str | None = None,
+        slug: str | None = None,
     ) -> dict[str, Any]:
         tenant = self.get_tenant(tenant_id)
         if tenant is None:
@@ -98,6 +142,16 @@ class ResultsStore:
                 raise ValueError("Visibilité invalide.")
             self._conn.execute(
                 "UPDATE tenants SET visibility = ? WHERE id = ?", (visibility, tenant_id)
+            )
+        if slug is not None:
+            slug = slugify(slug.strip() or (label or tenant["label"]))
+            existing = self._conn.execute(
+                "SELECT id FROM tenants WHERE slug = ? AND id != ?", (slug, tenant_id)
+            ).fetchone()
+            if existing is not None:
+                raise ValueError("Ce slug est déjà utilisé.")
+            self._conn.execute(
+                "UPDATE tenants SET slug = ? WHERE id = ?", (slug, tenant_id)
             )
         self._conn.commit()
         self._touch()
@@ -345,10 +399,13 @@ class ResultsStore:
     def _upsert_board(self, sim_id: str, contest_id: str | None, board: dict[str, Any]) -> None:
         for track in board.get("tracks") or []:
             track_id = int(track.get("trackId", -1))
+            if track_id < 0:
+                continue
             track_name = track.get("trackName") or f"Circuit {track_id}"
             for entry in track.get("entries") or []:
                 entry_id = entry.get("id")
-                if not entry_id or not entry.get("bestLapMs"):
+                name = (entry.get("name") or "").strip()[:MAX_PLAYER_NAME_LENGTH]
+                if not entry_id or not entry.get("bestLapMs") or not name:
                     continue
                 self._conn.execute(
                     """INSERT INTO laps (simulator_id, id, contest_id, track_id, track_name, name, best_lap_ms, started_at, deleted_at)
@@ -367,7 +424,7 @@ class ResultsStore:
                         contest_id,
                         track_id,
                         track_name,
-                        (entry.get("name") or "")[:20],
+                        name,
                         int(entry["bestLapMs"]),
                         entry.get("startedAt") or db.utcnow(),
                     ),
@@ -419,18 +476,18 @@ class ResultsStore:
     def track_summaries(self, sim_id: str, contest_id: str | None = None) -> list[dict[str, Any]]:
         if contest_id:
             rows = self._conn.execute(
-                """SELECT track_id, track_name, COUNT(*) AS score_count
+                f"""SELECT track_id, track_name, COUNT(*) AS score_count
                    FROM laps
-                   WHERE simulator_id = ? AND contest_id = ? AND deleted_at IS NULL
+                   WHERE simulator_id = ? AND contest_id = ? AND {LAP_VALID_SQL}
                    GROUP BY track_id
                    ORDER BY track_name COLLATE NOCASE""",
                 (sim_id, contest_id),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                """SELECT track_id, track_name, COUNT(*) AS score_count
+                f"""SELECT track_id, track_name, COUNT(*) AS score_count
                    FROM laps
-                   WHERE simulator_id = ? AND contest_id IS NULL AND deleted_at IS NULL
+                   WHERE simulator_id = ? AND contest_id IS NULL AND {LAP_VALID_SQL}
                    GROUP BY track_id
                    ORDER BY track_name COLLATE NOCASE""",
                 (sim_id,),
@@ -453,7 +510,7 @@ class ResultsStore:
             f"""SELECT track_id, track_name, COUNT(*) AS score_count
                 FROM laps
                 WHERE simulator_id IN ({placeholders})
-                  AND contest_id IS NULL AND deleted_at IS NULL
+                  AND contest_id IS NULL AND {LAP_VALID_SQL}
                 GROUP BY track_id
                 ORDER BY track_name COLLATE NOCASE""",
             sim_ids,
@@ -479,7 +536,7 @@ class ResultsStore:
         rows = self._conn.execute(
             f"""SELECT * FROM laps
                 WHERE simulator_id IN ({placeholders})
-                  AND contest_id IS NULL AND track_id = ? AND deleted_at IS NULL
+                  AND contest_id IS NULL AND track_id = ? AND {LAP_VALID_SQL}
                 ORDER BY best_lap_ms ASC, started_at ASC""",
             (*sim_ids, track_id),
         ).fetchall()
@@ -493,7 +550,10 @@ class ResultsStore:
     def _dedupe_best(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         best: dict[str, dict[str, Any]] = {}
         for e in entries:
-            key = e["name"].casefold()
+            name = (e.get("name") or "").strip()
+            if not name:
+                continue
+            key = name.casefold()
             prev = best.get(key)
             if prev is None or e["best_lap_ms"] < prev["best_lap_ms"]:
                 best[key] = e
@@ -534,15 +594,15 @@ class ResultsStore:
     ) -> dict[str, Any]:
         if contest_id:
             rows = self._conn.execute(
-                """SELECT * FROM laps
-                   WHERE simulator_id = ? AND contest_id = ? AND track_id = ? AND deleted_at IS NULL
+                f"""SELECT * FROM laps
+                   WHERE simulator_id = ? AND contest_id = ? AND track_id = ? AND {LAP_VALID_SQL}
                    ORDER BY best_lap_ms ASC, started_at ASC""",
                 (sim_id, contest_id, track_id),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                """SELECT * FROM laps
-                   WHERE simulator_id = ? AND contest_id IS NULL AND track_id = ? AND deleted_at IS NULL
+                f"""SELECT * FROM laps
+                   WHERE simulator_id = ? AND contest_id IS NULL AND track_id = ? AND {LAP_VALID_SQL}
                    ORDER BY best_lap_ms ASC, started_at ASC""",
                 (sim_id, track_id),
             ).fetchall()

@@ -224,13 +224,56 @@ def test_leaderboard_paginated_over_api(client):
     _sync_laps(client, token, count=25)
 
     anon = TestClient(client.app)
-    r = anon.get(f"/api/v1/sims/{sim['id']}/leaderboard?track_id=1&page=2")
+    r = anon.get(f"/api/v1/sims/{sim['id']}/leaderboard?track_id=1&page=2&best=false")
     assert r.status_code == 200
     body = r.json()
     assert body["total"] == 25
     assert body["pages"] == 2
     assert len(body["rows"]) == 5
     assert body["rows"][0]["rank"] == 21
+
+
+def test_leaderboard_best_per_player_default(client):
+    _setup_admin(client)
+    _, sim, token = _make_tenant_with_sim(client)
+    client.post(
+        "/api/v1/sync",
+        headers={"X-Results-Token": token},
+        json={
+            "simulatorId": "cli",
+            "global": {
+                "tracks": [{
+                    "trackId": 1,
+                    "trackName": "Melbourne",
+                    "entries": [
+                        {"id": "a", "name": "Ada", "bestLapMs": 90000, "startedAt": "2026-01-01T00:00:00"},
+                        {"id": "b", "name": "Ada", "bestLapMs": 80000, "startedAt": "2026-01-02T00:00:00"},
+                        {"id": "c", "name": "Bob", "bestLapMs": 85000, "startedAt": "2026-01-01T00:00:00"},
+                    ],
+                }],
+            },
+        },
+    )
+    anon = TestClient(client.app)
+    r = anon.get(f"/api/v1/sims/{sim['id']}/leaderboard?track_id=1")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 2
+    assert {row["name"] for row in body["rows"]} == {"Ada", "Bob"}
+    assert body["rows"][0]["bestLapMs"] == 80000
+
+
+def test_tenant_resolved_by_slug(client):
+    _setup_admin(client)
+    tenant, _, _ = _make_tenant_with_sim(client, label="Sim Racing DC")
+    slug = tenant["slug"]
+    assert slug
+    anon = TestClient(client.app)
+    by_slug = anon.get(f"/api/v1/tenants/{slug}")
+    assert by_slug.status_code == 200
+    assert by_slug.json()["tenant"]["id"] == tenant["id"]
+    by_id = anon.get(f"/api/v1/tenants/{tenant['id']}")
+    assert by_id.status_code == 200
 
 
 def test_sync_contract_unchanged(client):
@@ -240,7 +283,6 @@ def test_sync_contract_unchanged(client):
     assert body["ok"] is True
     assert body["commands"] == []
 
-    # Jeton invalide → 401
     r = client.post("/api/v1/sync", headers={"X-Results-Token": "faux"}, json={})
     assert r.status_code == 401
 
@@ -289,3 +331,54 @@ def test_user_lifecycle(client):
     # Le dernier admin ne peut pas être supprimé
     me = client.get("/api/v1/auth/me").json()["user"]
     assert client.request("DELETE", f"/api/v1/admin/users/{me['id']}").status_code in (400, 409)
+
+
+def _login(client: TestClient, email: str, password: str) -> TestClient:
+    session = TestClient(client.app)
+    r = session.post("/api/v1/auth/login", json={"email": email, "password": password})
+    assert r.status_code == 200, r.text
+    return session
+
+
+def test_simracer_profile_and_apply_pseudo(client):
+    _setup_admin(client)
+    tenant, sim, token = _make_tenant_with_sim(client)
+
+    r = client.post(
+        "/api/v1/admin/users",
+        json={"email": "sim@club.fr", "password": "motdepasse", "role": "simracer", "tenant_ids": [tenant["id"]]},
+    )
+    assert r.status_code == 200, r.text
+    sim_user = r.json()["user"]
+    assert sim_user["role"] == "simracer"
+    assert sim_user["profileRequired"] is True
+
+    sim_client = _login(client, "sim@club.fr", "motdepasse")
+    me = sim_client.get("/api/v1/auth/me").json()
+    assert me["profileRequired"] is True
+
+    r = sim_client.patch("/api/v1/profile/sim-pseudo", json={"sim_pseudo": "Capitaine"})
+    assert r.status_code == 200, r.text
+    assert r.json()["user"]["simPseudo"] == "Capitaine"
+    assert r.json()["user"]["profileRequired"] is False
+
+    r = sim_client.post(f"/api/v1/sims/{sim['id']}/apply-my-pseudo")
+    assert r.status_code == 200, r.text
+
+    body = _sync_laps(client, token, count=0)
+    commands = body["commands"]
+    assert len(commands) == 1
+    assert commands[0]["type"] == "setPlayerName"
+    assert commands[0]["newName"] == "Capitaine"
+
+
+def test_simracer_cannot_apply_without_pseudo(client):
+    _setup_admin(client)
+    _, sim, _ = _make_tenant_with_sim(client)
+    client.post(
+        "/api/v1/admin/users",
+        json={"email": "sim@club.fr", "password": "motdepasse", "role": "simracer"},
+    )
+    sim_client = _login(client, "sim@club.fr", "motdepasse")
+    r = sim_client.post(f"/api/v1/sims/{sim['id']}/apply-my-pseudo")
+    assert r.status_code == 400

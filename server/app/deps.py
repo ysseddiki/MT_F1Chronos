@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import HTTPException, Request
 
 from . import db
-from .auth import ROLE_ADMIN, UserAuth
+from .auth import ROLE_ADMIN, ROLE_SIMRACER, UserAuth
 from .security import LoginRateLimiter
 from .store import ResultsStore
 
@@ -95,8 +95,15 @@ def require_admin(request: Request) -> dict:
     return user
 
 
-def tenant_or_404(tenant_id: str, user: dict | None) -> dict:
-    tenant = store().get_tenant(tenant_id)
+def require_simracer(request: Request) -> dict:
+    user = require_user(request)
+    if user["role"] != ROLE_SIMRACER:
+        raise HTTPException(403, "Compte SimRacer requis.")
+    return user
+
+
+def tenant_or_404(tenant_key: str, user: dict | None) -> dict:
+    tenant = store().resolve_tenant(tenant_key)
     if tenant is None or not can_view_tenant(user, tenant):
         raise HTTPException(404, "Organisation introuvable.")
     return tenant

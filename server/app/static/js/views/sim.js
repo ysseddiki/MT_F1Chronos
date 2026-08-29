@@ -2,8 +2,9 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { presence, sessionPseudoEditor } from '../components.js';
+import { presence, simPseudoControls } from '../components.js';
 import { renderBoardPage } from './board_page.js';
+import { tenantPath } from '../paths.js';
 
 export async function simView(container, [simId], query) {
     let data, tracksData;
@@ -25,13 +26,13 @@ export async function simView(container, [simId], query) {
         h('div', { class: 'page-head' },
             h('div', { class: 'titles' },
                 tenant
-                    ? h('a', { class: 'back-link', href: `/t/${tenant.id}`, 'data-link': true }, `← ${tenant.label}`)
+                    ? h('a', { class: 'back-link', href: tenantPath(tenant), 'data-link': true }, `← ${tenant.label}`)
                     : null,
                 h('p', { class: 'kicker' }, 'Simulateur'),
                 h('h1', {}, sim.label),
                 h('div', { class: 'flex' },
                     presence(sim),
-                    sessionPseudoEditor(sim)
+                    simPseudoControls(sim)
                         || (sim.playerName ? h('span', { class: 'muted' }, `· Pilote : ${sim.playerName}`) : null),
                     sim.currentTrackName ? h('span', { class: 'muted' }, `· En piste : ${sim.currentTrackName}`) : null,
                 ),
@@ -43,6 +44,7 @@ export async function simView(container, [simId], query) {
         head,
         tracks,
         focusTrackId: sim.currentTrackId >= 0 ? sim.currentTrackId : null,
+        liveTrackId: sim.currentTrackId >= 0 ? sim.currentTrackId : null,
         showSim: false,
         fetchBoard: (trackId, best, page) =>
             get(`/api/v1/sims/${simId}/leaderboard?track_id=${trackId}&best=${best}&page=${page}`),

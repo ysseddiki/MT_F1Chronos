@@ -1,22 +1,23 @@
-// Moteur commun des pages de classement : chips circuit en haut, switch best/all,
-// tableau complet paginé (20/page), mises à jour live via SSE (repli 60 s).
+// Moteur commun des pages de classement : sélecteur circuit, switch best/all,
+// tableau paginé (20/page), mises à jour live via SSE (repli 60 s).
 
 import { h, clear } from '../dom.js';
-import { segmented, trackChips, boardTable, pagination, banner } from '../components.js';
+import { segmented, trackSelect, boardTable, pagination, banner } from '../components.js';
 import { setQuery, replace, onCleanup } from '../router.js';
-import { subscribeChanges } from '../state.js';
+import { subscribeChanges, mySimulatorPseudo } from '../state.js';
 
 export const FALLBACK_REFRESH_MS = 60_000;
 const LIVE_DEBOUNCE_MS = 1500;
 
 export function renderBoardPage(container, query, ctx) {
-    // ctx: { head: Node, tracks: [], focusTrackId: number|null, showSim: bool,
-    //        fetchBoard: (trackId, best, page) => Promise<board> }
+    // ctx: { head, tracks, focusTrackId, liveTrackId, showSim, fetchBoard }
     clear(container);
 
-    const best = query.get('best') === 'true';
+    // Meilleur par pilote par défaut ; ?best=false pour tous les tours
+    const best = query.get('best') !== 'false';
     const page = Math.max(1, Number(query.get('page')) || 1);
     const trackId = pickTrack(query, ctx.tracks, ctx.focusTrackId);
+    const liveTrackId = ctx.liveTrackId ?? ctx.focusTrackId ?? null;
 
     container.append(ctx.head);
 
@@ -26,15 +27,15 @@ export function renderBoardPage(container, query, ctx) {
     }
 
     container.append(
-        trackChips(ctx.tracks, trackId, (id) => setQuery({ track: id, page: null })),
+        trackSelect(ctx.tracks, trackId, (id) => setQuery({ track: id, page: null }), { liveTrackId }),
         h('div', { class: 'toolbar' },
             segmented(
                 [
-                    { value: 'all', label: 'Tous les tours' },
                     { value: 'best', label: 'Meilleur / joueur' },
+                    { value: 'all', label: 'Tous les tours' },
                 ],
                 best ? 'best' : 'all',
-                (value) => setQuery({ best: value === 'best' ? 'true' : null, page: null }),
+                (value) => setQuery({ best: value === 'all' ? 'false' : null, page: null }),
             ),
         ),
     );
@@ -49,7 +50,10 @@ export function renderBoardPage(container, query, ctx) {
             const board = await ctx.fetchBoard(trackId, best, page);
             clear(slot);
             slot.append(
-                boardTable(board.rows, { showSim: ctx.showSim }),
+                boardTable(board.rows, {
+                    showSim: ctx.showSim,
+                    highlightName: mySimulatorPseudo() || null,
+                }),
                 pagination(board, (p) => setQuery({ page: p > 1 ? p : null })),
             );
         } catch (err) {
@@ -60,8 +64,6 @@ export function renderBoardPage(container, query, ctx) {
 
     loadBoard();
 
-    // Live : le serveur pousse un signal à chaque sync/mutation → re-render.
-    // Repli : intervalle lent si EventSource est indisponible ou déconnecté.
     const reload = () => {
         if (!document.hidden) replace(location.pathname + location.search);
     };

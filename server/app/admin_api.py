@@ -71,6 +71,7 @@ class TenantIn(BaseModel):
 class TenantPatch(BaseModel):
     label: str | None = Field(default=None, max_length=60)
     visibility: str | None = None
+    slug: str | None = Field(default=None, max_length=48)
 
 
 @router.post("/tenants")
@@ -85,7 +86,9 @@ def create_tenant(request: Request, body: TenantIn):
 def update_tenant(request: Request, tenant_id: str, body: TenantPatch):
     deps.require_admin(request)
     try:
-        tenant = deps.store().update_tenant(tenant_id, body.label, body.visibility)
+        tenant = deps.store().update_tenant(
+            tenant_id, body.label, body.visibility, body.slug
+        )
     except ValueError as exc:
         return _err(exc)
     return {"ok": True, "tenant": tenant_out(tenant)}

@@ -23,6 +23,44 @@ def test_data_version_bumps_on_mutations(tmp_path: Path):
     assert store.data_version > v
 
 
+def test_ingest_skips_empty_names_and_invalid_tracks(tmp_path: Path):
+    store = _store(tmp_path)
+    sim, _ = store.create_simulator("Box")
+    store.ingest(
+        sim,
+        {
+            "simulatorId": "cli",
+            "global": {
+                "tracks": [
+                    {
+                        "trackId": -1,
+                        "trackName": "Bad",
+                        "entries": [{"id": "x", "name": "Ghost", "bestLapMs": 80000, "startedAt": "2026-01-01T00:00:00"}],
+                    },
+                    {
+                        "trackId": 1,
+                        "trackName": "Melbourne",
+                        "entries": [
+                            {"id": "e1", "name": "", "bestLapMs": 80000, "startedAt": "2026-01-01T00:00:00"},
+                            {"id": "e2", "name": "Ada", "bestLapMs": 79000, "startedAt": "2026-01-01T00:00:00"},
+                        ],
+                    },
+                ]
+            },
+        },
+    )
+    assert store.leaderboard(sim["id"], 1)["total"] == 1
+    assert store.track_summaries(sim["id"])[0]["track_id"] == 1
+
+
+def test_tenant_slug_unique(tmp_path: Path):
+    store = _store(tmp_path)
+    t1 = store.create_tenant("Club Sim")
+    t2 = store.create_tenant("Club Sim")
+    assert t1["slug"] != t2["slug"]
+    assert store.resolve_tenant(t1["slug"])["id"] == t1["id"]
+
+
 def test_wipe_db_does_not_enqueue_jobs(tmp_path: Path):
     store = _store(tmp_path)
     sim, token = store.create_simulator("Box")

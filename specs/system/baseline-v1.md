@@ -388,15 +388,17 @@ API web (JSON, camelCase) :
 | Préfixe | Accès | Rôle |
 |---|---|---|
 | `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si `RESULTS_DOMAIN`) |
-| `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max) |
+| `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
 | `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement se rechargent à réception — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte |
+| `PATCH /api/v1/profile/sim-pseudo`, `POST /api/v1/sims/{id}/apply-my-pseudo` | rôle `simracer` | Profil pseudo simulateur + application live (`setPlayerName` job, pseudo du profil uniquement) |
+
 | `/api/v1/admin/*` | rôle `admin` | CRUD tenants/sims/users, gestion chronos, jobs, réglages |
 
-**Comptes** : table `users` (email unique, hash PBKDF2, rôle `admin`/`visitor`, `disabled`) + `user_tenant_access` (visiteur → tenants assignés). Premier compte : hash legacy migré, sinon seed `RESULTS_ADMIN_PASSWORD` → `admin@localhost`, sinon formulaire de bootstrap (`/auth/setup`, refusé dès qu’un compte existe). Le dernier admin actif ne peut être ni rétrogradé, ni désactivé, ni supprimé. Login rate-limité (5 échecs / 5 min / IP).
+**Comptes** : table `users` (email unique, hash PBKDF2, rôle `admin`/`visitor`/`simracer`, `sim_pseudo`, `disabled`) + `user_tenant_access` (visiteur / SimRacer → tenants assignés). **SimRacer** : lecture comme visiteur ; page `/profile` pour définir `sim_pseudo` (obligatoire à la première connexion) ; bouton « Appliquer » sur les feuilles de temps pour envoyer un job `setPlayerName` avec **son** pseudo uniquement (pas de saisie libre comme l’admin). Ligne du classement web surlignée si le nom correspond à `sim_pseudo` (comme l’overlay). Premier compte : hash legacy migré, sinon seed `RESULTS_ADMIN_PASSWORD` → `admin@localhost`, sinon formulaire de bootstrap (`/auth/setup`, refusé dès qu’un compte existe). Le dernier admin actif ne peut être ni rétrogradé, ni désactivé, ni supprimé. Login rate-limité (5 échecs / 5 min / IP).
 
-**Visibilité** : tenant `public` (lisible anonymement si `public_access` global actif, sinon compte requis) ou `private` (admin + visiteurs assignés). `public_access` = réglage global admin.
+**Visibilité** : tenant `public` (lisible anonymement si `public_access` global actif, sinon compte requis) ou `private` (admin + visiteurs / SimRacers assignés). `public_access` = réglage global admin.
 
-Jobs (`deleteEntry`, `renameEntry`, `renamePlayer`, `restoreEntry`, `setPlayerName`) : créés **uniquement** par action admin. Wipe DB VPS ≠ job. Revert pending = annule + restore replica ; revert applied = job inverse (`setPlayerName` non revertible). `setPlayerName` demande au simu d’adopter un nouveau pseudo de session (le simu reste maître de `PlayerName`, appliqué à la réception puis renvoyé aux syncs suivantes). **ACK = uniquement les commandes réellement appliquées** (liste retournée par `ResultsCommandApplier.Apply`) : une commande ignorée (type inconnu, handler absent, payload invalide) reste `pending` et est renvoyée à la sync suivante — jamais de faux « applied ».
+Jobs (`deleteEntry`, `renameEntry`, `renamePlayer`, `restoreEntry`, `setPlayerName`) : créés par action **admin** (pseudo libre) ou **SimRacer** (`setPlayerName` via profil uniquement). Wipe DB VPS ≠ job. Revert pending = annule + restore replica ; revert applied = job inverse (`setPlayerName` non revertible). `setPlayerName` demande au simu d’adopter un nouveau pseudo de session (le simu reste maître de `PlayerName`, appliqué à la réception puis renvoyé aux syncs suivantes). **ACK = uniquement les commandes réellement appliquées** (liste retournée par `ResultsCommandApplier.Apply`) : une commande ignorée (type inconnu, handler absent, payload invalide) reste `pending` et est renvoyée à la sync suivante — jamais de faux « applied ».
 
 Présence simu : hors ligne si `now - lastSeen > 2 × syncIntervalSeconds`.
 
@@ -491,12 +493,12 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 - Un échec de sync **ne bloque jamais** l’enregistrement local (BR-01) ni l’overlay.
 - Le simu **pull** (NAT) : snapshot + jobs à chaque mutation (debounce 1 s) **et** selon `ResultsSyncIntervalSeconds`.
 - Jobs admin revertibles ; wipe DB serveur **sans** job vers le simu.
-- Job `setPlayerName` : renomme le pseudo de session du simu (`AppSettings.PlayerName` mis à jour à réception, cf. BR-09). Déclenchable depuis l’onglet admin Simulateurs **et** directement en haut des feuilles de temps (pages simu / organisation / concours) pour un admin connecté.
+- Job `setPlayerName` : renomme le pseudo de session du simu (`AppSettings.PlayerName` mis à jour à réception, cf. BR-09). Déclenchable par l’admin (saisie libre) depuis l’onglet Simulateurs **et** en haut des feuilles de temps ; par un **SimRacer** via « Appliquer » (pseudo de profil uniquement).
 - Feuilles de temps **live** : la SPA s’abonne à `GET /api/v1/stream` (SSE) et se re-render à chaque changement de données (sync, action admin) ; repli par intervalle 60 s si EventSource indisponible.
 - Overlay : LED serveur à côté de la télémétrie.
 - Transport : `ResultsSyncClient` utilise `ResultsServerUrl` normalisée en `https://host` (TCP **443**). Pas de sync sur le 8080 public.
 - VPS : simu hors ligne après **2 ×** l’intervalle annoncé, sans sync.
-- Admin web : comptes en SQLite (`users`, PBKDF2, rôles admin/visiteur) ; `RESULTS_ADMIN_PASSWORD` = seed initial seulement ; visiteur limité à ses tenants assignés ; accès public anonyme = option globale + visibilité par tenant.
+- Admin web : comptes en SQLite (`users`, PBKDF2, rôles admin/visiteur/SimRacer) ; `RESULTS_ADMIN_PASSWORD` = seed initial seulement ; visiteur / SimRacer limités à leurs tenants assignés ; accès public anonyme = option globale + visibilité par tenant.
 
 ---
 
@@ -567,7 +569,7 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | BEST | Mode meilleur chrono par joueur |
 | Snapshot | Copie immuable de `TelemetryState` publiée hors thread UDP |
 | Principal | Concours sélectionné pour l’overlay (`OverlayContestId`) |
-| Tenant / Organisation | Regroupement de simulateurs côté serveur Results (visibilité public/privé) |
+| Tenant / Organisation | Regroupement de simulateurs côté serveur Results (visibilité public/privé, URL `/t/{slug}` friendly ; l’id hex reste valide en rétrocompat) |
 | Visiteur | Compte serveur en lecture seule, limité à ses tenants assignés |
 
 ---

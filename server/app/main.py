@@ -167,11 +167,13 @@ def _client_key(request: Request) -> str:
 @app.get("/api/v1/auth/me")
 def auth_me(request: Request):
     user = deps.current_user(request)
+    profile_required = bool(user and user_out(user).get("profileRequired"))
     return {
         "ok": True,
         "authenticated": user is not None,
         "setupRequired": not deps.auth().has_users(),
         "publicAccess": deps.store().get_public_access(),
+        "profileRequired": profile_required,
         "user": user_out(user) if user else None,
     }
 
@@ -227,6 +229,36 @@ def auth_change_password(request: Request, body: ChangePasswordIn):
     return {"ok": True, "message": "Mot de passe mis à jour."}
 
 
+class ProfileSimPseudoIn(BaseModel):
+    sim_pseudo: str = Field(default="", max_length=20)
+
+
+@app.patch("/api/v1/profile/sim-pseudo")
+def profile_sim_pseudo(request: Request, body: ProfileSimPseudoIn):
+    user = deps.require_simracer(request)
+    try:
+        updated = deps.auth().update_sim_pseudo(user["id"], body.sim_pseudo)
+    except ValueError as exc:
+        return _err(exc)
+    return {"ok": True, "user": user_out(updated), "message": "Pseudo simulateur enregistré."}
+
+
+@app.post("/api/v1/sims/{sim_id}/apply-my-pseudo")
+def apply_my_sim_pseudo(request: Request, sim_id: str):
+    """SimRacer : applique son pseudo de profil sur la session en cours du simulateur."""
+    user = deps.require_simracer(request)
+    pseudo = (user.get("sim_pseudo") or "").strip()
+    if not pseudo:
+        raise HTTPException(400, "Configurez votre pseudo simulateur dans votre profil.")
+    deps.sim_or_404(sim_id, user)
+    if not deps.store().enqueue_set_player_name(sim_id, pseudo):
+        raise HTTPException(400, "Simulateur introuvable.")
+    return {
+        "ok": True,
+        "message": f"Pseudo « {pseudo} » en file — appliqué à la prochaine sync du simu.",
+    }
+
+
 # ---------------------------------------------------------------------------
 # API de lecture (filtrée par visibilité)
 # ---------------------------------------------------------------------------
@@ -269,7 +301,7 @@ def get_tenant_leaderboard(
     request: Request,
     tenant_id: str,
     track_id: int,
-    best: bool = False,
+    best: bool = True,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -321,7 +353,7 @@ def get_sim_leaderboard(
     sim_id: str,
     track_id: int,
     contest_id: str | None = None,
-    best: bool = False,
+    best: bool = True,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):

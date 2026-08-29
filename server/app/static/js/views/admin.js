@@ -5,7 +5,7 @@ import { get, post, patch, del } from '../api.js';
 import { loadMe, isAdmin, invalidateTenants } from '../state.js';
 import { navigate, setQuery, replace } from '../router.js';
 import {
-    presence, trackChips, boardTable, pagination, toast,
+    presence, trackSelect, boardTable, pagination, toast,
     openModal, confirmDialog, promptDialog,
 } from '../components.js';
 import { tenantsTab, usersTab } from './admin_org.js';
@@ -290,7 +290,7 @@ async function simDetail(sim, tenants, query) {
         );
 
         wrap.lastChild.append(
-            trackChips(tracks, trackId, (id) => setQuery({ atrack: id, apage: null })),
+            trackSelect(tracks, trackId, (id) => setQuery({ atrack: id, apage: null })),
             boardTable(board.rows, {
                 manage: (row) => [
                     h('button', {

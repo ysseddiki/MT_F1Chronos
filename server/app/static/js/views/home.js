@@ -4,6 +4,7 @@ import { h, clear } from '../dom.js';
 import { loadTenants, state } from '../state.js';
 import { visibilityBadge } from '../components.js';
 import { replace } from '../router.js';
+import { tenantPath } from '../paths.js';
 
 export async function homeView(container) {
     clear(container);
@@ -19,7 +20,7 @@ export async function homeView(container) {
     }
 
     if (tenants.length === 1) {
-        replace(`/t/${tenants[0].id}`);
+        replace(tenantPath(tenants[0]));
         return;
     }
 
@@ -45,7 +46,7 @@ export async function homeView(container) {
     }
 
     container.append(h('div', { class: 'grid' },
-        tenants.map((t) => h('a', { class: 'card', href: `/t/${t.id}`, 'data-link': true },
+        tenants.map((t) => h('a', { class: 'card', href: tenantPath(t), 'data-link': true },
             h('h2', {}, t.label, ' ', visibilityBadge(t.visibility)),
             h('p', {}, h('span', { class: 'count' }, String(t.simCount ?? 0)), ` simulateur${(t.simCount ?? 0) > 1 ? 's' : ''}`),
         )),

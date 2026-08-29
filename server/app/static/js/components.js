@@ -1,9 +1,10 @@
 // Composants UI partagés.
 
 import { h, clear, fmtLap, fmtGap, fmtDateTime } from './dom.js';
-import { state, isAdmin, isAuthenticated, loadTenants } from './state.js';
+import { state, isAdmin, isAuthenticated, isSimRacer, mySimulatorPseudo, loadTenants } from './state.js';
 import { navigate } from './router.js';
 import { post } from './api.js';
+import { tenantPath, tenantKeyFromPath, findTenantByKey } from './paths.js';
 
 // ---------- Topbar ----------
 
@@ -27,27 +28,40 @@ export async function renderTopbar(activePath) {
 
     let tenants = [];
     try { tenants = await loadTenants(); } catch { /* hors-ligne : switcher vide */ }
-    const currentTenant = activePath.match(/^\/t\/([\w-]+)/)?.[1];
+    const pathKey = tenantKeyFromPath(activePath);
+    const currentTenant = findTenantByKey(tenants, pathKey);
     if (tenants.length) {
         const select = h('select', {
             'aria-label': 'Choisir une organisation',
             onchange: (e) => {
-                const id = e.target.value;
-                if (id) navigate(`/t/${id}`);
-                else navigate('/');
+                const key = e.target.value;
+                if (!key) navigate('/');
+                else {
+                    const t = tenants.find((x) => (x.slug || x.id) === key);
+                    navigate(t ? tenantPath(t) : `/t/${key}`);
+                }
             },
         },
             h('option', { value: '', selected: !currentTenant }, 'Toutes les organisations'),
-            tenants.map((t) => h('option', { value: t.id, selected: t.id === currentTenant }, t.label)),
+            tenants.map((t) => h('option', {
+                value: t.slug || t.id,
+                selected: currentTenant?.id === t.id,
+            }, t.label)),
         );
         right.append(h('div', { class: 'tenant-switch' }, select));
     }
 
     if (isAuthenticated()) {
         const user = state.me.user;
+        const roleLabel = user.role === 'admin' ? 'Admin'
+            : user.role === 'simracer' ? 'SimRacer'
+                : 'Visiteur';
         right.append(
+            isSimRacer()
+                ? h('a', { class: 'btn-ghost btn-sm', href: '/profile', 'data-link': true }, 'Profil')
+                : null,
             h('span', { class: 'user-chip' },
-                h('span', { class: `role ${user.role}` }, user.role === 'admin' ? 'Admin' : 'Visiteur'),
+                h('span', { class: `role ${user.role}` }, roleLabel),
                 user.email,
             ),
             h('button', {
@@ -126,6 +140,52 @@ export function sessionPseudoEditor(sim) {
     }, `Pseudo : ${sim.playerName || '—'}`, pencilIcon());
 }
 
+export function applyMyPseudoButton(sim, pseudo) {
+    const name = (pseudo || mySimulatorPseudo()).trim();
+    if (!name) return null;
+    return h('button', {
+        class: 'btn-accent btn-sm',
+        type: 'button',
+        title: `Appliquer « ${name} » sur la session en cours de ce simulateur`,
+        onclick: async () => {
+            try {
+                const res = await post(`/api/v1/sims/${sim.id}/apply-my-pseudo`);
+                toast(res.message, 'success');
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        },
+    }, `Appliquer « ${name} »`);
+}
+
+/** Contrôles pseudo session : admin (libre) + SimRacer (profil + appliquer). */
+export function simPseudoControls(sim) {
+    const parts = [];
+    if (isAdmin()) parts.push(sessionPseudoEditor(sim));
+    if (isSimRacer()) {
+        const pseudo = mySimulatorPseudo();
+        if (pseudo) {
+            parts.push(
+                h('a', {
+                    class: 'btn-ghost btn-sm',
+                    href: '/profile',
+                    'data-link': true,
+                    title: 'Modifier mon pseudo simulateur',
+                }, `Mon pseudo : ${pseudo}`, pencilIcon()),
+                applyMyPseudoButton(sim, pseudo),
+            );
+        } else {
+            parts.push(h('a', {
+                class: 'btn-ghost btn-sm',
+                href: '/profile',
+                'data-link': true,
+            }, 'Configurer mon pseudo'));
+        }
+    }
+    if (!parts.length) return null;
+    return h('span', { class: 'sim-pseudo-controls' }, ...parts);
+}
+
 // ---------- Segmented (switch Tous les tours / Meilleur par joueur) ----------
 
 export function segmented(options, current, onChange) {
@@ -139,24 +199,53 @@ export function segmented(options, current, onChange) {
     );
 }
 
-// ---------- Chips circuits ----------
+// ---------- Sélecteur circuit (liste déroulante) ----------
 
-export function trackChips(tracks, currentId, onSelect) {
-    return h('div', { class: 'chips', role: 'tablist', 'aria-label': 'Circuits' },
-        tracks.map((t) => h('button', {
-            class: `chip${t.trackId === currentId ? ' active' : ''}`,
-            role: 'tab',
-            'aria-selected': t.trackId === currentId ? 'true' : 'false',
-            onclick: () => onSelect(t.trackId),
-        }, t.trackName, h('span', { class: 'n' }, String(t.scoreCount)))),
+export function trackSelect(tracks, currentId, onChange, { liveTrackId = null } = {}) {
+    const current = tracks.find((t) => t.trackId === currentId);
+    const label = (t) => (t.trackName || `Circuit ${t.trackId}`).trim();
+    const select = h('select', {
+        class: 'track-select',
+        'aria-label': 'Circuit',
+        onchange: (e) => onChange(Number(e.target.value)),
+    },
+        tracks.map((t) => {
+            const live = liveTrackId != null && t.trackId === liveTrackId;
+            const count = t.scoreCount != null ? ` (${t.scoreCount})` : '';
+            return h('option', {
+                value: String(t.trackId),
+                selected: t.trackId === currentId,
+            }, `${label(t)}${count}${live ? ' · en piste' : ''}`);
+        }),
     );
+    return h('div', { class: 'track-picker' },
+        h('label', { class: 'track-picker-label' }, 'Circuit'),
+        select,
+        current
+            ? h('p', { class: 'track-picker-current' },
+                'Affiché : ',
+                h('strong', {}, label(current)),
+                liveTrackId != null && current.trackId === liveTrackId
+                    ? h('span', { class: 'badge live-track' }, 'En piste')
+                    : null,
+            )
+            : null,
+    );
+}
+
+/** @deprecated Utiliser trackSelect — conservé pour compat interne admin si besoin */
+export function trackChips(tracks, currentId, onSelect) {
+    return trackSelect(tracks, currentId, onSelect);
 }
 
 // ---------- Tableau de classement ----------
 
-export function boardTable(rows, { showSim = false, manage = null } = {}) {
+export function boardTable(rows, { showSim = false, manage = null, highlightName = null } = {}) {
     const leaderMs = rows.length ? rows[0].bestLapMs : 0;
     const cols = 4 + (showSim ? 1 : 0) + (manage ? 1 : 0);
+    const highlight = (highlightName || '').trim();
+    const isMe = (name) => highlight
+        && (name || '').trim().toLowerCase() === highlight.toLowerCase();
 
     const thead = h('thead', {}, h('tr', {},
         h('th', {}, '#'),
@@ -169,15 +258,16 @@ export function boardTable(rows, { showSim = false, manage = null } = {}) {
 
     const body = h('tbody', {},
         rows.length ? rows.map((row) => {
+            const me = isMe(row.name);
             const cells = [
                 h('td', {}, h('span', { class: `rank${row.rank <= 3 ? ` p${row.rank}` : ''}` }, `P${row.rank}`)),
-                h('td', { class: 'pilot' }, row.name),
+                h('td', { class: `pilot${me ? ' pilot-me' : ''}` }, (row.name || '').trim() || '—'),
                 showSim ? h('td', { class: 'sim-tag' }, row.simLabel || '—') : null,
                 h('td', { class: 'time' }, row.formatted || fmtLap(row.bestLapMs)),
                 h('td', { class: 'gap' }, fmtGap(row.bestLapMs - leaderMs)),
             ];
             if (manage) cells.push(h('td', {}, h('div', { class: 'row-actions' }, manage(row))));
-            return h('tr', {}, cells);
+            return h('tr', { class: me ? 'row-me' : '' }, cells);
         }) : h('tr', { class: 'empty-row' }, h('td', { colspan: String(cols) }, 'Aucun chrono.')),
     );
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 def tenant_out(t: dict) -> dict:
     return {
         "id": t["id"],
+        "slug": t.get("slug") or t["id"],
         "label": t["label"],
         "visibility": t.get("visibility", "public"),
         "simCount": t.get("sim_count"),
@@ -33,14 +34,15 @@ def sim_out(s: dict, admin: bool = False) -> dict:
 def lap_out(e: dict) -> dict:
     return {
         "id": e["id"],
-        "name": e["name"],
+        "name": (e.get("name") or "").strip() or "—",
         "bestLapMs": e["best_lap_ms"],
         "formatted": e["formatted"],
         "rank": e["rank"],
         "startedAt": e.get("started_at"),
         "trackId": e.get("track_id"),
-        "trackName": e.get("track_name"),
+        "trackName": e.get("track_name") or "",
         "simLabel": e.get("sim_label"),
+        "simId": e.get("simulator_id"),
     }
 
 
@@ -55,9 +57,11 @@ def board_out(board: dict) -> dict:
 
 
 def track_out(t: dict) -> dict:
+    track_id = t["track_id"]
+    name = (t.get("track_name") or "").strip() or f"Circuit {track_id}"
     return {
-        "trackId": t["track_id"],
-        "trackName": t["track_name"],
+        "trackId": track_id,
+        "trackName": name,
         "scoreCount": t["score_count"],
     }
 
@@ -76,6 +80,7 @@ def contest_out(c: dict) -> dict:
 
 
 def user_out(u: dict) -> dict:
+    sim_pseudo = (u.get("sim_pseudo") or "").strip()
     return {
         "id": u["id"],
         "email": u["email"],
@@ -83,6 +88,8 @@ def user_out(u: dict) -> dict:
         "disabled": u["disabled"],
         "createdAt": u.get("created_at"),
         "tenantIds": u.get("tenant_ids") or [],
+        "simPseudo": sim_pseudo,
+        "profileRequired": u.get("role") == "simracer" and not sim_pseudo,
     }
 
 

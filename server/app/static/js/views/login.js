@@ -37,7 +37,8 @@ function renderLogin(container) {
                 state.me = null;
                 state.meLoaded = false;
                 state.tenants = null;
-                navigate('/');
+                const me = await loadMe(true);
+                navigate(me.profileRequired ? '/profile' : '/');
                 location.reload();
             } catch (err) {
                 error.append(h('div', { class: 'banner error' }, err.message));
@@ -56,7 +57,7 @@ function renderLogin(container) {
     container.append(
         h('p', { class: 'kicker' }, 'Connexion'),
         h('h1', {}, 'Se connecter'),
-        h('p', { class: 'lede' }, 'Compte administrateur ou visiteur du serveur de résultats.'),
+        h('p', { class: 'lede' }, 'Compte administrateur, visiteur ou SimRacer du serveur de résultats.'),
         h('div', { class: 'panel', style: 'max-width:420px' }, form),
     );
 }

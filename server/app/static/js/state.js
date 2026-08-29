@@ -30,8 +30,20 @@ export function isAdmin() {
     return state.me?.user?.role === 'admin';
 }
 
+export function isSimRacer() {
+    return state.me?.user?.role === 'simracer';
+}
+
 export function isAuthenticated() {
     return !!state.me?.authenticated;
+}
+
+export function mySimulatorPseudo() {
+    return (state.me?.user?.simPseudo || '').trim();
+}
+
+export function profileRequired() {
+    return !!state.me?.profileRequired;
 }
 
 // --- Flux live : un EventSource global, les vues s'abonnent ----------

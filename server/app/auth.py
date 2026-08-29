@@ -17,7 +17,9 @@ MAX_EMAIL_LENGTH = 254
 
 ROLE_ADMIN = "admin"
 ROLE_VISITOR = "visitor"
-ROLES = (ROLE_ADMIN, ROLE_VISITOR)
+ROLE_SIMRACER = "simracer"
+ROLES = (ROLE_ADMIN, ROLE_VISITOR, ROLE_SIMRACER)
+MAX_SIM_PSEUDO_LENGTH = 20
 
 DEFAULT_ADMIN_EMAIL = "admin@localhost"
 LEGACY_SETTINGS_KEY = "admin_password_hash"
@@ -151,7 +153,7 @@ class UserAuth:
     def _insert_user(self, email: str, password_hash: str, role: str) -> dict:
         user_id = uuid.uuid4().hex
         self._conn.execute(
-            "INSERT INTO users (id, email, password_hash, role, disabled, created_at) VALUES (?, ?, ?, ?, 0, ?)",
+            "INSERT INTO users (id, email, password_hash, role, disabled, created_at, sim_pseudo) VALUES (?, ?, ?, ?, 0, ?, '')",
             (user_id, email, password_hash, role, db.utcnow()),
         )
         self._conn.commit()
@@ -250,6 +252,22 @@ class UserAuth:
                 (user_id, tenant_id),
             )
         self._conn.commit()
+
+    def update_sim_pseudo(self, user_id: str, sim_pseudo: str) -> dict:
+        user = self.get_user(user_id)
+        if user is None:
+            raise ValueError("Compte introuvable.")
+        sim_pseudo = (sim_pseudo or "").strip()[:MAX_SIM_PSEUDO_LENGTH]
+        if not sim_pseudo:
+            raise ValueError("Le pseudo simulateur est obligatoire (20 caractères max.).")
+        self._conn.execute(
+            "UPDATE users SET sim_pseudo = ? WHERE id = ?",
+            (sim_pseudo, user_id),
+        )
+        self._conn.commit()
+        updated = self.get_user(user_id)
+        assert updated is not None
+        return updated
 
     def change_password(self, user_id: str, current_password: str, new_password: str) -> None:
         user = self.get_user(user_id)

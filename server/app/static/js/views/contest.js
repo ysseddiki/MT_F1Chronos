@@ -2,7 +2,7 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { sessionPseudoEditor } from '../components.js';
+import { simPseudoControls } from '../components.js';
 import { renderBoardPage } from './board_page.js';
 import { statusLabel } from './contests.js';
 
@@ -31,7 +31,7 @@ export async function contestView(container, [simId, contestId], query) {
             h('h1', {}, contest.name),
             h('div', { class: 'flex' },
                 h('p', { class: 'lede', style: 'margin:0' }, sim.label),
-                sessionPseudoEditor(sim),
+                simPseudoControls(sim),
             ),
         ),
     );
@@ -40,6 +40,7 @@ export async function contestView(container, [simId, contestId], query) {
         head,
         tracks,
         focusTrackId: contest.trackFilter != null && contest.trackFilter >= 0 ? contest.trackFilter : null,
+        liveTrackId: sim.currentTrackId >= 0 ? sim.currentTrackId : null,
         showSim: false,
         fetchBoard: (trackId, best, page) =>
             get(`/api/v1/sims/${simId}/leaderboard?track_id=${trackId}&contest_id=${contestId}&best=${best}&page=${page}`),

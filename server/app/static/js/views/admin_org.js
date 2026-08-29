@@ -59,6 +59,7 @@ export async function tenantsTab(slot) {
         h('table', { class: 'admin-table' },
             h('thead', {}, h('tr', {},
                 h('th', {}, 'Nom'),
+                h('th', {}, 'URL'),
                 h('th', {}, 'Visibilité'),
                 h('th', {}, 'Simulateurs'),
                 h('th', {}),
@@ -82,9 +83,27 @@ export async function tenantsTab(slot) {
 
                 return h('tr', {},
                     h('td', { class: 'pilot' }, t.label),
+                    h('td', { class: 'mono muted' }, `/t/${t.slug || t.id}`),
                     h('td', {}, visSelect),
                     h('td', { class: 'muted' }, members.length ? members.join(', ') : '—'),
                     h('td', {}, h('div', { class: 'row-actions' },
+                        h('button', {
+                            class: 'btn-sm', type: 'button',
+                            onclick: async () => {
+                                const slug = await promptDialog('Slug URL (friendly)', {
+                                    value: t.slug || t.id,
+                                    maxlength: 48,
+                                    label: 'Lettres, chiffres et tirets uniquement',
+                                });
+                                if (!slug) return;
+                                try {
+                                    await patch(`/api/v1/admin/tenants/${t.id}`, { slug });
+                                    invalidateTenants();
+                                    toast('URL mise à jour.', 'success');
+                                    refresh();
+                                } catch (err) { toast(err.message, 'error'); }
+                            },
+                        }, 'URL'),
                         h('button', {
                             class: 'btn-sm', type: 'button',
                             onclick: async () => {
@@ -140,6 +159,12 @@ export async function usersTab(slot) {
     }
 
     const tenantLabel = (id) => overview.tenants.find((t) => t.id === id)?.label || id;
+    const roleLabel = (role) => {
+        if (role === 'admin') return 'Admin';
+        if (role === 'simracer') return 'SimRacer';
+        return 'Visiteur';
+    };
+    const roleBadgeClass = (role) => (role === 'admin' ? 'public' : 'private');
 
     slot.append(h('div', { class: 'panel' },
         h('h2', {}, 'Comptes'),
@@ -147,13 +172,15 @@ export async function usersTab(slot) {
             h('thead', {}, h('tr', {},
                 h('th', {}, 'E-mail'),
                 h('th', {}, 'Rôle'),
+                h('th', {}, 'Pseudo simu'),
                 h('th', {}, 'Accès organisations'),
                 h('th', {}, 'Statut'),
                 h('th', {}),
             )),
             h('tbody', {}, users.map((u) => h('tr', {},
                 h('td', { class: 'pilot' }, u.email),
-                h('td', {}, h('span', { class: `badge ${u.role === 'admin' ? 'public' : 'private'}` }, u.role === 'admin' ? 'Admin' : 'Visiteur')),
+                h('td', {}, h('span', { class: `badge ${roleBadgeClass(u.role)}` }, roleLabel(u.role))),
+                h('td', { class: 'muted' }, u.role === 'simracer' ? (u.simPseudo || '—') : '—'),
                 h('td', { class: 'muted' },
                     u.role === 'admin'
                         ? 'Toutes'
@@ -180,7 +207,7 @@ export async function usersTab(slot) {
                 )),
             ))),
         ),
-        h('p', { class: 'hint' }, 'Un visiteur voit les organisations publiques + celles qui lui sont assignées. Un admin voit tout.'),
+        h('p', { class: 'hint' }, 'Un visiteur ou SimRacer voit les organisations publiques + celles qui lui sont assignées. Un admin voit tout.'),
     ));
 }
 
@@ -195,21 +222,26 @@ function tenantChecklist(tenants, selectedIds = []) {
     };
 }
 
+function tenantScopedRole(role) {
+    return role === 'visitor' || role === 'simracer';
+}
+
 function createUserPanel(tenants) {
     const email = h('input', { type: 'email', required: true, placeholder: 'pilote@club.fr', autocomplete: 'off' });
     const password = h('input', { type: 'password', required: true, minlength: '8', autocomplete: 'new-password' });
     const role = h('select', {},
         h('option', { value: 'visitor' }, 'Visiteur — lecture seule'),
+        h('option', { value: 'simracer' }, 'SimRacer — pseudo live sur ses simus'),
         h('option', { value: 'admin' }, 'Admin — gestion complète'),
     );
     const access = tenantChecklist(tenants);
     const accessField = h('div', { class: 'field' },
-        h('label', {}, 'Organisations accessibles (visiteur)'),
+        h('label', {}, 'Organisations accessibles (visiteur / SimRacer)'),
         access.el,
         h('p', { class: 'hint' }, 'Sans sélection : organisations publiques uniquement.'),
     );
 
-    const toggleAccess = () => { accessField.style.display = role.value === 'visitor' ? '' : 'none'; };
+    const toggleAccess = () => { accessField.style.display = tenantScopedRole(role.value) ? '' : 'none'; };
     role.addEventListener('change', toggleAccess);
     toggleAccess();
 
@@ -222,7 +254,7 @@ function createUserPanel(tenants) {
                     email: email.value,
                     password: password.value,
                     role: role.value,
-                    tenant_ids: role.value === 'visitor' ? access.values() : [],
+                    tenant_ids: tenantScopedRole(role.value) ? access.values() : [],
                 });
                 toast('Compte créé.', 'success');
                 refresh();
@@ -243,6 +275,7 @@ function createUserPanel(tenants) {
 function editUserModal(user, tenants) {
     const role = h('select', {},
         h('option', { value: 'visitor', selected: user.role === 'visitor' }, 'Visiteur'),
+        h('option', { value: 'simracer', selected: user.role === 'simracer' }, 'SimRacer'),
         h('option', { value: 'admin', selected: user.role === 'admin' }, 'Admin'),
     );
     const disabled = h('input', { type: 'checkbox', checked: user.disabled });
@@ -250,7 +283,7 @@ function editUserModal(user, tenants) {
     const access = tenantChecklist(tenants, user.tenantIds);
     const accessField = h('div', { class: 'field' }, h('label', {}, 'Organisations accessibles'), access.el);
 
-    const toggleAccess = () => { accessField.style.display = role.value === 'visitor' ? '' : 'none'; };
+    const toggleAccess = () => { accessField.style.display = tenantScopedRole(role.value) ? '' : 'none'; };
     role.addEventListener('change', toggleAccess);
     toggleAccess();
 
@@ -268,7 +301,7 @@ function editUserModal(user, tenants) {
                 const body = {
                     role: role.value,
                     disabled: disabled.checked,
-                    tenant_ids: role.value === 'visitor' ? access.values() : [],
+                    tenant_ids: tenantScopedRole(role.value) ? access.values() : [],
                 };
                 if (newPassword.value) body.password = newPassword.value;
                 try {

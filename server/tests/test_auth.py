@@ -72,6 +72,17 @@ def test_create_and_verify_visitor(tmp_path: Path):
     assert auth.verify_credentials("pilote@club.fr", "mauvais") is None
 
 
+def test_create_and_verify_simracer(tmp_path: Path):
+    auth = _auth(tmp_path)
+    user = auth.create_user("sim@club.fr", "motdepasse", "simracer")
+    assert user["role"] == "simracer"
+    assert user.get("sim_pseudo", "") == ""
+    updated = auth.update_sim_pseudo(user["id"], "  Capitaine  ")
+    assert updated["sim_pseudo"] == "Capitaine"
+    with pytest.raises(ValueError):
+        auth.update_sim_pseudo(user["id"], "   ")
+
+
 def test_create_user_validates_input(tmp_path: Path):
     auth = _auth(tmp_path)
     with pytest.raises(ValueError):

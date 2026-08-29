@@ -2,15 +2,17 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { presence, visibilityBadge, sessionPseudoEditor } from '../components.js';
+import { presence, visibilityBadge, simPseudoControls } from '../components.js';
 import { renderBoardPage } from './board_page.js';
+import { tenantPath } from '../paths.js';
+import { replace } from '../router.js';
 
-export async function tenantView(container, [tenantId], query) {
+export async function tenantView(container, [tenantKey], query) {
     let data, tracksData;
     try {
         [data, tracksData] = await Promise.all([
-            get(`/api/v1/tenants/${tenantId}`),
-            get(`/api/v1/tenants/${tenantId}/tracks`),
+            get(`/api/v1/tenants/${tenantKey}`),
+            get(`/api/v1/tenants/${tenantKey}/tracks`),
         ]);
     } catch (err) {
         clear(container);
@@ -19,6 +21,12 @@ export async function tenantView(container, [tenantId], query) {
     }
 
     const { tenant, sims } = data;
+    const canonical = tenant.slug || tenant.id;
+    if (canonical !== tenantKey) {
+        replace(`/t/${canonical}${location.search}`);
+        return;
+    }
+    const tenantId = tenant.id;
     const tracks = tracksData.tracks;
     const focusSim = sims.find((s) => s.currentTrackId >= 0);
 
@@ -41,7 +49,7 @@ export async function tenantView(container, [tenantId], query) {
                         'data-link': true,
                         style: 'justify-content:flex-start',
                     }, s.label, ' — ', presence(s)),
-                    sessionPseudoEditor(s),
+                    simPseudoControls(s),
                 )),
             ),
         ) : null,
@@ -51,6 +59,7 @@ export async function tenantView(container, [tenantId], query) {
         head,
         tracks,
         focusTrackId: focusSim?.currentTrackId ?? null,
+        liveTrackId: focusSim?.currentTrackId >= 0 ? focusSim.currentTrackId : null,
         showSim: sims.length > 1,
         fetchBoard: (trackId, best, page) =>
             get(`/api/v1/tenants/${tenantId}/leaderboard?track_id=${trackId}&best=${best}&page=${page}`),
