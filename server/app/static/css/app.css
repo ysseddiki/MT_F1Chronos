@@ -389,6 +389,11 @@ a.card:hover {
 .board tbody tr.row-me:hover { background: rgba(225, 6, 0, 0.28); }
 .board td.pilot-me { font-weight: 700; }
 
+.session-pseudo {
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
 .sim-pseudo-controls {
     display: inline-flex;
     flex-wrap: wrap;

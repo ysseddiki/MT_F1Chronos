@@ -55,7 +55,7 @@ export async function profileView(container) {
         h('div', { class: 'field' },
             h('label', { for: 'sim-pseudo' }, 'Pseudo simulateur'),
             pseudo,
-            h('p', { class: 'hint' }, '20 caractères max. Ce pseudo sera appliqué sur le simulateur via le bouton « Appliquer » sur les feuilles de temps.'),
+            h('p', { class: 'hint' }, '20 caractères max. Enregistrer ne modifie pas le simulateur : utilisez « Appliquer mon pseudo » sur une feuille de temps.'),
         ),
     );
 
@@ -66,7 +66,7 @@ export async function profileView(container) {
         h('p', { class: 'kicker' }, 'Profil'),
         h('h1', {}, 'Mon pseudo simulateur'),
         me.profileRequired
-            ? h('p', { class: 'banner info' }, 'Bienvenue ! Choisissez le pseudo qui sera affiché sur le simulateur lors de vos sessions.')
+            ? h('p', { class: 'banner info' }, 'Bienvenue ! Choisissez le pseudo de votre profil. Il ne sera pas envoyé au simulateur tant que vous n’aurez pas cliqué sur « Appliquer mon pseudo ».')
             : h('p', { class: 'lede' }, `Compte ${me.user.email}. Modifiez votre pseudo puis appliquez-le sur un simulateur depuis les résultats.`),
         h('div', { class: 'panel', style: 'max-width:420px' }, form),
     );

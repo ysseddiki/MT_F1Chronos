@@ -138,7 +138,11 @@ export function sessionPseudoEditor(sim) {
                 toast(err.message, 'error');
             }
         },
-    }, `Pseudo : ${sim.playerName || '—'}`, pencilIcon());
+    }, `Session : ${sim.playerName || '—'}`, pencilIcon());
+}
+
+export function sessionPlayerLabel(sim) {
+    return h('span', { class: 'session-pseudo muted' }, `Session : ${sim.playerName || '—'}`);
 }
 
 export function applyMyPseudoButton(sim, pseudo) {
@@ -147,8 +151,16 @@ export function applyMyPseudoButton(sim, pseudo) {
     return h('button', {
         class: 'btn-accent btn-sm',
         type: 'button',
-        title: `Appliquer « ${name} » sur la session en cours de ce simulateur`,
+        title: `Remplacer la session en cours par votre pseudo de profil`,
         onclick: async () => {
+            const sessionName = (sim.playerName || '').trim();
+            const detail = sessionName && sessionName.toLowerCase() !== name.toLowerCase()
+                ? `La session affiche actuellement « ${sessionName} ». `
+                : '';
+            if (!await confirmDialog(
+                `${detail}Appliquer votre pseudo de profil « ${name} » sur « ${sim.label} » ? Le simulateur l’adoptera à sa prochaine sync.`,
+                { confirmLabel: 'Appliquer' },
+            )) return;
             try {
                 const res = await post(`/api/v1/sims/${sim.id}/apply-my-pseudo`);
                 toast(res.message, 'success');
@@ -156,14 +168,16 @@ export function applyMyPseudoButton(sim, pseudo) {
                 toast(err.message, 'error');
             }
         },
-    }, `Appliquer « ${name} »`);
+    }, 'Appliquer mon pseudo');
 }
 
 /** Contrôles pseudo session : admin (libre) + SimRacer (profil + appliquer). */
 export function simPseudoControls(sim) {
     const parts = [];
-    if (isAdmin()) parts.push(sessionPseudoEditor(sim));
-    if (isSimRacer()) {
+    if (isAdmin()) {
+        parts.push(sessionPseudoEditor(sim));
+    } else if (isSimRacer()) {
+        parts.push(sessionPlayerLabel(sim));
         const pseudo = mySimulatorPseudo();
         if (pseudo) {
             parts.push(
@@ -171,8 +185,8 @@ export function simPseudoControls(sim) {
                     class: 'btn-ghost btn-sm',
                     href: '/profile',
                     'data-link': true,
-                    title: 'Modifier mon pseudo simulateur',
-                }, `Mon pseudo : ${pseudo}`, pencilIcon()),
+                    title: 'Modifier votre pseudo de profil (n’affecte pas le simulateur tant que vous n’appliquez pas)',
+                }, `Profil : ${pseudo}`, pencilIcon()),
                 applyMyPseudoButton(sim, pseudo),
             );
         } else {
