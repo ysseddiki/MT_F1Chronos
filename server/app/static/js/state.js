@@ -61,5 +61,11 @@ export function subscribeChanges(fn) {
             });
         };
     }
-    return () => changeListeners.delete(fn);
+    return () => {
+        changeListeners.delete(fn);
+        if (!changeListeners.size && eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
+    };
 }

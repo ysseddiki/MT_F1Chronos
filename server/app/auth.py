@@ -229,7 +229,10 @@ class UserAuth:
             )
         self._conn.commit()
         if tenant_ids is not None:
-            self.set_tenant_access(user_id, tenant_ids)
+            updated = self.get_user(user_id)
+            assert updated is not None
+            if updated["role"] != ROLE_ADMIN:
+                self.set_tenant_access(user_id, tenant_ids)
         updated = self.get_user(user_id)
         assert updated is not None
         return updated
@@ -245,8 +248,15 @@ class UserAuth:
         self._conn.commit()
 
     def set_tenant_access(self, user_id: str, tenant_ids: list[str]) -> None:
+        unique = list(dict.fromkeys(tenant_ids))
+        for tenant_id in unique:
+            row = self._conn.execute(
+                "SELECT id FROM tenants WHERE id = ?", (tenant_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Organisation introuvable : {tenant_id}")
         self._conn.execute("DELETE FROM user_tenant_access WHERE user_id = ?", (user_id,))
-        for tenant_id in dict.fromkeys(tenant_ids):
+        for tenant_id in unique:
             self._conn.execute(
                 "INSERT OR IGNORE INTO user_tenant_access (user_id, tenant_id) VALUES (?, ?)",
                 (user_id, tenant_id),

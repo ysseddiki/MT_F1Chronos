@@ -14,13 +14,20 @@ from .serializers import (
     track_out,
     user_out,
 )
-from .store import DEFAULT_PAGE_SIZE, TENANT_VISIBILITIES
+from .store import DEFAULT_PAGE_SIZE, MAX_PLAYER_NAME_LENGTH, TENANT_VISIBILITIES
 
 router = APIRouter(prefix="/api/v1/admin")
 
 
 def _err(exc: ValueError, status: int = 400) -> JSONResponse:
     return JSONResponse({"ok": False, "message": str(exc)}, status_code=status)
+
+
+def _admin_tenant(key: str) -> dict:
+    tenant = deps.store().resolve_tenant(key)
+    if tenant is None:
+        raise HTTPException(404, "Organisation introuvable.")
+    return tenant
 
 
 # ---------------------------------------------------------------------------
@@ -85,9 +92,10 @@ def create_tenant(request: Request, body: TenantIn):
 @router.patch("/tenants/{tenant_id}")
 def update_tenant(request: Request, tenant_id: str, body: TenantPatch):
     deps.require_admin(request)
+    tenant = _admin_tenant(tenant_id)
     try:
         tenant = deps.store().update_tenant(
-            tenant_id, body.label, body.visibility, body.slug
+            tenant["id"], body.label, body.visibility, body.slug
         )
     except ValueError as exc:
         return _err(exc)
@@ -97,8 +105,9 @@ def update_tenant(request: Request, tenant_id: str, body: TenantPatch):
 @router.delete("/tenants/{tenant_id}")
 def delete_tenant(request: Request, tenant_id: str):
     deps.require_admin(request)
+    tenant = _admin_tenant(tenant_id)
     try:
-        deps.store().delete_tenant(tenant_id)
+        deps.store().delete_tenant(tenant["id"])
     except ValueError as exc:
         return _err(exc, status=409)
     return {"ok": True}
@@ -158,7 +167,7 @@ def regenerate_token(request: Request, sim_id: str):
 
 
 class PlayerNameIn(BaseModel):
-    new_name: str = Field(default="", max_length=40)
+    new_name: str = Field(default="", max_length=MAX_PLAYER_NAME_LENGTH)
 
 
 @router.post("/simulators/{sim_id}/player-name")
@@ -196,7 +205,7 @@ class LapActionIn(BaseModel):
 
 
 class RenameEntryIn(LapActionIn):
-    new_name: str = Field(default="", max_length=40)
+    new_name: str = Field(default="", max_length=MAX_PLAYER_NAME_LENGTH)
 
 
 @router.post("/laps/{entry_id}/delete")
@@ -218,8 +227,8 @@ def rename_lap(request: Request, entry_id: str, body: RenameEntryIn):
 class RenamePlayerIn(BaseModel):
     sim_id: str = Field(min_length=1, max_length=64)
     contest_id: str | None = None
-    old_name: str = Field(default="", max_length=40)
-    new_name: str = Field(default="", max_length=40)
+    old_name: str = Field(default="", max_length=MAX_PLAYER_NAME_LENGTH)
+    new_name: str = Field(default="", max_length=MAX_PLAYER_NAME_LENGTH)
 
 
 @router.post("/players/rename")

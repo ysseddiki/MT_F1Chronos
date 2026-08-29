@@ -202,10 +202,11 @@ def migrate(conn: sqlite3.Connection) -> None:
         tenant_id = uuid.uuid4().hex
         label = (row["label"] or "Organisation").strip() or "Organisation"
         conn.execute(
-            "INSERT INTO tenants (id, label, created_at) VALUES (?, ?, ?)",
+            "INSERT INTO tenants (id, label, visibility, created_at) VALUES (?, ?, 'public', ?)",
             (tenant_id, label, utcnow()),
         )
         conn.execute("UPDATE simulators SET tenant_id = ? WHERE id = ?", (tenant_id, row["id"]))
+    _backfill_tenant_slugs(conn)
     conn.commit()
 
 

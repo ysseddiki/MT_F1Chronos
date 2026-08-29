@@ -3,13 +3,20 @@
 import { h, clear } from '../dom.js';
 import { post } from '../api.js';
 import { loadMe, state } from '../state.js';
-import { navigate } from '../router.js';
+import { navigate, replace } from '../router.js';
 
 export async function loginView(container) {
     clear(container);
     container.append(h('p', { class: 'loading' }, 'Chargement…'));
 
-    const me = await loadMe(true);
+    let me;
+    try {
+        me = await loadMe(true);
+    } catch (err) {
+        clear(container);
+        container.append(h('p', { class: 'lede' }, err.message || 'Serveur injoignable.'));
+        return;
+    }
     if (me.authenticated) {
         navigate('/');
         return;
@@ -38,8 +45,7 @@ function renderLogin(container) {
                 state.meLoaded = false;
                 state.tenants = null;
                 const me = await loadMe(true);
-                navigate(me.profileRequired ? '/profile' : '/');
-                location.reload();
+                replace(me.profileRequired ? '/profile' : '/');
             } catch (err) {
                 error.append(h('div', { class: 'banner error' }, err.message));
                 submit.disabled = false;
@@ -82,8 +88,7 @@ function renderSetup(container) {
                 state.me = null;
                 state.meLoaded = false;
                 state.tenants = null;
-                navigate('/admin');
-                location.reload();
+                replace('/admin');
             } catch (err) {
                 error.append(h('div', { class: 'banner error' }, err.message));
                 submit.disabled = false;

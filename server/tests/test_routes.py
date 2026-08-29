@@ -287,6 +287,7 @@ def test_tenant_resolved_by_slug(client):
 
     by_id = anon.get(f"/api/v1/tenants/{tenant['id']}")
     assert by_id.status_code == 200
+    assert by_slug.json()["tenant"]["simCount"] == 1
 
 
 def test_sync_contract_unchanged(client):

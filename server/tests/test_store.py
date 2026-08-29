@@ -257,3 +257,27 @@ def test_public_access_setting(tmp_path: Path):
     assert store.get_public_access() is False
     store.set_public_access(True)
     assert store.get_public_access() is True
+
+
+def test_public_access_bumps_data_version(tmp_path: Path):
+    store = _store(tmp_path)
+    before = store.data_version
+    store.set_public_access(False)
+    assert store.data_version > before
+
+
+def test_resolve_tenant_prefers_id_over_slug(tmp_path: Path):
+    store = _store(tmp_path)
+    t1 = store.create_tenant("Alpha")
+    t2 = store.create_tenant("Beta")
+    store.update_tenant(t2["id"], slug=t1["id"])
+    resolved = store.resolve_tenant(t1["id"])
+    assert resolved is not None
+    assert resolved["id"] == t1["id"]
+
+
+def test_create_simulator_accepts_tenant_slug(tmp_path: Path):
+    store = _store(tmp_path)
+    tenant = store.create_tenant("Club")
+    sim, _ = store.create_simulator("Box", tenant_id=tenant["slug"])
+    assert sim["tenant_id"] == tenant["id"]

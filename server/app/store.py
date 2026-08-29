@@ -77,13 +77,20 @@ class ResultsStore:
         return dict(row) if row else None
 
     def resolve_tenant(self, key: str) -> dict[str, Any] | None:
-        """Résout une organisation par slug friendly ou par id (rétrocompat)."""
+        """Résout une organisation par id interne, puis par slug friendly."""
         if not key:
             return None
-        row = self._conn.execute(
-            "SELECT * FROM tenants WHERE slug = ? OR id = ?", (key, key)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM tenants WHERE id = ?", (key,)).fetchone()
+        if row is not None:
+            return dict(row)
+        row = self._conn.execute("SELECT * FROM tenants WHERE slug = ?", (key,)).fetchone()
         return dict(row) if row else None
+
+    def _resolve_tenant_id(self, key: str) -> str:
+        tenant = self.resolve_tenant(key)
+        if tenant is None:
+            raise ValueError("Organisation introuvable.")
+        return tenant["id"]
 
     def _unique_slug(self, base: str, exclude_id: str | None = None) -> str:
         slug = slugify(base)
@@ -182,13 +189,18 @@ class ResultsStore:
         return [self._with_presence(dict(r)) for r in rows]
 
     def assign_simulator_to_tenant(self, sim_id: str, tenant_id: str) -> bool:
-        if self.get_simulator(sim_id) is None or self.get_tenant(tenant_id) is None:
+        if self.get_simulator(sim_id) is None:
+            return False
+        try:
+            tid = self._resolve_tenant_id(tenant_id)
+        except ValueError:
             return False
         self._conn.execute(
             "UPDATE simulators SET tenant_id = ? WHERE id = ?",
-            (tenant_id, sim_id),
+            (tid, sim_id),
         )
         self._conn.commit()
+        self._touch()
         return True
 
     def update_simulator(
@@ -205,10 +217,9 @@ class ResultsStore:
                 "UPDATE simulators SET label = ? WHERE id = ?", (label[:40], sim_id)
             )
         if tenant_id is not None and tenant_id != sim.get("tenant_id"):
-            if self.get_tenant(tenant_id) is None:
-                raise ValueError("Organisation introuvable.")
+            tid = self._resolve_tenant_id(tenant_id)
             self._conn.execute(
-                "UPDATE simulators SET tenant_id = ? WHERE id = ?", (tenant_id, sim_id)
+                "UPDATE simulators SET tenant_id = ? WHERE id = ?", (tid, sim_id)
             )
         self._conn.commit()
         self._touch()
@@ -294,9 +305,7 @@ class ResultsStore:
     def create_simulator(self, label: str, tenant_id: str | None = None) -> tuple[dict[str, Any], str]:
         token = secrets.token_urlsafe(32)
         if tenant_id:
-            if self.get_tenant(tenant_id) is None:
-                raise ValueError("tenant introuvable")
-            tid = tenant_id
+            tid = self._resolve_tenant_id(tenant_id)
         else:
             tid = self.create_tenant(label)["id"]
         sim = self._insert_simulator(label, tid, token)
@@ -459,8 +468,8 @@ class ResultsStore:
         for row in rows:
             item = dict(row)
             item["score_count"] = self._conn.execute(
-                """SELECT COUNT(*) FROM laps
-                   WHERE simulator_id = ? AND contest_id = ? AND deleted_at IS NULL""",
+                f"""SELECT COUNT(*) FROM laps
+                   WHERE simulator_id = ? AND contest_id = ? AND {LAP_VALID_SQL}""",
                 (sim_id, item["id"]),
             ).fetchone()[0]
             out.append(item)
@@ -507,7 +516,7 @@ class ResultsStore:
             return []
         placeholders = ",".join("?" * len(sim_ids))
         rows = self._conn.execute(
-            f"""SELECT track_id, track_name, COUNT(*) AS score_count
+            f"""SELECT track_id, MIN(track_name) AS track_name, COUNT(*) AS score_count
                 FROM laps
                 WHERE simulator_id IN ({placeholders})
                   AND contest_id IS NULL AND {LAP_VALID_SQL}
@@ -620,6 +629,13 @@ class ResultsStore:
 
     # --- jobs ---
 
+    @staticmethod
+    def _parse_payload(payload_json: str) -> dict[str, Any]:
+        try:
+            return json.loads(payload_json)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
     def pending_jobs(self, sim_id: str) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             """SELECT * FROM jobs
@@ -630,7 +646,7 @@ class ResultsStore:
         jobs = []
         for row in rows:
             job = dict(row)
-            job["payload"] = json.loads(job["payload_json"])
+            job["payload"] = self._parse_payload(job["payload_json"])
             jobs.append(job)
         return jobs
 
@@ -673,10 +689,7 @@ class ResultsStore:
         out = []
         for row in rows:
             job = dict(row)
-            try:
-                job["payload"] = json.loads(job["payload_json"])
-            except (json.JSONDecodeError, TypeError):
-                job["payload"] = {}
+            job["payload"] = self._parse_payload(job["payload_json"])
             job["can_revert"] = job["status"] in ("pending", "delivered", "applied")
             out.append(job)
         return out
@@ -777,7 +790,9 @@ class ResultsStore:
         job = dict(row)
         if job["status"] not in ("pending", "delivered", "applied"):
             return "déjà traité"
-        payload = json.loads(job["payload_json"])
+        payload = self._parse_payload(job["payload_json"])
+        if not payload and job["payload_json"]:
+            return "payload invalide"
         now = db.utcnow()
 
         if job["status"] in ("pending", "delivered"):
@@ -869,6 +884,7 @@ class ResultsStore:
             ("1" if enabled else "0",),
         )
         self._conn.commit()
+        self._touch()
 
     def _inverse_job(self, job_type: str, payload: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
         if job_type == "deleteEntry":

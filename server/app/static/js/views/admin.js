@@ -22,9 +22,15 @@ export async function adminView(container, _params, query) {
     clear(container);
     container.append(h('p', { class: 'loading' }, 'Chargement…'));
 
-    await loadMe(true);
+    try {
+        await loadMe(true);
+    } catch (err) {
+        clear(container);
+        container.append(h('p', { class: 'lede' }, err.message || 'Serveur injoignable.'));
+        return;
+    }
     if (!isAdmin()) {
-        navigate('/login');
+        navigate('/');
         return;
     }
 

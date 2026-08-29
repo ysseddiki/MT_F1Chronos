@@ -87,6 +87,11 @@ def health():
 
 @app.post("/api/v1/register")
 async def register(request: Request):
+    key = f"register:{_client_key(request)}"
+    if deps.limiter().blocked(key):
+        raise HTTPException(429, "Trop d'enregistrements. Réessaie dans quelques minutes.")
+    deps.limiter().hit(key)
+
     try:
         payload = await request.json()
     except Exception:
@@ -279,9 +284,11 @@ def get_tenant(request: Request, tenant_id: str):
     user = deps.current_user(request)
     tenant = deps.tenant_or_404(tenant_id, user)
     sims = deps.store().list_simulators_for_tenant(tenant["id"])
+    tenant_payload = tenant_out(tenant)
+    tenant_payload["simCount"] = len(sims)
     return {
         "ok": True,
-        "tenant": tenant_out(tenant),
+        "tenant": tenant_payload,
         "sims": [sim_out(s) for s in sims],
     }
 

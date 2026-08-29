@@ -10,7 +10,14 @@ export async function profileView(container) {
     clear(container);
     container.append(h('p', { class: 'loading' }, 'Chargement…'));
 
-    const me = await loadMe(true);
+    let me;
+    try {
+        me = await loadMe(true);
+    } catch (err) {
+        clear(container);
+        container.append(h('p', { class: 'lede' }, err.message || 'Serveur injoignable.'));
+        return;
+    }
     if (!me.authenticated) {
         navigate('/login');
         return;

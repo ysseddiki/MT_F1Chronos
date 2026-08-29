@@ -9,6 +9,7 @@ from app.auth import (
     hash_password,
     verify_password,
 )
+from app import db
 from app.db import connect
 
 
@@ -122,12 +123,37 @@ def test_last_admin_is_protected(tmp_path: Path):
 
 
 def test_tenant_access_roundtrip(tmp_path: Path):
-    auth = _auth(tmp_path)
+    conn = connect(tmp_path / "t.sqlite")
+    conn.execute(
+        "INSERT INTO tenants (id, label, visibility, slug, created_at) VALUES (?, ?, 'public', ?, ?)",
+        ("t1", "A", "a", db.utcnow()),
+    )
+    conn.execute(
+        "INSERT INTO tenants (id, label, visibility, slug, created_at) VALUES (?, ?, 'public', ?, ?)",
+        ("t2", "B", "b", db.utcnow()),
+    )
+    conn.commit()
+    auth = UserAuth(conn)
     user = auth.create_user("v@club.fr", "motdepasse", "visitor")
     auth.set_tenant_access(user["id"], ["t1", "t2", "t1"])
     assert sorted(auth.tenant_ids_for_user(user["id"])) == ["t1", "t2"]
+    with pytest.raises(ValueError):
+        auth.set_tenant_access(user["id"], ["missing"])
     auth.set_tenant_access(user["id"], [])
     assert auth.tenant_ids_for_user(user["id"]) == []
+
+
+def test_admin_promotion_preserves_tenant_access(tmp_path: Path):
+    from app.db import connect as db_connect
+    from app.store import ResultsStore
+
+    conn = db_connect(tmp_path / "t.sqlite")
+    store = ResultsStore(conn)
+    tenant = store.create_tenant("Club")
+    auth = UserAuth(conn)
+    user = auth.create_user("v@club.fr", "motdepasse", "visitor", [tenant["id"]])
+    auth.update_user(user["id"], role="admin", tenant_ids=[])
+    assert auth.tenant_ids_for_user(user["id"]) == [tenant["id"]]
 
 
 def test_change_password(tmp_path: Path):
