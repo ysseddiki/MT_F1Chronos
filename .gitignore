@@ -37,4 +37,8 @@ settings.json
 sessions.json
 .env
 server/data/
+server/data-smoke/
 server/.venv/
+certs/*.pem
+certs/*.key
+certs/*.crt

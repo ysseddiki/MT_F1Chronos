@@ -6,9 +6,9 @@
 | **Version** | `v1` |
 | **Produit** | F1 Chronos (`MT_F1Chronos`) |
 | **Statut** | `baseline` (état actuel du code) |
-| **Date** | 2026-07-22 |
-| **Portée** | Domaine Core + orchestration App (hors détail XAML pixel-perfect) |
-| **Source de vérité** | Code sous `src/` et `tests/` |
+| **Date** | 2026-08-29 |
+| **Portée** | Domaine Core + orchestration App + serveur de résultats (`server/`) |
+| **Source de vérité** | Code sous `src/`, `server/` et `tests/` |
 
 ---
 
@@ -149,7 +149,8 @@ F1 (UDP :20888)
 | Champ | Défaut | Contrainte |
 |---|---|---|
 | `ResultsServerEnabled` | `false` | Off = aucun réseau, fonctionnement local inchangé |
-| `ResultsServerUrl` | `""` | HTTPS, port **443** implicite (`https://hostname`). Les `:80` / `:443` / `:8080` sont retirés au chargement. |
+| `ResultsServerUrl` | `""` | HTTPS par défaut (`https://hostname`, port **443** implicite). `http://` explicite conservé (mode LAN). `:80` / `:443` / `:8080` legacy normalisés au chargement. |
+| `ResultsServerSkipTlsVerify` | `false` | Accepter certificat non approuvé (LAN, `tls internal`) — préférer installer la CA PKI sur Windows |
 | `ResultsServerToken` | `""` | Jeton créé sur le VPS |
 | `SimulatorId` | généré | Guid local stable |
 | `SimulatorLabel` | `""` | Nom affiché sur le site |
@@ -389,7 +390,7 @@ API web (JSON, camelCase) :
 |---|---|---|
 | `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si `RESULTS_DOMAIN`) |
 | `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
-| `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement se rechargent à réception — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte |
+| `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent **uniquement le tableau** via `loadBoard()` (debounce 1,5 s, anti-réponse obsolète `loadGen`) — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
 | `PATCH /api/v1/profile/sim-pseudo`, `POST /api/v1/sims/{id}/apply-my-pseudo` | rôle `simracer` | Profil pseudo simulateur + application live (`setPlayerName` job, pseudo du profil uniquement) |
 
 | `/api/v1/admin/*` | rôle `admin` | CRUD tenants/sims/users, gestion chronos, jobs, réglages |
@@ -404,7 +405,29 @@ Présence simu : hors ligne si `now - lastSeen > 2 × syncIntervalSeconds`.
 
 Sécurité HTTP : CSP stricte `default-src 'self'` (aucune ressource externe), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Cache-Control: no-store` sur `/api/*`. `RESULTS_SECRET` signe les sessions ; absent → secret aléatoire par boot (sessions perdues au redémarrage, jamais de constante connue).
 
-Docker : `docker compose up --build` / `podman compose up --build`. Caddy public **443** (et **80** ACME) ; FastAPI interne **8080** (non publié). Volume `/data`. Hostname `RESULTS_DOMAIN` obligatoire pour Let’s Encrypt.
+**TLS (Caddy)** — `RESULTS_TLS_MODE` dans `.env`, Caddyfiles dans `server/caddy/` :
+
+| Mode | Certificat | Port 80 | Cookies Secure |
+|---|---|---|---|
+| `letsencrypt` | ACME automatique | Oui (HTTP-01) | Oui |
+| `custom` | PEM montés (`./certs/fullchain.pem`, `privkey.pem`) | Non requis | Oui |
+| `internal` | Auto-signé Caddy (`tls internal`) | Non requis | Oui |
+| `http` | Aucun (HTTP seul) | Oui | Non (`RESULTS_TLS_MODE=http` ou `RESULTS_SECURE_COOKIES=false`) |
+
+`RESULTS_DOMAIN` : FQDN public (letsencrypt), nom court LAN ou IP (custom / internal / http). Validation : `./scripts/validate-results-env.sh`. Démarrage : `./scripts/up-results.sh`.
+
+Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+443** ; FastAPI interne **8080** (non publié). Volume `/data`. `RESULTS_DOMAIN` obligatoire ; `CADDY_EMAIL` seulement si `letsencrypt`.
+
+**SPA — pages de classement** (`board_page.js`, partagé tenant / sim / concours) :
+
+| Élément | Comportement |
+|---|---|
+| Sélecteur circuit | `trackSelect` ; défaut = circuit en piste ou premier disponible ; query `?track=` |
+| Mode affichage | Segmented « Meilleur / joueur » (`best=true`, défaut) vs « Tous les tours » (`?best=false`) |
+| Toolbar simu | `simToolbarStrip` : lien vers `/sim/{id}`, présence, pseudo session/profil, badge « En piste ici » si le simu est sur le **circuit affiché** |
+| Tableau | `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance ligne = `sim_pseudo` du profil connecté |
+| Actions admin | Colonne « … » (`board_manage.js`) : renommer chrono, renommer partout, supprimer → job + `loadBoard()` |
+| Live | `subscribeChanges` (SSE) + repli 60 s ; pas de re-render complet de la vue sur tick SSE |
 
 ---
 
@@ -494,9 +517,9 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 - Le simu **pull** (NAT) : snapshot + jobs à chaque mutation (debounce 1 s) **et** selon `ResultsSyncIntervalSeconds`.
 - Jobs admin revertibles ; wipe DB serveur **sans** job vers le simu.
 - Job `setPlayerName` : renomme le pseudo de session du simu (`AppSettings.PlayerName` mis à jour à réception, cf. BR-09). Déclenchable par l’admin (saisie libre) depuis l’onglet Simulateurs **et** en haut des feuilles de temps ; par un **SimRacer** via « Appliquer » (pseudo de profil uniquement).
-- Feuilles de temps **live** : la SPA s’abonne à `GET /api/v1/stream` (SSE) et se re-render à chaque changement de données (sync, action admin) ; repli par intervalle 60 s si EventSource indisponible.
+- Feuilles de temps **live** : la SPA s’abonne à `GET /api/v1/stream` (SSE) et **recharge le slot classement** (`loadBoard`) à chaque changement de données (sync, action admin) ; repli par intervalle 60 s si EventSource indisponible. Un changement de circuit / pagination / mode best déclenche une navigation query (re-render vue).
 - Overlay : LED serveur à côté de la télémétrie.
-- Transport : `ResultsSyncClient` utilise `ResultsServerUrl` normalisée en `https://host` (TCP **443**). Pas de sync sur le 8080 public.
+- Transport : `ResultsSyncClient` utilise `ResultsServerUrl` normalisée (`https://host` ou `http://host` explicite). Option `ResultsServerSkipTlsVerify` pour LAN / certificat auto-signé ; avec PKI interne, installer la CA sur Windows de préférence.
 - VPS : simu hors ligne après **2 ×** l’intervalle annoncé, sans sync.
 - Admin web : comptes en SQLite (`users`, PBKDF2, rôles admin/visiteur/SimRacer) ; `RESULTS_ADMIN_PASSWORD` = seed initial seulement ; visiteur / SimRacer limités à leurs tenants assignés ; accès public anonyme = option globale + visibilité par tenant.
 
@@ -571,6 +594,7 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | Principal | Concours sélectionné pour l’overlay (`OverlayContestId`) |
 | Tenant / Organisation | Regroupement de simulateurs côté serveur Results (visibilité public/privé, URL `/t/{slug}` friendly ; l’id hex reste valide en rétrocompat) |
 | Visiteur | Compte serveur en lecture seule, limité à ses tenants assignés |
+| SimRacer | Compte pilote simulateur : lecture comme visiteur + `sim_pseudo` profil + application live sur le simu (`setPlayerName`) |
 
 ---
 
@@ -583,7 +607,8 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | UDP | `src/MT_F1Chronos.Core/Telemetry/` |
 | Orchestration | `src/MT_F1Chronos.App/Services/{AppController,SettingsStore,AdminPassword,OverlayCoordinator,ScoreExportService,ResultsSyncClient}.cs` |
 | Settings | `src/MT_F1Chronos.App/AppSettings.cs`, `OverlaySizes.cs` |
-| Serveur résultats | `server/` |
+| Serveur résultats | `server/` (API : `app/main.py`, `admin_api.py`, `store.py` ; SPA : `app/static/js/`) |
+| Archives OpenSpec | `specs/archives/` |
 | Tests | `tests/MT_F1Chronos.Tests/` |
 
 ---

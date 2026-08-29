@@ -67,6 +67,8 @@ Mot de passe admin initial (à copier maintenant) :
 Après le premier docker compose up, ce mot de passe est hashé en base.
 Le changer ensuite dans /admin — relancer ce script ne change plus le login.
 
-Édite RESULTS_DOMAIN et CADDY_EMAIL dans .env avant de démarrer.
+Édite RESULTS_DOMAIN, RESULTS_TLS_MODE et CADDY_EMAIL (si letsencrypt) dans .env avant de démarrer.
+
+Modes TLS : letsencrypt (défaut) · custom (PKI ./certs/) · internal (auto-signé) · http (LAN).
 
 EOF

@@ -14,8 +14,10 @@ services:
       RESULTS_DATA: /data
       RESULTS_ADMIN_PASSWORD: ${RESULTS_ADMIN_PASSWORD:-}
       RESULTS_SECRET: ${RESULTS_SECRET:-change-me-in-production}
-      # Présent ⇒ cookies de session Secure (HTTPS via Caddy).
       RESULTS_DOMAIN: ${RESULTS_DOMAIN:-}
+      # letsencrypt | custom | internal | http — voir .env.example
+      RESULTS_TLS_MODE: ${RESULTS_TLS_MODE:-letsencrypt}
+      RESULTS_SECURE_COOKIES: ${RESULTS_SECURE_COOKIES:-}
     volumes:
       - results-data:/data
     restart: unless-stopped
@@ -36,11 +38,12 @@ services:
     env_file:
       - .env
     environment:
-      # Fail fast si le domaine n'est pas configuré (sinon Caddy sert localhost → ERR_SSL_*).
-      RESULTS_DOMAIN: ${RESULTS_DOMAIN:?Définis RESULTS_DOMAIN dans .env (ex. simracing-dc.yseddiki.fr)}
-      CADDY_EMAIL: ${CADDY_EMAIL:?Définis CADDY_EMAIL dans .env (contact Let's Encrypt)}
+      RESULTS_DOMAIN: ${RESULTS_DOMAIN:?Définis RESULTS_DOMAIN dans .env}
+      RESULTS_TLS_MODE: ${RESULTS_TLS_MODE:-letsencrypt}
+      CADDY_EMAIL: ${CADDY_EMAIL:-}
     volumes:
-      - ./server/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./server/caddy/${RESULTS_TLS_MODE:-letsencrypt}.Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${RESULTS_TLS_CERT_DIR:-./certs}:/certs:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

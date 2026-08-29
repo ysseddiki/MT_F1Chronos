@@ -44,6 +44,7 @@ public partial class AdminWindow : Window
             : _settings.ResultsServerUrl;
         ResultsLabelBox.Text = _settings.SimulatorLabel;
         ResultsTokenBox.Password = _settings.ResultsServerToken;
+        ResultsSkipTlsCheck.IsChecked = _settings.ResultsServerSkipTlsVerify;
         PopulateResultsIntervalCombo();
         RefreshResultsStatus();
     }
@@ -116,7 +117,8 @@ public partial class AdminWindow : Window
             ResultsTokenBox.Password,
             ResultsLabelBox.Text,
             (ResultsIntervalCombo.SelectedItem as IntervalOption)?.Seconds
-                ?? ResultsSyncProtocol.DefaultSyncIntervalSeconds);
+                ?? ResultsSyncProtocol.DefaultSyncIntervalSeconds,
+            ResultsSkipTlsCheck.IsChecked == true);
     }
 
     private async void OnTestResultsServerClick(object sender, RoutedEventArgs e)

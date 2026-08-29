@@ -1,5 +1,7 @@
 using System.Net.Http;
+using System.Net.Security;
 using System.Net.Http.Json;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Threading;
@@ -264,7 +266,14 @@ public sealed class ResultsSyncClient : IDisposable
 
     private HttpClient CreateClient(Uri baseUri)
     {
-        var client = new HttpClient { BaseAddress = baseUri, Timeout = TimeSpan.FromSeconds(15) };
+        var handler = new HttpClientHandler();
+        if (_settings.ResultsServerSkipTlsVerify)
+        {
+            handler.ServerCertificateCustomValidationCallback = static (
+                HttpRequestMessage _, X509Certificate2? __, X509Chain? ___, SslPolicyErrors ____) => true;
+        }
+
+        var client = new HttpClient(handler) { BaseAddress = baseUri, Timeout = TimeSpan.FromSeconds(15) };
         client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json");
         if (!string.IsNullOrWhiteSpace(_settings.ResultsServerToken))
             client.DefaultRequestHeaders.TryAddWithoutValidation(

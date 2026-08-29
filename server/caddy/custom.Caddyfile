@@ -1,0 +1,22 @@
+{
+	admin off
+}
+
+# Réseau fermé / PKI interne : certificat fourni (PEM) monté dans /certs.
+# Dépose fullchain.pem + privkey.pem dans ./certs/ (voir certs/README.md).
+{$RESULTS_DOMAIN} {
+	tls /certs/fullchain.pem /certs/privkey.pem
+	encode gzip zstd
+
+	reverse_proxy results:8080 {
+		transport http {
+			read_timeout 60s
+			write_timeout 60s
+		}
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
+	}
+}

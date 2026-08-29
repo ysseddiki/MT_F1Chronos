@@ -13,6 +13,7 @@ public class ResultsSyncTests
     [InlineData("classement.exemple.com", "https://classement.exemple.com")]
     [InlineData("https://classement.exemple.com", "https://classement.exemple.com")]
     [InlineData("https://classement.exemple.com:443", "https://classement.exemple.com")]
+    [InlineData("http://classement.exemple.com", "http://classement.exemple.com")]
     [InlineData("http://classement.exemple.com:8080", "https://classement.exemple.com")]
     [InlineData("http://127.0.0.1:8080", "https://127.0.0.1")]
     [InlineData("https://", "")]

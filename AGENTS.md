@@ -13,7 +13,9 @@ Guide pour les agents IA travaillant sur ce dépôt.
 
 Spécification système (modèles, contrats, règles métier, dépendances) :
 
-→ [`specs/system/baseline-v1.md`](specs/system/baseline-v1.md)
+→ [`specs/system/baseline-v1.md`](specs/system/baseline-v1.md) — état actuel  
+→ [`specs/README.md`](specs/README.md) — structure OpenSpec  
+→ [`specs/archives/INDEX.md`](specs/archives/INDEX.md) — historique des jalons
 
 ## Architecture
 
@@ -22,7 +24,7 @@ src/MT_F1Chronos.Core/     # Domaine, UDP, stores, export, contrat sync résulta
 src/MT_F1Chronos.App/      # WPF + orchestration (net8.0-windows)
 server/                    # Serveur de résultats Linux (FastAPI + SQLite, Docker/Podman)
 tests/MT_F1Chronos.Tests/  # xUnit, référence Core uniquement
-specs/                     # OpenSpec / baseline produit
+specs/                     # OpenSpec : baseline + archives
 ```
 
 Flux principal :
@@ -87,12 +89,12 @@ Serveur de résultats (Docker / Podman) :
 
 ```bash
 ./scripts/init-env.sh   # .env : mdp admin + secret cookie aléatoires
-# Édite RESULTS_DOMAIN + CADDY_EMAIL dans .env
+# Édite RESULTS_DOMAIN, RESULTS_TLS_MODE (letsencrypt|custom|internal|http) et CADDY_EMAIL si besoin
 sudo ./scripts/setup-podman-ports.sh  # rootless Podman : ports 80/443
-docker compose up -d --build
-# ou : podman compose up -d --build
+./scripts/up-results.sh               # valide .env puis compose up
+# ou : docker compose up -d --build
 ./scripts/check-results-ssl.sh
-# Public : 443 (HTTPS) + 80 (ACME). FastAPI interne seulement.
+# Internet : 443 (HTTPS LE) + 80 (ACME). LAN : custom PKI, tls internal ou http.
 ```
 
 ## Git

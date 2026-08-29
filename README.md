@@ -183,31 +183,40 @@ server/             → Serveur Linux FastAPI + SQLite (Docker/Podman)
 assets/             → Icône F1 Chronos (app.ico)
 ```
 
-## Serveur de résultats (optionnel, VPS Linux)
+## Serveur de résultats (optionnel, Linux / LAN / VPS)
 
-Le overlay du simulateur **reste autonome**. Le VPS est une archive / vitrine. Le simu (derrière NAT) **initie** toujours HTTP ; le serveur ne rappelle jamais le PC.
+Le overlay du simulateur **reste autonome**. Le serveur est une archive / vitrine. Le simu (derrière NAT) **initie** toujours HTTP ; le serveur ne rappelle jamais le PC.
 
-Caddy écoute **80** (ACME Let's Encrypt + redirect) et **443** (HTTPS). FastAPI reste interne au réseau Docker (8080 non publié).
+Caddy termine le TLS devant FastAPI (8080 interne, non publié). Quatre modes dans `.env` :
+
+| `RESULTS_TLS_MODE` | Usage | Prérequis |
+|---|---|---|
+| `letsencrypt` (défaut) | Internet public | FQDN public, DNS, ports **80+443**, `CADDY_EMAIL` |
+| `custom` | Réseau fermé / **PKI interne** | `fullchain.pem` + `privkey.pem` dans `./certs/` |
+| `internal` | LAN HTTPS **auto-signé** | Nom d’hôte ou IP dans `RESULTS_DOMAIN` ; clients : ignorer TLS ou faire confiance au cert Caddy |
+| `http` | LAN sans TLS Caddy | URL `http://…` côté simu ; cookies non Secure |
 
 ```bash
 ./scripts/init-env.sh   # génère .env (mdp admin + secret cookie aléatoires)
 # édite .env :
-#   RESULTS_DOMAIN=simracing-dc.yseddiki.fr
-#   CADDY_EMAIL=ton@email.fr
+#   RESULTS_DOMAIN=classement.exemple.com   # ou results.lan / 192.168.x.x
+#   RESULTS_TLS_MODE=letsencrypt            # ou custom | internal | http
+#   CADDY_EMAIL=ton@email.fr                # si letsencrypt
 
 # Podman rootless (une fois, avec sudo) — sinon erreur « privileged port 80 » :
 sudo ./scripts/setup-podman-ports.sh
 
-docker compose up -d --build
-# ou : podman compose up -d --build
+./scripts/up-results.sh          # valide .env puis docker compose up -d --build
+# ou : docker compose up -d --build
 
-# Vérifier TLS + health :
-./scripts/check-results-ssl.sh
+./scripts/check-results-ssl.sh   # health selon le mode TLS
 ```
 
-`RESULTS_DOMAIN` doit être le **FQDN public** (Let's Encrypt refuse IP / `localhost`). DNS A/AAAA → VPS, ports **80** et **443** ouverts (`ufw allow 80,443/tcp`).
+**PKI interne** : dépose les PEM dans `certs/` (voir `certs/README.md`). Sur Windows, installe la CA racine dans le magasin de confiance — sinon coche « Ignorer les erreurs de certificat TLS » dans Administration → Serveur de résultats.
 
-Si `ERR_SSL_PROTOCOL_ERROR` : Caddy n’écoute pas en TLS (souvent `RESULTS_DOMAIN` incorrect, conteneur caddy arrêté, ou ports 80/443 bloqués). Voir `podman compose logs caddy`.
+**HTTPS auto-signé** (`internal`) : même option côté simulateur, ou export du certificat racine Caddy depuis le volume `caddy-data`.
+
+Si `ERR_SSL_PROTOCOL_ERROR` en mode `letsencrypt` : domaine incorrect, Caddy arrêté, ou ports 80/443 bloqués. Voir `docker compose logs caddy`.
 
 **Build Docker : `Read timed out` / `No matching distribution found for fastapi`** : PyPI est trop lent depuis le VPS (timeout réseau, pas une version manquante). Le `Dockerfile` utilise déjà des timeouts pip allongés (300 s). Si ça échoue encore :
 

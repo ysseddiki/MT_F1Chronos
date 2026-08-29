@@ -623,13 +623,15 @@ public sealed class AppController : IDisposable
 
     public ResultsSyncStatus GetResultsSyncStatus() => _resultsSync.Status;
 
-    public void SaveResultsServerSettings(bool enabled, string url, string token, string label, int syncIntervalSeconds)
+    public void SaveResultsServerSettings(
+        bool enabled, string url, string token, string label, int syncIntervalSeconds, bool skipTlsVerify = false)
     {
         _settings.ResultsServerEnabled = enabled;
         _settings.ResultsServerUrl = ResultsSyncProtocol.NormalizeServerUrl(url);
         _settings.ResultsServerToken = token?.Trim() ?? string.Empty;
         _settings.SimulatorLabel = label?.Trim() ?? string.Empty;
         _settings.ResultsSyncIntervalSeconds = ResultsSyncProtocol.NormalizeSyncInterval(syncIntervalSeconds);
+        _settings.ResultsServerSkipTlsVerify = skipTlsVerify;
         EnsureSimulatorIdentity();
         SaveSettings();
         _resultsSync.ApplySettings(_settings);

@@ -47,6 +47,9 @@ public static class ResultsSyncProtocol
         if (string.IsNullOrWhiteSpace(host))
             return string.Empty;
 
+        if (uri.Scheme == Uri.UriSchemeHttp)
+            return uri.IsDefaultPort ? $"http://{host}" : $"http://{host}:{uri.Port}";
+
         var dropExplicitPort = !uri.IsDefaultPort && uri.Port is 80 or 443 or 8080;
         if (uri.IsDefaultPort || dropExplicitPort)
             return $"https://{host}";

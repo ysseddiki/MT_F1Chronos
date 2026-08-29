@@ -30,15 +30,27 @@ if not SECRET:
     SECRET = _secrets.token_hex(32)
     logger.warning("RESULTS_SECRET absent — secret de session aléatoire généré (sessions perdues au redémarrage).")
 
+# Cookie Secure : HTTPS derrière Caddy (domaine configuré). HTTP explicite ⇒ false.
+def _secure_session_cookies() -> bool:
+    override = os.environ.get("RESULTS_SECURE_COOKIES", "").strip().lower()
+    if override in ("1", "true", "yes"):
+        return True
+    if override in ("0", "false", "no"):
+        return False
+    if not os.environ.get("RESULTS_DOMAIN", "").strip():
+        return False
+    mode = os.environ.get("RESULTS_TLS_MODE", "letsencrypt").strip().lower()
+    return mode != "http"
+
+
 app = FastAPI(title="F1 Chronos — Résultats", docs_url=None, redoc_url=None, openapi_url=None)
 # X-Forwarded-* : géré par uvicorn (--proxy-headers dans le Dockerfile), pas ici.
 app.add_middleware(SecurityHeadersMiddleware)
-# Cookie Secure dès qu'un domaine public est configuré (Caddy sert alors en HTTPS).
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET,
     same_site="lax",
-    https_only=bool(os.environ.get("RESULTS_DOMAIN")),
+    https_only=_secure_session_cookies(),
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

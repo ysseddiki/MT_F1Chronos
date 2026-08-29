@@ -49,6 +49,12 @@ public sealed class AppSettings
 
     /// <summary>Seconds between periodic sync pulls (jobs + snapshot). Clamped 15–600.</summary>
     public int ResultsSyncIntervalSeconds { get; set; } = 120;
+
+    /// <summary>
+    /// Accept self-signed / untrusted TLS (LAN, Caddy <c>tls internal</c>).
+    /// Prefer installing your CA on Windows when using a private PKI.
+    /// </summary>
+    public bool ResultsServerSkipTlsVerify { get; set; }
 }
 
 /// <summary>How global / contest leaderboards appear on the overlay.</summary>
