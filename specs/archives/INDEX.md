@@ -5,7 +5,8 @@ Historique des jalons et vagues de changements. L’état **actuel** reste dans 
 | Date | Entrée | Commit(s) repère | Résumé |
 |---|---|---|---|
 | 2026-08 | [Résultats : tenants → SPA live](2026-08-results-server-evolution.md) | `d7ac5bb` … `23ceead` | Organisations, API JSON, SPA, multi-comptes, SimRacer, SSE live, toolbar classement |
-| 2026-08 | [TLS : Let's Encrypt, PKI, auto-signé, HTTP](2026-08-results-tls-modes.md) | — | Modes `RESULTS_TLS_MODE`, certs `./certs/`, skip TLS simu |
+| 2026-08 | [TLS : Let's Encrypt, PKI, auto-signé, HTTP](2026-08-results-tls-modes.md) | `0e8a285` | Modes `RESULTS_TLS_MODE`, certs `./certs/`, skip TLS simu |
+| 2026-08 | [Concours par simu + menu actions](2026-08-contests-per-sim.md) | `43e4d2a` | Fin page `/contests`, sélecteur sur `/sim`, menu ⋯ fixe |
 
 ## Comment ajouter une entrée
 

@@ -181,7 +181,10 @@ MT_F1Chronos.Core   → UDP F1 2025/2026, parsing, stockage, export, contrat syn
 MT_F1Chronos.App    → Overlay WPF, menus, hotkeys, client sync optionnel
 server/             → Serveur Linux FastAPI + SQLite (Docker/Podman)
 assets/             → Icône F1 Chronos (app.ico)
+specs/              → OpenSpec : baseline, onboarding, archives
 ```
+
+**Reprise sur une autre machine** (clone, prérequis, secrets, vérifications) : voir [`specs/onboarding.md`](specs/onboarding.md).
 
 ## Serveur de résultats (optionnel, Linux / LAN / VPS)
 

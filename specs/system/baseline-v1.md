@@ -6,7 +6,7 @@
 | **Version** | `v1` |
 | **Produit** | F1 Chronos (`MT_F1Chronos`) |
 | **Statut** | `baseline` (état actuel du code) |
-| **Date** | 2026-08-29 |
+| **Date** | 2026-08-31 |
 | **Portée** | Domaine Core + orchestration App + serveur de résultats (`server/`) |
 | **Source de vérité** | Code sous `src/`, `server/` et `tests/` |
 
@@ -155,6 +155,7 @@ F1 (UDP :20888)
 | `SimulatorId` | généré | Guid local stable |
 | `SimulatorLabel` | `""` | Nom affiché sur le site |
 | `ResultsSyncIntervalSeconds` | `120` | Clamp 15–600 ; le VPS déclare hors ligne après **2 ×** cet intervalle |
+| `ResultsServerSkipTlsVerify` | `false` | Accepter certificat non approuvé (LAN, Caddy `tls internal`) — préférer installer la CA PKI sur Windows |
 
 Le logiciel du simulateur **n’a pas besoin** du serveur : UDP, overlay, stores et admin locaux restent la source de vérité.
 
@@ -388,7 +389,7 @@ API web (JSON, camelCase) :
 
 | Préfixe | Accès | Rôle |
 |---|---|---|
-| `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si `RESULTS_DOMAIN`) |
+| `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si HTTPS actif — voir `RESULTS_TLS_MODE`) |
 | `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
 | `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent **uniquement le tableau** via `loadBoard()` (debounce 1,5 s, anti-réponse obsolète `loadGen`) — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
 | `PATCH /api/v1/profile/sim-pseudo`, `POST /api/v1/sims/{id}/apply-my-pseudo` | rôle `simracer` | Profil pseudo simulateur + application live (`setPlayerName` job, pseudo du profil uniquement) |
@@ -418,7 +419,7 @@ Sécurité HTTP : CSP stricte `default-src 'self'` (aucune ressource externe), `
 
 Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+443** ; FastAPI interne **8080** (non publié). Volume `/data`. `RESULTS_DOMAIN` obligatoire ; `CADDY_EMAIL` seulement si `letsencrypt`.
 
-**SPA — pages de classement** (`board_page.js`, partagé tenant / sim / concours) :
+**SPA — pages de classement** (`board_page.js`, partagé tenant / sim) :
 
 | Élément | Comportement |
 |---|---|
@@ -426,8 +427,19 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | Mode affichage | Segmented « Meilleur / joueur » (`best=true`, défaut) vs « Tous les tours » (`?best=false`) |
 | Toolbar simu | `simToolbarStrip` : lien vers `/sim/{id}`, présence, pseudo session/profil, badge « En piste ici » si le simu est sur le **circuit affiché** |
 | Tableau | `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance ligne = `sim_pseudo` du profil connecté |
-| Actions admin | Colonne « … » (`board_manage.js`) : renommer chrono, renommer partout, supprimer → job + `loadBoard()` |
-| Live | `subscribeChanges` (SSE) + repli 60 s ; pas de re-render complet de la vue sur tick SSE |
+| Actions admin | Colonne « … » (`board_manage.js`) : renommer chrono, renommer partout, supprimer → job + `loadBoard()` ; menu en **position fixe** (évite clipping `overflow` tableau) |
+| Live | `subscribeChanges` (SSE) + repli 60 s ; `loadBoard()` partiel (pas de re-render page entière) |
+
+**SPA — routes** (détail : [`specs/server/spa-routes.md`](../server/spa-routes.md)) :
+
+| Route | Rôle |
+|---|---|
+| `/t/{slug}` | Classement agrégé tenant (multi-sims) |
+| `/sim/{id}` | Classement **global** du simulateur |
+| `/sim/{id}?contest={cid}` | Classement **concours** (concours de ce simu uniquement) |
+| `/admin` | CRUD tenants/sims/users, gestion chronos |
+
+Pas de page `/contests` : le sélecteur « Tableau » sur `/sim/{id}` propose global + concours reçus par sync. Les concours sont **créés sur le simulateur** (WPF) et répliqués via `sync.contests[]` — table SQLite `contests(simulator_id, id)`.
 
 ---
 
@@ -523,6 +535,13 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 - VPS : simu hors ligne après **2 ×** l’intervalle annoncé, sans sync.
 - Admin web : comptes en SQLite (`users`, PBKDF2, rôles admin/visiteur/SimRacer) ; `RESULTS_ADMIN_PASSWORD` = seed initial seulement ; visiteur / SimRacer limités à leurs tenants assignés ; accès public anonyme = option globale + visibilité par tenant.
 
+### BR-15 — Concours côté serveur web
+
+- Un concours affiché sur le site est **toujours rattaché à un simulateur** (`simulator_id` en base).
+- Source de vérité création / lifecycle : **overlay WPF** → sync `contests[]` ; le serveur ne crée pas de concours seul.
+- Affichage web : `/sim/{id}?contest={cid}` uniquement — pas d’index `/contests` ni d’agrégation concours au niveau tenant.
+- Concours invalide dans l’URL → redirection `/sim/{id}`.
+
 ---
 
 ## 4. Dépendances techniques
@@ -574,7 +593,19 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | Système de fichiers local | `%LOCALAPPDATA%\MT_F1Chronos\` |
 | Shell | Ouverture post-export (`Process.Start` + `UseShellExecute`) |
 
-### 4.6 Non-objectifs de cette baseline
+### 4.6 Scripts déploiement serveur
+
+| Script | Rôle |
+|---|---|
+| `scripts/init-env.sh` | Crée / met à jour `.env` (mdp admin + secret cookie) |
+| `scripts/validate-results-env.sh` | Valide domaine, mode TLS, certificats |
+| `scripts/up-results.sh` | Valide puis `docker compose up -d --build` |
+| `scripts/check-results-ssl.sh` | Health + certificat selon `RESULTS_TLS_MODE` |
+| `scripts/setup-podman-ports.sh` | Ports 80/443 pour Podman rootless |
+
+Variables : [`specs/server/env.md`](../server/env.md). Reprise machine : [`specs/onboarding.md`](../onboarding.md).
+
+### 4.7 Non-objectifs de cette baseline
 
 - Pas d’authentification cloud / comptes distants (les comptes du serveur Results restent locaux à ce serveur)
 - Pas d’installeur MSI documenté ici (script `build.ps1` + raccourcis)
@@ -588,7 +619,8 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | Terme | Sens |
 |---|---|
 | Global | Tableau `SessionStore` (tous joueurs / tous concours confondus) |
-| Concours | Tableau parallèle isolé, lifecycle Draft/Active/Stopped |
+| Concours (overlay) | Tableau parallèle isolé, lifecycle Draft/Active/Stopped — créé sur le simu |
+| Concours (serveur web) | Réplique sync par `simulator_id` ; affichage via `/sim/{id}?contest=` |
 | BEST | Mode meilleur chrono par joueur |
 | Snapshot | Copie immuable de `TelemetryState` publiée hors thread UDP |
 | Principal | Concours sélectionné pour l’overlay (`OverlayContestId`) |
@@ -607,9 +639,12 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | UDP | `src/MT_F1Chronos.Core/Telemetry/` |
 | Orchestration | `src/MT_F1Chronos.App/Services/{AppController,SettingsStore,AdminPassword,OverlayCoordinator,ScoreExportService,ResultsSyncClient}.cs` |
 | Settings | `src/MT_F1Chronos.App/AppSettings.cs`, `OverlaySizes.cs` |
-| Serveur résultats | `server/` (API : `app/main.py`, `admin_api.py`, `store.py` ; SPA : `app/static/js/`) |
-| Archives OpenSpec | `specs/archives/` |
-| Tests | `tests/MT_F1Chronos.Tests/` |
+| Serveur API | `server/app/{main,admin_api,auth,store,db,deps}.py` |
+| Serveur SPA | `server/app/static/js/{main,router,components,board_manage,state}.js`, `views/{tenant,sim,board_page}.js` |
+| Caddy TLS | `server/caddy/*.Caddyfile`, `scripts/{init-env,validate-results-env,up-results}.sh` |
+| OpenSpec | `specs/{onboarding,README}.md`, `specs/system/`, `specs/server/`, `specs/archives/` |
+| Tests overlay | `tests/MT_F1Chronos.Tests/` |
+| Tests serveur | `server/tests/` (61 tests) |
 
 ---
 

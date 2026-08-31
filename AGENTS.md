@@ -13,6 +13,7 @@ Guide pour les agents IA travaillant sur ce dépôt.
 
 Spécification système (modèles, contrats, règles métier, dépendances) :
 
+→ [`specs/onboarding.md`](specs/onboarding.md) — **reprise machine** (clone, build, deploy, checklist)  
 → [`specs/system/baseline-v1.md`](specs/system/baseline-v1.md) — état actuel  
 → [`specs/README.md`](specs/README.md) — structure OpenSpec  
 → [`specs/archives/INDEX.md`](specs/archives/INDEX.md) — historique des jalons
