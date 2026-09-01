@@ -6,7 +6,7 @@ Guide pour cloner, configurer, builder et vérifier **F1 Chronos** (`MT_F1Chrono
 |---|---|
 | **Dépôt** | `MT_F1Chronos` |
 | **Branche de référence** | `main` |
-| **Dernière mise à jour** | 2026-08-31 |
+| **Dernière mise à jour** | 2026-09-01 |
 
 ---
 
@@ -176,7 +176,7 @@ Les tests utilisent `tmp_path` — pas de DB persistante.
 |---|---|---|
 | Clone OK | `git status` | working tree clean |
 | Tests Core | `dotnet test tests/...` | tous verts (Windows) |
-| Tests serveur | `cd server && python3 -m pytest tests/` | 61 passed |
+| Tests serveur | `cd server && python3 -m pytest tests/` | 65 passed |
 | Build overlay | `.\build.ps1` | `dist\MT_F1Chronos.exe` |
 | Stack serveur | `./scripts/up-results.sh` | `caddy` + `results` Up |
 | Health API | `curl …/api/v1/health` | `{"ok":true}` |

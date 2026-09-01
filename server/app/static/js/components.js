@@ -227,10 +227,19 @@ export function simToolbarStrip(sims, { liveTrackId = null } = {}) {
 }
 
 /** Menu contextuel compact (⋯) — position fixe pour échapper au overflow des tableaux. */
+let openActionMenuClose = null;
+
+function closeAnyOpenActionMenu() {
+    if (openActionMenuClose) {
+        openActionMenuClose();
+        openActionMenuClose = null;
+    }
+}
+
 export function actionMenu(triggerLabel, items, { title = 'Actions' } = {}) {
     const wrap = h('div', { class: 'action-menu' });
     const btn = h('button', {
-        class: 'btn-sm btn-ghost action-menu-trigger',
+        class: 'btn-sm action-menu-trigger',
         type: 'button',
         title,
         'aria-label': title,
@@ -280,6 +289,7 @@ export function actionMenu(triggerLabel, items, { title = 'Actions' } = {}) {
         if (onScroll) window.removeEventListener('scroll', onScroll, true);
         if (onResize) window.removeEventListener('resize', onResize);
         onDocClick = onScroll = onResize = null;
+        if (openActionMenuClose === closeMenu) openActionMenuClose = null;
     };
 
     btn.addEventListener('click', (e) => {
@@ -288,10 +298,12 @@ export function actionMenu(triggerLabel, items, { title = 'Actions' } = {}) {
             closeMenu();
             return;
         }
+        closeAnyOpenActionMenu();
         wrap.classList.add('open');
         btn.setAttribute('aria-expanded', 'true');
         list.style.display = 'block';
         placeMenu();
+        openActionMenuClose = closeMenu;
         onScroll = () => placeMenu();
         onResize = () => placeMenu();
         onDocClick = (ev) => {
@@ -419,6 +431,45 @@ export function boardTable(rows, { showSim = false, manage = null, highlightName
     );
 
     return h('div', { class: 'board-wrap' }, h('table', { class: 'board' }, thead, body));
+}
+
+/** Derniers chronos enregistrés (tous circuits), triés par horodatage décroissant. */
+export function recentLapsPanel(rows, { showSim = false, manage = null, highlightName = null } = {}) {
+    if (!rows?.length) return null;
+    const highlight = (highlightName || '').trim();
+    const isMe = (name) => highlight
+        && (name || '').trim().toLowerCase() === highlight.toLowerCase();
+
+    const thead = h('thead', {}, h('tr', {},
+        h('th', { class: 'recent-when' }, 'Enregistré'),
+        h('th', {}, 'Pilote'),
+        h('th', {}, 'Circuit'),
+        showSim ? h('th', {}, 'Simu') : null,
+        h('th', { class: 'time' }, 'Temps'),
+        manage ? h('th', {}) : null,
+    ));
+
+    const body = h('tbody', {},
+        rows.map((row) => {
+            const me = isMe(row.name);
+            const cells = [
+                h('td', { class: 'recent-when muted' }, fmtDateTime(row.startedAt)),
+                h('td', { class: `pilot${me ? ' pilot-me' : ''}` }, (row.name || '').trim() || '—'),
+                h('td', {}, (row.trackName || '').trim() || '—'),
+                showSim ? h('td', { class: 'sim-tag' }, row.simLabel || '—') : null,
+                h('td', { class: 'time' }, row.formatted || fmtLap(row.bestLapMs)),
+            ];
+            if (manage) cells.push(h('td', {}, h('div', { class: 'row-actions' }, manage(row))));
+            return h('tr', { class: me ? 'row-me' : '' }, cells);
+        }),
+    );
+
+    return h('section', { class: 'recent-laps panel' },
+        h('h2', { class: 'recent-laps-title' }, 'Derniers chronos enregistrés'),
+        h('div', { class: 'board-wrap recent-laps-wrap' },
+            h('table', { class: 'board recent-laps-table' }, thead, body),
+        ),
+    );
 }
 
 // ---------- Pagination ----------

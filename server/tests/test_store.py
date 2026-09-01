@@ -200,6 +200,74 @@ def test_leaderboard_best_per_player_dedupes_before_pagination(tmp_path: Path):
     assert [r["name"] for r in board["rows"]] == ["ada", "Bob"]
 
 
+def test_recent_laps_ordered_by_started_at(tmp_path: Path):
+    store = _store(tmp_path)
+    sim, _ = store.create_simulator("Box")
+    store.ingest(
+        sim,
+        {
+            "simulatorId": "cli",
+            "global": {
+                "tracks": [
+                    {
+                        "trackId": 1,
+                        "trackName": "Melbourne",
+                        "entries": [
+                            {"id": "e1", "name": "Ada", "bestLapMs": 81000, "startedAt": "2026-01-01T10:00:00"},
+                            {"id": "e2", "name": "Bob", "bestLapMs": 82000, "startedAt": "2026-01-03T12:00:00"},
+                            {"id": "e3", "name": "Cara", "bestLapMs": 83000, "startedAt": "2026-01-02T08:00:00"},
+                        ],
+                    },
+                    {
+                        "trackId": 2,
+                        "trackName": "Monza",
+                        "entries": [
+                            {"id": "e4", "name": "Dan", "bestLapMs": 79000, "startedAt": "2026-01-04T09:00:00"},
+                        ],
+                    },
+                ]
+            },
+        },
+    )
+    recent = store.recent_laps(sim["id"], limit=3)
+    assert [r["id"] for r in recent] == ["e4", "e2", "e3"]
+    assert recent[0]["formatted"] == "01:19.000"
+
+
+def test_tenant_recent_laps_includes_sim_label(tmp_path: Path):
+    store = _store(tmp_path)
+    tenant = store.create_tenant("Club")
+    sim_a, _ = store.create_simulator("Box A", tenant_id=tenant["id"])
+    sim_b, _ = store.create_simulator("Box B", tenant_id=tenant["id"])
+    for sim, entry_id, name, started, client in [
+        (sim_a, "a1", "Ada", "2026-01-02T00:00:00", "cli-a"),
+        (sim_b, "b1", "Bob", "2026-01-03T00:00:00", "cli-b"),
+    ]:
+        store.ingest(
+            sim,
+            {
+                "simulatorId": client,
+                "global": {
+                    "tracks": [{
+                        "trackId": 1,
+                        "trackName": "Melbourne",
+                        "entries": [{
+                            "id": entry_id,
+                            "name": name,
+                            "bestLapMs": 80000,
+                            "startedAt": started,
+                        }],
+                    }]
+                },
+            },
+        )
+    recent = store.tenant_recent_laps(tenant["id"])
+    assert [r["name"] for r in recent] == ["Bob", "Ada"]
+    labels = {r["simulator_id"]: r["sim_label"] for r in recent}
+    assert labels[sim_a["id"]] == "Box A"
+    assert labels[sim_b["id"]] == "Box B"
+
+
 def test_enqueue_set_player_name(tmp_path: Path):
     store = _store(tmp_path)
     sim, _ = store.create_simulator("Box")

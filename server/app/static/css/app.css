@@ -442,6 +442,14 @@ a.card:hover {
     font-size: 1.1rem;
     line-height: 1;
     padding: 4px 10px;
+    border-color: var(--line);
+    background: var(--card);
+    color: var(--muted);
+}
+.action-menu-trigger:hover {
+    color: var(--text);
+    background: var(--card-hover);
+    border-color: var(--line-strong);
 }
 .action-menu-list {
     display: none;
@@ -452,9 +460,9 @@ a.card:hover {
     min-width: 190px;
     padding: 6px;
     border-radius: 10px;
-    border: 1px solid rgba(148, 163, 216, 0.18);
-    background: var(--panel);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 .action-menu.open .action-menu-list { display: block; }
 
@@ -490,6 +498,23 @@ a.card:hover {
 .action-menu-item:hover { background: rgba(59, 130, 246, 0.12); }
 .action-menu-item.danger { color: #f87171; }
 .action-menu-item.danger:hover { background: rgba(239, 68, 68, 0.12); }
+
+.recent-laps {
+    margin-bottom: 16px;
+}
+.recent-laps-title {
+    margin: 0 0 10px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.recent-laps-wrap { margin-top: 0; }
+.recent-laps-table .recent-when {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
 
 .rank { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); }
 .rank.p1 { color: var(--gold); }

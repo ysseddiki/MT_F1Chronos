@@ -44,9 +44,10 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 | Composant | Fichier |
 |---|---|
 | Tableau + pagination | `components.js` → `boardTable`, `pagination` |
+| Derniers chronos | `components.js` → `recentLapsPanel` ; API `GET …/recent-laps` |
 | Toolbar simus | `components.js` → `simToolbarStrip` |
-| Actions admin « … » | `board_manage.js` → menu position fixe (anti-clipping) |
-| Live SSE | `state.js` → `subscribeChanges` → `loadBoard()` |
+| Actions admin « … » | `board_manage.js` → `actionMenu` (fixe, opaque, exclusif) |
+| Live SSE | `state.js` → `subscribeChanges` → `loadBoard()` + `loadRecent()` |
 
 ---
 
@@ -80,3 +81,14 @@ static/js/
 - Stockés SQLite : table `contests` clé `(simulator_id, id)`
 - Affichage web : **uniquement** via `/sim/{id}?contest=…` — pas d’agrégation inter-simus pour les concours
 - API : `GET /api/v1/sims/{id}/contests`, `GET …/contests/{cid}`, leaderboard avec `contest_id`
+
+---
+
+## API — derniers chronos
+
+| Endpoint | Paramètres | Réponse |
+|---|---|---|
+| `GET /api/v1/sims/{id}/recent-laps` | `limit` (15 déf., max 50), `contest_id` (optionnel) | `{ rows: Lap[] }` triées par `startedAt` DESC, tous circuits |
+| `GET /api/v1/tenants/{id}/recent-laps` | `limit` | Idem, global multi-sims (`simLabel` renseigné) |
+
+Affichage : panneau au-dessus du classement circuit sur `/t/…` et `/sim/…` (`board_page.js`).

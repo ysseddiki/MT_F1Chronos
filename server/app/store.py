@@ -15,6 +15,8 @@ from .online import is_simulator_connected
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+DEFAULT_RECENT_LAPS = 15
+MAX_RECENT_LAPS = 50
 MAX_PLAYER_NAME_LENGTH = 20
 
 TENANT_VISIBILITIES = ("public", "private")
@@ -619,6 +621,72 @@ class ResultsStore:
         entries = [dict(r) for r in rows]
         entries = self._dedupe_best(entries) if best_per_player else entries
         return self._paginate(entries, page, page_size)
+
+    @staticmethod
+    def _normalize_recent_limit(limit: int) -> int:
+        if limit < 1:
+            return DEFAULT_RECENT_LAPS
+        return min(limit, MAX_RECENT_LAPS)
+
+    def _prepare_recent_rows(
+        self,
+        rows: list[Any],
+        sim_labels: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
+        entries: list[dict[str, Any]] = []
+        for row in rows:
+            e = dict(row)
+            e["formatted"] = format_lap(int(e["best_lap_ms"]))
+            if sim_labels is not None:
+                e["sim_label"] = sim_labels.get(e["simulator_id"], "")
+            entries.append(e)
+        return entries
+
+    def recent_laps(
+        self,
+        sim_id: str,
+        contest_id: str | None = None,
+        limit: int = DEFAULT_RECENT_LAPS,
+    ) -> list[dict[str, Any]]:
+        limit = self._normalize_recent_limit(limit)
+        if contest_id:
+            rows = self._conn.execute(
+                f"""SELECT * FROM laps
+                   WHERE simulator_id = ? AND contest_id = ? AND {LAP_VALID_SQL}
+                   ORDER BY started_at DESC LIMIT ?""",
+                (sim_id, contest_id, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                f"""SELECT * FROM laps
+                   WHERE simulator_id = ? AND contest_id IS NULL AND {LAP_VALID_SQL}
+                   ORDER BY started_at DESC LIMIT ?""",
+                (sim_id, limit),
+            ).fetchall()
+        return self._prepare_recent_rows(rows)
+
+    def tenant_recent_laps(
+        self,
+        tenant_id: str,
+        limit: int = DEFAULT_RECENT_LAPS,
+    ) -> list[dict[str, Any]]:
+        limit = self._normalize_recent_limit(limit)
+        sim_ids = self._sim_ids_for_tenant(tenant_id)
+        if not sim_ids:
+            return []
+        labels = {
+            s["id"]: s["label"]
+            for s in self.list_simulators_for_tenant(tenant_id)
+        }
+        placeholders = ",".join("?" * len(sim_ids))
+        rows = self._conn.execute(
+            f"""SELECT * FROM laps
+                WHERE simulator_id IN ({placeholders})
+                  AND contest_id IS NULL AND {LAP_VALID_SQL}
+                ORDER BY started_at DESC LIMIT ?""",
+            (*sim_ids, limit),
+        ).fetchall()
+        return self._prepare_recent_rows(rows, labels)
 
     def get_lap(self, sim_id: str, entry_id: str) -> dict[str, Any] | None:
         row = self._conn.execute(

@@ -15,8 +15,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import db, deps
 from .admin_api import router as admin_router
 from .security import SecurityHeadersMiddleware
-from .serializers import board_out, contest_out, sim_out, tenant_out, track_out, user_out
-from .store import DEFAULT_PAGE_SIZE
+from .serializers import board_out, contest_out, lap_out, sim_out, tenant_out, track_out, user_out
+from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS
 
 BASE = deps.BASE
 STATIC_DIR = BASE / "static"
@@ -382,6 +382,31 @@ def get_sim_leaderboard(
         sim_id, track_id, contest_id, best_per_player=best, page=page, page_size=page_size
     )
     return {"ok": True, **board_out(board)}
+
+
+@app.get("/api/v1/sims/{sim_id}/recent-laps")
+def get_sim_recent_laps(
+    request: Request,
+    sim_id: str,
+    limit: int = DEFAULT_RECENT_LAPS,
+    contest_id: str | None = None,
+):
+    user = deps.current_user(request)
+    deps.sim_or_404(sim_id, user)
+    rows = deps.store().recent_laps(sim_id, contest_id, limit)
+    return {"ok": True, "rows": [lap_out(r) for r in rows]}
+
+
+@app.get("/api/v1/tenants/{tenant_id}/recent-laps")
+def get_tenant_recent_laps(
+    request: Request,
+    tenant_id: str,
+    limit: int = DEFAULT_RECENT_LAPS,
+):
+    user = deps.current_user(request)
+    tenant = deps.tenant_or_404(tenant_id, user)
+    rows = deps.store().tenant_recent_laps(tenant["id"], limit)
+    return {"ok": True, "rows": [lap_out(r) for r in rows]}
 
 
 @app.get("/api/v1/sims/{sim_id}/contests")

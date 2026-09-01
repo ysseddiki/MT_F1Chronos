@@ -88,5 +88,10 @@ export async function simView(container, [simId], query) {
             if (contest) qs.set('contest_id', contest.id);
             return get(`/api/v1/sims/${simId}/leaderboard?${qs}`);
         },
+        fetchRecent: (limit) => {
+            const qs = new URLSearchParams({ limit: String(limit) });
+            if (contest) qs.set('contest_id', contest.id);
+            return get(`/api/v1/sims/${simId}/recent-laps?${qs}`);
+        },
     });
 }

@@ -263,6 +263,45 @@ def test_leaderboard_best_per_player_default(client):
     assert body["rows"][0]["bestLapMs"] == 80000
 
 
+def test_recent_laps_over_api(client):
+    _setup_admin(client)
+    _, sim, token = _make_tenant_with_sim(client)
+    client.post(
+        "/api/v1/sync",
+        headers={"X-Results-Token": token},
+        json={
+            "simulatorId": "cli",
+            "global": {
+                "tracks": [{
+                    "trackId": 1,
+                    "trackName": "Melbourne",
+                    "entries": [
+                        {"id": "old", "name": "Ada", "bestLapMs": 81000, "startedAt": "2026-01-01T00:00:00"},
+                        {"id": "new", "name": "Bob", "bestLapMs": 82000, "startedAt": "2026-01-05T00:00:00"},
+                    ],
+                }],
+            },
+        },
+    )
+    anon = TestClient(client.app)
+    r = anon.get(f"/api/v1/sims/{sim['id']}/recent-laps?limit=1")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["rows"]) == 1
+    assert body["rows"][0]["id"] == "new"
+    assert body["rows"][0]["startedAt"] == "2026-01-05T00:00:00"
+
+
+def test_tenant_recent_laps_over_api(client):
+    _setup_admin(client)
+    tenant, sim, token = _make_tenant_with_sim(client)
+    _sync_laps(client, token, count=2)
+    anon = TestClient(client.app)
+    r = anon.get(f"/api/v1/tenants/{tenant['id']}/recent-laps")
+    assert r.status_code == 200
+    assert len(r.json()["rows"]) == 2
+
+
 def test_tenant_resolved_by_slug(client):
     _setup_admin(client)
     tenant, sim, token = _make_tenant_with_sim(client, label="Sim Racing DC")

@@ -37,7 +37,7 @@ def lap_out(e: dict) -> dict:
         "name": (e.get("name") or "").strip() or "—",
         "bestLapMs": e["best_lap_ms"],
         "formatted": e["formatted"],
-        "rank": e["rank"],
+        "rank": e.get("rank", 0),
         "startedAt": e.get("started_at"),
         "trackId": e.get("track_id"),
         "trackName": e.get("track_name") or "",

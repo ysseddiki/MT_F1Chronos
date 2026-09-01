@@ -6,7 +6,7 @@
 | **Version** | `v1` |
 | **Produit** | F1 Chronos (`MT_F1Chronos`) |
 | **Statut** | `baseline` (état actuel du code) |
-| **Date** | 2026-08-31 |
+| **Date** | 2026-09-01 |
 | **Portée** | Domaine Core + orchestration App + serveur de résultats (`server/`) |
 | **Source de vérité** | Code sous `src/`, `server/` et `tests/` |
 
@@ -391,7 +391,8 @@ API web (JSON, camelCase) :
 |---|---|---|
 | `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si HTTPS actif — voir `RESULTS_TLS_MODE`) |
 | `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
-| `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent **uniquement le tableau** via `loadBoard()` (debounce 1,5 s, anti-réponse obsolète `loadGen`) — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
+| `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | filtré par visibilité | Derniers chronos enregistrés (`started_at` DESC, `limit` 15/défaut, 50 max ; tous circuits ; option `contest_id` côté simu) |
+| `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent le tableau principal (`loadBoard()`) **et** le panneau « Derniers chronos » (`loadRecent()`) — debounce 1,5 s, anti-réponse obsolète `loadGen` / `recentGen` — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
 | `PATCH /api/v1/profile/sim-pseudo`, `POST /api/v1/sims/{id}/apply-my-pseudo` | rôle `simracer` | Profil pseudo simulateur + application live (`setPlayerName` job, pseudo du profil uniquement) |
 
 | `/api/v1/admin/*` | rôle `admin` | CRUD tenants/sims/users, gestion chronos, jobs, réglages |
@@ -426,9 +427,10 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | Sélecteur circuit | `trackSelect` ; défaut = circuit en piste ou premier disponible ; query `?track=` |
 | Mode affichage | Segmented « Meilleur / joueur » (`best=true`, défaut) vs « Tous les tours » (`?best=false`) |
 | Toolbar simu | `simToolbarStrip` : lien vers `/sim/{id}`, présence, pseudo session/profil, badge « En piste ici » si le simu est sur le **circuit affiché** |
+| Derniers chronos | `recentLapsPanel` : 15 entrées max, tous circuits, tri `startedAt` DESC ; colonnes Enregistré · Pilote · Circuit · Temps · (Simu si tenant) ; refresh live via `loadRecent()` |
 | Tableau | `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance ligne = `sim_pseudo` du profil connecté |
-| Actions admin | Colonne « … » (`board_manage.js`) : renommer chrono, renommer partout, supprimer → job + `loadBoard()` ; menu en **position fixe** (évite clipping `overflow` tableau) |
-| Live | `subscribeChanges` (SSE) + repli 60 s ; `loadBoard()` partiel (pas de re-render page entière) |
+| Actions admin | Colonne « … » (`board_manage.js`) : renommer chrono, renommer partout, supprimer → job + refresh ; menu **opaque** (`--card`), position **fixe** (évite clipping `overflow` tableau) ; **un seul menu ouvert** à la fois (singleton `actionMenu`) |
+| Live | `subscribeChanges` (SSE) + repli 60 s ; `loadBoard()` + `loadRecent()` partiels (pas de re-render page entière) |
 
 **SPA — routes** (détail : [`specs/server/spa-routes.md`](../server/spa-routes.md)) :
 
@@ -644,7 +646,7 @@ Variables : [`specs/server/env.md`](../server/env.md). Reprise machine : [`specs
 | Caddy TLS | `server/caddy/*.Caddyfile`, `scripts/{init-env,validate-results-env,up-results}.sh` |
 | OpenSpec | `specs/{onboarding,README}.md`, `specs/system/`, `specs/server/`, `specs/archives/` |
 | Tests overlay | `tests/MT_F1Chronos.Tests/` |
-| Tests serveur | `server/tests/` (61 tests) |
+| Tests serveur | `server/tests/` (65 tests) |
 
 ---
 
