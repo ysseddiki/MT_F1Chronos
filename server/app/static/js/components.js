@@ -435,7 +435,9 @@ export function boardTable(rows, { showSim = false, manage = null, highlightName
 
 /** Derniers chronos enregistrés (tous circuits), triés par horodatage décroissant. */
 export function recentLapsPanel(rows, { showSim = false, manage = null, highlightName = null } = {}) {
-    if (!rows?.length) return null;
+    if (!rows?.length) {
+        return h('p', { class: 'lede' }, 'Aucun chrono enregistré pour l’instant.');
+    }
     const highlight = (highlightName || '').trim();
     const isMe = (name) => highlight
         && (name || '').trim().toLowerCase() === highlight.toLowerCase();
@@ -464,11 +466,8 @@ export function recentLapsPanel(rows, { showSim = false, manage = null, highligh
         }),
     );
 
-    return h('section', { class: 'recent-laps panel' },
-        h('h2', { class: 'recent-laps-title' }, 'Derniers chronos enregistrés'),
-        h('div', { class: 'board-wrap recent-laps-wrap' },
-            h('table', { class: 'board recent-laps-table' }, thead, body),
-        ),
+    return h('div', { class: 'board-wrap recent-laps-wrap' },
+        h('table', { class: 'board recent-laps-table' }, thead, body),
     );
 }
 

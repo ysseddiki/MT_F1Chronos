@@ -391,7 +391,7 @@ def get_sim_recent_laps(
     limit: int = DEFAULT_RECENT_LAPS,
     contest_id: str | None = None,
 ):
-    user = deps.current_user(request)
+    user = deps.require_admin(request)
     deps.sim_or_404(sim_id, user)
     rows = deps.store().recent_laps(sim_id, contest_id, limit)
     return {"ok": True, "rows": [lap_out(r) for r in rows]}
@@ -403,7 +403,7 @@ def get_tenant_recent_laps(
     tenant_id: str,
     limit: int = DEFAULT_RECENT_LAPS,
 ):
-    user = deps.current_user(request)
+    user = deps.require_admin(request)
     tenant = deps.tenant_or_404(tenant_id, user)
     rows = deps.store().tenant_recent_laps(tenant["id"], limit)
     return {"ok": True, "rows": [lap_out(r) for r in rows]}

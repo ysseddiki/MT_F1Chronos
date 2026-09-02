@@ -285,6 +285,9 @@ def test_recent_laps_over_api(client):
     )
     anon = TestClient(client.app)
     r = anon.get(f"/api/v1/sims/{sim['id']}/recent-laps?limit=1")
+    assert r.status_code == 401
+
+    r = client.get(f"/api/v1/sims/{sim['id']}/recent-laps?limit=1")
     assert r.status_code == 200
     body = r.json()
     assert len(body["rows"]) == 1
@@ -298,6 +301,9 @@ def test_tenant_recent_laps_over_api(client):
     _sync_laps(client, token, count=2)
     anon = TestClient(client.app)
     r = anon.get(f"/api/v1/tenants/{tenant['id']}/recent-laps")
+    assert r.status_code == 401
+
+    r = client.get(f"/api/v1/tenants/{tenant['id']}/recent-laps")
     assert r.status_code == 200
     assert len(r.json()["rows"]) == 2
 

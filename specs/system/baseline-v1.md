@@ -391,7 +391,7 @@ API web (JSON, camelCase) :
 |---|---|---|
 | `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si HTTPS actif — voir `RESULTS_TLS_MODE`) |
 | `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
-| `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | filtré par visibilité | Derniers chronos enregistrés (`started_at` DESC, `limit` 15/défaut, 50 max ; tous circuits ; option `contest_id` côté simu) |
+| `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Derniers chronos enregistrés (`started_at` DESC, `limit` 15/défaut, 50 max ; tous circuits ; option `contest_id` côté simu) |
 | `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent le tableau principal (`loadBoard()`) **et** le panneau « Derniers chronos » (`loadRecent()`) — debounce 1,5 s, anti-réponse obsolète `loadGen` / `recentGen` — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
 | `PATCH /api/v1/profile/sim-pseudo`, `POST /api/v1/sims/{id}/apply-my-pseudo` | rôle `simracer` | Profil pseudo simulateur + application live (`setPlayerName` job, pseudo du profil uniquement) |
 
@@ -427,8 +427,8 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | Sélecteur circuit | `trackSelect` ; défaut = circuit en piste ou premier disponible ; query `?track=` |
 | Mode affichage | Segmented « Meilleur / joueur » (`best=true`, défaut) vs « Tous les tours » (`?best=false`) |
 | Toolbar simu | `simToolbarStrip` : lien vers `/sim/{id}`, présence, pseudo session/profil, badge « En piste ici » si le simu est sur le **circuit affiché** |
-| Derniers chronos | `recentLapsPanel` : 15 entrées max, tous circuits, tri `startedAt` DESC ; colonnes Enregistré · Pilote · Circuit · Temps · (Simu si tenant) ; refresh live via `loadRecent()` |
-| Tableau | `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance ligne = `sim_pseudo` du profil connecté |
+| Derniers chronos | Onglet **admin uniquement** (`?view=recent`) : `recentLapsPanel`, 15 entrées max, tous circuits, tri `startedAt` DESC ; API `GET …/recent-laps` → 403 hors admin |
+| Tableau | Onglet **Classement** : `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance ligne = `sim_pseudo` du profil connecté |
 | Actions admin | Colonne « … » (`board_manage.js`) : renommer chrono, renommer partout, supprimer → job + refresh ; menu **opaque** (`--card`), position **fixe** (évite clipping `overflow` tableau) ; **un seul menu ouvert** à la fois (singleton `actionMenu`) |
 | Live | `subscribeChanges` (SSE) + repli 60 s ; `loadBoard()` + `loadRecent()` partiels (pas de re-render page entière) |
 

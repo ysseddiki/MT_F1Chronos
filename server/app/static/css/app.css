@@ -499,18 +499,9 @@ a.card:hover {
 .action-menu-item.danger { color: #f87171; }
 .action-menu-item.danger:hover { background: rgba(239, 68, 68, 0.12); }
 
-.recent-laps {
-    margin-bottom: 16px;
-}
-.recent-laps-title {
-    margin: 0 0 10px;
-    font-size: 0.85rem;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted);
-}
-.recent-laps-wrap { margin-top: 0; }
+.board-view-tabs { margin-bottom: 12px; }
+.board-view-slot { margin-top: 4px; }
+.board-recent-lede { margin: 0 0 14px; }
 .recent-laps-table .recent-when {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;

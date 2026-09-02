@@ -37,7 +37,8 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 
 | Query | Effet |
 |---|---|
-| `?track=` | Circuit affiché |
+| `?track=` | Circuit affiché (onglet Classement) |
+| `?view=recent` | Onglet **Derniers chronos** (admin uniquement ; défaut : Classement) |
 | `?best=false` | Tous les tours (défaut : meilleur / joueur) |
 | `?page=` | Pagination (20 lignes) |
 
@@ -86,9 +87,9 @@ static/js/
 
 ## API — derniers chronos
 
-| Endpoint | Paramètres | Réponse |
-|---|---|---|
-| `GET /api/v1/sims/{id}/recent-laps` | `limit` (15 déf., max 50), `contest_id` (optionnel) | `{ rows: Lap[] }` triées par `startedAt` DESC, tous circuits |
-| `GET /api/v1/tenants/{id}/recent-laps` | `limit` | Idem, global multi-sims (`simLabel` renseigné) |
+| Endpoint | Paramètres | Accès | Réponse |
+|---|---|---|---|
+| `GET /api/v1/sims/{id}/recent-laps` | `limit` (15 déf., max 50), `contest_id` (optionnel) | **admin** | `{ rows: Lap[] }` triées par `startedAt` DESC, tous circuits |
+| `GET /api/v1/tenants/{id}/recent-laps` | `limit` | **admin** | Idem, global multi-sims (`simLabel` renseigné) |
 
-Affichage : panneau au-dessus du classement circuit sur `/t/…` et `/sim/…` (`board_page.js`).
+Affichage : onglet **Derniers chronos** sur `/t/…` et `/sim/…` (`?view=recent`, visible seulement si connecté en admin).

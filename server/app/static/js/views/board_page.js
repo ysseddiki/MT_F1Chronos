@@ -1,5 +1,5 @@
-// Moteur commun des pages de classement : sélecteur circuit, switch best/all,
-// tableau paginé (20/page), mises à jour live via SSE (repli 60 s).
+// Moteur commun des pages de classement : onglets Classement / Derniers chronos,
+// sélecteur circuit, switch best/all, tableau paginé (20/page), live SSE (repli 60 s).
 
 import { h, clear } from '../dom.js';
 import { segmented, trackSelect, boardTable, recentLapsPanel, pagination, banner, simToolbarStrip } from '../components.js';
@@ -12,10 +12,15 @@ const LIVE_DEBOUNCE_MS = 1500;
 const RECENT_LAPS_LIMIT = 15;
 
 export function renderBoardPage(container, query, ctx) {
-    // ctx: { head, tracks, focusTrackId, liveTrackId, showSim, sims, defaultSimId, contestId, fetchBoard }
+    // ctx: { head, tracks, focusTrackId, liveTrackId, showSim, sims, defaultSimId, contestId, fetchBoard, fetchRecent }
     clear(container);
 
-    // Meilleur par pilote par défaut ; ?best=false pour tous les tours
+    if (query.get('view') === 'recent' && !isAdmin()) {
+        setQuery({ view: null });
+        return;
+    }
+
+    const view = isAdmin() && query.get('view') === 'recent' ? 'recent' : 'leaderboard';
     const best = query.get('best') !== 'false';
     const page = Math.max(1, Number(query.get('page')) || 1);
     const trackId = pickTrack(query, ctx.tracks, ctx.focusTrackId);
@@ -28,28 +33,31 @@ export function renderBoardPage(container, query, ctx) {
         return;
     }
 
-    container.append(
-        trackSelect(ctx.tracks, trackId, (id) => setQuery({ track: id, page: null }), { liveTrackId }),
-        h('div', { class: 'toolbar' },
-            segmented(
-                [
-                    { value: 'best', label: 'Meilleur / joueur' },
-                    { value: 'all', label: 'Tous les tours' },
-                ],
-                best ? 'best' : 'all',
-                (value) => setQuery({ best: value === 'all' ? 'false' : null, page: null }),
+    if (isAdmin()) {
+        container.append(
+            h('div', { class: 'toolbar board-view-tabs' },
+                segmented(
+                    [
+                        { value: 'leaderboard', label: 'Classement' },
+                        { value: 'recent', label: 'Derniers chronos' },
+                    ],
+                    view,
+                    (value) => setQuery({
+                        view: value === 'recent' ? 'recent' : null,
+                        page: null,
+                    }),
+                ),
             ),
-        ),
-    );
+        );
+    }
 
-    const simStrip = simToolbarStrip(ctx.sims, { liveTrackId: trackId });
+    const simStrip = simToolbarStrip(ctx.sims, {
+        liveTrackId: view === 'leaderboard' ? trackId : liveTrackId,
+    });
     if (simStrip) container.append(simStrip);
 
-    const recentSlot = h('div', { class: 'recent-laps-slot' });
-    container.append(recentSlot);
-
-    const slot = h('div', {}, h('p', { class: 'loading' }, 'Chargement du classement…'));
-    container.append(slot);
+    const contentSlot = h('div', { class: 'board-view-slot' });
+    container.append(contentSlot);
 
     const trackName = ctx.tracks.find((t) => t.trackId === trackId)?.trackName || '';
 
@@ -66,36 +74,64 @@ export function renderBoardPage(container, query, ctx) {
             : null;
     }
 
+    function renderLeaderboardChrome() {
+        return h('div', { class: 'board-leaderboard-view' },
+            trackSelect(ctx.tracks, trackId, (id) => setQuery({ track: id, page: null }), { liveTrackId }),
+            h('div', { class: 'toolbar' },
+                segmented(
+                    [
+                        { value: 'best', label: 'Meilleur / joueur' },
+                        { value: 'all', label: 'Tous les tours' },
+                    ],
+                    best ? 'best' : 'all',
+                    (value) => setQuery({ best: value === 'all' ? 'false' : null, page: null }),
+                ),
+            ),
+            h('div', { class: 'board-data-slot' }, h('p', { class: 'loading' }, 'Chargement du classement…')),
+        );
+    }
+
+    function renderRecentChrome() {
+        return h('div', { class: 'board-recent-view' },
+            h('p', { class: 'lede board-recent-lede' },
+                'Les 15 derniers tours enregistrés, tous circuits confondus.'),
+            h('div', { class: 'board-data-slot' }, h('p', { class: 'loading' }, 'Chargement des chronos…')),
+        );
+    }
+
+    clear(contentSlot);
+    contentSlot.append(view === 'recent' ? renderRecentChrome() : renderLeaderboardChrome());
+    const dataSlot = contentSlot.querySelector('.board-data-slot');
+
     async function loadRecent() {
-        if (!ctx.fetchRecent) {
-            clear(recentSlot);
-            return;
-        }
+        if (!ctx.fetchRecent || view !== 'recent') return;
         const gen = ++recentGen;
         try {
             const data = await ctx.fetchRecent(RECENT_LAPS_LIMIT);
             if (gen !== recentGen) return;
-            clear(recentSlot);
-            const refreshAll = () => { loadBoard(); loadRecent(); };
-            recentSlot.append(recentLapsPanel(data.rows || [], {
+            clear(dataSlot);
+            const refreshRecent = () => loadRecent();
+            dataSlot.append(recentLapsPanel(data.rows || [], {
                 showSim: ctx.showSim,
                 highlightName: mySimulatorPseudo() || null,
-                manage: buildManage(refreshAll),
+                manage: buildManage(refreshRecent),
             }));
-        } catch {
+        } catch (err) {
             if (gen !== recentGen) return;
-            clear(recentSlot);
+            clear(dataSlot);
+            dataSlot.append(banner(err.message || 'Erreur de chargement.', 'error'));
         }
     }
 
     async function loadBoard() {
+        if (view !== 'leaderboard') return;
         const gen = ++loadGen;
         try {
             const board = await ctx.fetchBoard(trackId, best, page);
             if (gen !== loadGen) return;
-            clear(slot);
+            clear(dataSlot);
             const refreshBoard = () => loadBoard();
-            slot.append(
+            dataSlot.append(
                 boardTable(board.rows, {
                     showSim: ctx.showSim,
                     highlightName: mySimulatorPseudo() || null,
@@ -105,19 +141,18 @@ export function renderBoardPage(container, query, ctx) {
             );
         } catch (err) {
             if (gen !== loadGen) return;
-            clear(slot);
-            slot.append(banner(err.message || 'Erreur de chargement.', 'error'));
+            clear(dataSlot);
+            dataSlot.append(banner(err.message || 'Erreur de chargement.', 'error'));
         }
     }
 
-    loadBoard();
-    loadRecent();
+    if (view === 'recent') loadRecent();
+    else loadBoard();
 
     const reload = () => {
-        if (!document.hidden) {
-            loadBoard();
-            loadRecent();
-        }
+        if (document.hidden) return;
+        if (view === 'recent') loadRecent();
+        else loadBoard();
     };
     let lastLiveEvent = 0;
     const unsubscribe = subscribeChanges(() => {
@@ -135,7 +170,10 @@ export function renderBoardPage(container, query, ctx) {
         document.removeEventListener('visibilitychange', onVisible);
     });
 
-    document.title = `${trackName ? `${trackName} — ` : ''}F1 Chronos — Résultats`;
+    const titleSuffix = view === 'recent'
+        ? 'Derniers chronos'
+        : (trackName || 'Classement');
+    document.title = `${titleSuffix} — F1 Chronos — Résultats`;
 }
 
 function pickTrack(query, tracks, focusTrackId) {
