@@ -424,9 +424,9 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 
 | Élément | Comportement |
 |---|---|
-| Sélecteur circuit | `trackSelect` ; défaut = circuit en piste ou premier disponible ; query `?track=` |
+| Sélecteur circuit | `trackSelect` ; défaut = circuit en piste ou premier disponible ; query `?track=` ; bouton **Circuit en direct** si le simu signale un circuit connu |
 | Mode affichage | Segmented « Meilleur / joueur » (`best=true`, défaut) vs « Tous les tours » (`?best=false`) |
-| Toolbar simu | `simToolbarStrip` : lien vers `/sim/{id}`, présence, pseudo session/profil, badge « En piste ici » si le simu est sur le **circuit affiché** |
+| Toolbar simu | `simToolbarStrip` : 2 tuiles (simulateur · statut / **pilote en session**) ; pseudo profil via `/profile` uniquement |
 | Derniers chronos | Onglet **admin uniquement** (`?view=recent`) : `recentLapsPanel`, 15 entrées max, tous circuits, tri `startedAt` DESC ; API `GET …/recent-laps` → 403 hors admin |
 | Tableau | Onglet **Classement** : `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance ligne = `sim_pseudo` du profil connecté |
 | Actions admin | Colonne « … » (`board_manage.js`) : renommer chrono, renommer partout, supprimer → job + refresh ; menu **opaque** (`--card`), position **fixe** (évite clipping `overflow` tableau) ; **un seul menu ouvert** à la fois (singleton `actionMenu`) |

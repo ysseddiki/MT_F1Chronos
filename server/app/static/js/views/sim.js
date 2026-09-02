@@ -2,7 +2,7 @@
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { presence, simPseudoControls, contestBoardSelect } from '../components.js';
+import { contestBoardSelect } from '../components.js';
 import { renderBoardPage } from './board_page.js';
 import { tenantPath } from '../paths.js';
 import { setQuery, replace } from '../router.js';
@@ -55,12 +55,6 @@ export async function simView(container, [simId], query) {
                     : null,
                 h('p', { class: 'kicker' }, contest ? 'Concours' : 'Simulateur'),
                 h('h1', {}, contest ? contest.name : sim.label),
-                h('div', { class: 'flex' },
-                    presence(sim),
-                    simPseudoControls(sim)
-                        || (sim.playerName ? h('span', { class: 'muted' }, `· Pilote : ${sim.playerName}`) : null),
-                    sim.currentTrackName ? h('span', { class: 'muted' }, `· En piste : ${sim.currentTrackName}`) : null,
-                ),
             ),
         ),
         boardScope,

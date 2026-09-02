@@ -117,10 +117,10 @@ export function pencilIcon() {
     return span;
 }
 
-export function sessionPseudoEditor(sim) {
+export function sessionPseudoEditButton(sim) {
     if (!isAdmin()) return null;
     return h('button', {
-        class: 'btn-ghost btn-sm',
+        class: 'btn-ghost btn-sm pilot-edit-btn',
         type: 'button',
         title: 'Changer le pseudo de la session en cours sur ce simulateur',
         onclick: async () => {
@@ -137,12 +137,14 @@ export function sessionPseudoEditor(sim) {
                 toast(err.message, 'error');
             }
         },
-    }, `Session : ${sim.playerName || '—'}`, pencilIcon());
+    }, pencilIcon(), ' Modifier');
 }
 
-export function sessionPlayerLabel(sim) {
-    return h('span', { class: 'session-pseudo muted' }, `Session : ${sim.playerName || '—'}`);
+/** @deprecated Utiliser simPilotTile — conservé pour compat tests internes. */
+export function sessionPseudoEditor(sim) {
+    return sessionPseudoEditButton(sim);
 }
+
 
 export function applyMyPseudoButton(sim, pseudo) {
     const name = (pseudo || mySimulatorPseudo()).trim();
@@ -150,7 +152,7 @@ export function applyMyPseudoButton(sim, pseudo) {
     return h('button', {
         class: 'btn-accent btn-sm',
         type: 'button',
-        title: `Remplacer la session en cours par votre pseudo de profil`,
+        title: 'Remplacer la session en cours par votre pseudo de profil',
         onclick: async () => {
             const sessionName = (sim.playerName || '').trim();
             const detail = sessionName && sessionName.toLowerCase() !== name.toLowerCase()
@@ -170,58 +172,56 @@ export function applyMyPseudoButton(sim, pseudo) {
     }, 'Appliquer mon pseudo');
 }
 
-/** Contrôles pseudo session : admin (libre) + SimRacer (profil + appliquer). */
-export function simPseudoControls(sim) {
-    const parts = [];
+function simInfoTile(sim) {
+    return h('div', { class: 'sim-toolbar-tile sim-tile' },
+        h('span', { class: 'sim-toolbar-tile-label' }, 'Simulateur'),
+        h('a', {
+            class: 'sim-toolbar-label',
+            href: `/sim/${sim.id}`,
+            'data-link': true,
+        }, sim.label),
+        presence(sim),
+    );
+}
+
+function simPilotTile(sim) {
+    const playerName = (sim.playerName || '').trim() || '—';
+    const actions = [];
+
     if (isAdmin()) {
-        parts.push(sessionPseudoEditor(sim));
+        actions.push(sessionPseudoEditButton(sim));
     } else if (isSimRacer()) {
-        parts.push(sessionPlayerLabel(sim));
         const pseudo = mySimulatorPseudo();
         if (pseudo) {
-            parts.push(
-                h('a', {
-                    class: 'btn-ghost btn-sm',
-                    href: '/profile',
-                    'data-link': true,
-                    title: 'Modifier votre pseudo de profil (n’affecte pas le simulateur tant que vous n’appliquez pas)',
-                }, `Profil : ${pseudo}`, pencilIcon()),
-                applyMyPseudoButton(sim, pseudo),
-            );
+            actions.push(applyMyPseudoButton(sim, pseudo));
         } else {
-            parts.push(h('a', {
+            actions.push(h('a', {
                 class: 'btn-ghost btn-sm',
                 href: '/profile',
                 'data-link': true,
             }, 'Configurer mon pseudo'));
         }
     }
-    if (!parts.length) return null;
-    return h('span', { class: 'sim-pseudo-controls' }, ...parts);
+
+    return h('div', { class: 'sim-toolbar-tile pilot-tile' },
+        h('span', { class: 'sim-toolbar-tile-label' }, 'Pilote en session'),
+        h('div', { class: 'pilot-tile-body' },
+            h('strong', { class: 'pilot-name' }, playerName),
+            actions.length ? h('div', { class: 'pilot-tile-actions' }, actions) : null,
+        ),
+    );
 }
 
-/** Bandeau simulateur(s) : présence + contrôles pseudo sur la feuille de temps. */
-export function simToolbarStrip(sims, { liveTrackId = null } = {}) {
+/** Bandeau simulateur(s) : tuile simu + tuile pilote en session. */
+export function simToolbarStrip(sims) {
     if (!sims?.length) return null;
     return h('div', { class: 'sim-toolbar panel' },
         h('h2', {}, sims.length > 1 ? 'Simulateurs' : 'Simulateur'),
         h('div', { class: 'sim-toolbar-list' },
-            sims.map((sim) => {
-                const onTrack = liveTrackId != null && sim.currentTrackId === liveTrackId;
-                return h('div', { class: 'sim-toolbar-item' },
-                    h('div', { class: 'sim-toolbar-head' },
-                        h('a', {
-                            class: 'sim-toolbar-label',
-                            href: `/sim/${sim.id}`,
-                            'data-link': true,
-                        }, sim.label),
-                        presence(sim),
-                        onTrack ? h('span', { class: 'badge live-track' }, 'En piste ici') : null,
-                    ),
-                    simPseudoControls(sim)
-                        || (sim.playerName ? h('span', { class: 'muted' }, `Session : ${sim.playerName}`) : null),
-                );
-            }),
+            sims.map((sim) => h('div', { class: 'sim-toolbar-item sim-toolbar-split' },
+                simInfoTile(sim),
+                simPilotTile(sim),
+            )),
         ),
     );
 }
@@ -360,34 +360,49 @@ export function segmented(options, current, onChange) {
 
 // ---------- Sélecteur circuit (liste déroulante) ----------
 
-export function trackSelect(tracks, currentId, onChange, { liveTrackId = null } = {}) {
+export function trackSelect(tracks, currentId, onChange, { liveTracks = [] } = {}) {
     const current = tracks.find((t) => t.trackId === currentId);
     const label = (t) => (t.trackName || `Circuit ${t.trackId}`).trim();
+    const liveIds = new Set(liveTracks.map((lt) => lt.trackId));
     const select = h('select', {
         class: 'track-select',
         'aria-label': 'Circuit',
         onchange: (e) => onChange(Number(e.target.value)),
     },
         tracks.map((t) => {
-            const live = liveTrackId != null && t.trackId === liveTrackId;
+            const live = liveIds.has(t.trackId);
             const count = t.scoreCount != null ? ` (${t.scoreCount})` : '';
             return h('option', {
                 value: String(t.trackId),
                 selected: t.trackId === currentId,
-            }, `${label(t)}${count}${live ? ' · en piste' : ''}`);
+            }, `${label(t)}${count}${live ? ' · en direct' : ''}`);
         }),
     );
+
+    const liveButtons = liveTracks.length
+        ? h('div', { class: 'track-live-actions' },
+            liveTracks.map((lt) => {
+                const active = lt.trackId === currentId;
+                const simHint = lt.simLabel ? ` · ${lt.simLabel}` : '';
+                return h('button', {
+                    type: 'button',
+                    class: `btn-sm track-live-btn${active ? ' active' : ''}`,
+                    title: `Afficher le classement du circuit en cours${simHint}`,
+                    onclick: () => { if (!active) onChange(lt.trackId); },
+                },
+                    h('span', { class: 'track-live-kicker' }, 'Circuit en direct'),
+                    h('strong', {}, lt.trackName),
+                );
+            }),
+        )
+        : null;
+
     return h('div', { class: 'track-picker' },
         h('label', { class: 'track-picker-label' }, 'Circuit'),
         select,
-        current
-            ? h('p', { class: 'track-picker-current' },
-                'Affiché : ',
-                h('strong', {}, label(current)),
-                liveTrackId != null && current.trackId === liveTrackId
-                    ? h('span', { class: 'badge live-track' }, 'En piste')
-                    : null,
-            )
+        liveButtons,
+        current && liveIds.has(current.trackId)
+            ? h('span', { class: 'badge live-track track-live-badge' }, 'En direct')
             : null,
     );
 }

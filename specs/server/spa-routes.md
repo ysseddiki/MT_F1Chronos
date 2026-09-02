@@ -46,7 +46,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 |---|---|
 | Tableau + pagination | `components.js` → `boardTable`, `pagination` |
 | Derniers chronos | `components.js` → `recentLapsPanel` ; API `GET …/recent-laps` |
-| Toolbar simus | `components.js` → `simToolbarStrip` |
+| Toolbar simus | `components.js` → `simToolbarStrip` (tuiles simu + pilote session) |
 | Actions admin « … » | `board_manage.js` → `actionMenu` (fixe, opaque, exclusif) |
 | Live SSE | `state.js` → `subscribeChanges` → `loadBoard()` + `loadRecent()` |
 

@@ -24,7 +24,6 @@ export function renderBoardPage(container, query, ctx) {
     const best = query.get('best') !== 'false';
     const page = Math.max(1, Number(query.get('page')) || 1);
     const trackId = pickTrack(query, ctx.tracks, ctx.focusTrackId);
-    const liveTrackId = ctx.liveTrackId ?? ctx.focusTrackId ?? null;
 
     container.append(ctx.head);
 
@@ -51,9 +50,7 @@ export function renderBoardPage(container, query, ctx) {
         );
     }
 
-    const simStrip = simToolbarStrip(ctx.sims, {
-        liveTrackId: view === 'leaderboard' ? trackId : liveTrackId,
-    });
+    const simStrip = simToolbarStrip(ctx.sims);
     if (simStrip) container.append(simStrip);
 
     const contentSlot = h('div', { class: 'board-view-slot' });
@@ -76,7 +73,12 @@ export function renderBoardPage(container, query, ctx) {
 
     function renderLeaderboardChrome() {
         return h('div', { class: 'board-leaderboard-view' },
-            trackSelect(ctx.tracks, trackId, (id) => setQuery({ track: id, page: null }), { liveTrackId }),
+            trackSelect(
+                ctx.tracks,
+                trackId,
+                (id) => setQuery({ track: id, page: null }),
+                { liveTracks: collectLiveTracks(ctx.sims, ctx.tracks) },
+            ),
             h('div', { class: 'toolbar' },
                 segmented(
                     [
@@ -181,4 +183,23 @@ function pickTrack(query, tracks, focusTrackId) {
     if (tracks.some((t) => t.trackId === fromQuery)) return fromQuery;
     if (focusTrackId != null && tracks.some((t) => t.trackId === focusTrackId)) return focusTrackId;
     return tracks[0].trackId;
+}
+
+/** Circuits en cours sur les simulateurs affichés (dédoublonnés par trackId). */
+function collectLiveTracks(sims, tracks) {
+    const known = new Set((tracks || []).map((t) => t.trackId));
+    const seen = new Set();
+    const out = [];
+    for (const sim of sims || []) {
+        if (sim.currentTrackId == null || sim.currentTrackId < 0) continue;
+        if (!known.has(sim.currentTrackId)) continue;
+        if (seen.has(sim.currentTrackId)) continue;
+        seen.add(sim.currentTrackId);
+        out.push({
+            trackId: sim.currentTrackId,
+            trackName: (sim.currentTrackName || '').trim() || `Circuit ${sim.currentTrackId}`,
+            simLabel: sims.length > 1 ? sim.label : null,
+        });
+    }
+    return out;
 }

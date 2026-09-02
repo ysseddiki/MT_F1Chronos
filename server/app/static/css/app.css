@@ -324,6 +324,44 @@ a.card:hover {
     color: var(--muted);
     flex: 1 1 100%;
 }
+.track-live-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+.track-live-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--orange);
+    background: var(--orange-soft);
+    color: var(--orange);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.track-live-btn:hover,
+.track-live-btn.active {
+    background: var(--orange);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(249, 115, 22, 0.35);
+}
+.track-live-kicker {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+.track-live-badge { margin-left: auto; }
 .badge.live-track {
     margin-left: 8px;
     background: var(--orange-soft);
@@ -407,6 +445,71 @@ a.card:hover {
     gap: 12px;
 }
 
+.sim-toolbar-item.sim-toolbar-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 0;
+    border-bottom: 0;
+}
+
+.sim-toolbar-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg-soft);
+}
+
+.sim-toolbar-tile-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.pilot-tile {
+    border-color: rgba(249, 115, 22, 0.28);
+    background: rgba(249, 115, 22, 0.07);
+}
+
+.pilot-tile-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 12px;
+}
+
+.pilot-name {
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+}
+
+.pilot-tile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pilot-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+@media (max-width: 720px) {
+    .sim-toolbar-item.sim-toolbar-split {
+        grid-template-columns: 1fr;
+    }
+}
+
 .sim-toolbar-item {
     display: flex;
     flex-wrap: wrap;
@@ -417,14 +520,6 @@ a.card:hover {
 }
 .sim-toolbar-item:last-child { border-bottom: 0; padding-bottom: 0; }
 .sim-toolbar-item:first-child { padding-top: 0; }
-
-.sim-toolbar-head {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    min-width: 160px;
-}
 
 .sim-toolbar-label {
     font-weight: 700;
