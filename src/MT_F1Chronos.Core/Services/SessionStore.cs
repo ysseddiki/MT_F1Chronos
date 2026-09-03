@@ -21,7 +21,7 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
     private readonly string _dataDirectory;
     private readonly string _sessionsDirectory;
     private readonly string _legacyFilePath;
-    private readonly TrackScoreBoard _board = new();
+    private readonly TrackScoreBoard _board;
     private readonly object _flushGate = new();
     private readonly DeferredFlush _flush;
 
@@ -30,13 +30,14 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
     private uint? _liveLastLapMs;
     private bool _disposed;
 
-    public SessionStore(string? dataDirectory = null)
+    public SessionStore(string? dataDirectory = null, TimeProvider? time = null)
     {
         _dataDirectory = dataDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "MT_F1Chronos");
         _sessionsDirectory = Path.Combine(_dataDirectory, "sessions");
         _legacyFilePath = Path.Combine(_dataDirectory, "sessions.json");
+        _board = new TrackScoreBoard(time);
         _flush = new DeferredFlush(SaveDelay, FlushDirty);
         _board.BecameDirty += () => _flush.Schedule();
     }

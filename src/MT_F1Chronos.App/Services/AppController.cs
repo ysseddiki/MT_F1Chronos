@@ -25,6 +25,11 @@ public sealed class AppController : IDisposable
     private DebugWindow? _debugWindow;
     private bool _promptOpen;
 
+    // Coalesce live-chrono UDP→UI; events (lap/session/track) always dispatch.
+    private readonly object _liveChronoGate = new();
+    private uint? _pendingLiveLapMs;
+    private bool _liveChronoDispatchQueued;
+
     public AppController()
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
@@ -562,47 +567,78 @@ public sealed class AppController : IDisposable
 
     private void OnTelemetryUpdate(TelemetryUpdate update)
     {
-        _dispatcher.BeginInvoke(() =>
+        if (update.LapCompleted ||
+            update.TrackChanged ||
+            update.SessionStarted ||
+            update.SessionEnded)
         {
-            if (update.SessionEnded)
-                _store.CloseActiveSession();
+            _dispatcher.BeginInvoke(() => ProcessTelemetryEvent(update));
+            return;
+        }
 
-            if (update.TrackChanged ||
-                (update.State.TrackId >= 0 && !_store.HasLiveSession))
-                TryEnsureTrackContext(update.State);
-
-            if (update.LapCompleted &&
-                update.CompletedLapMs is > 0 &&
-                update.State.TrackId >= 0 &&
-                !string.IsNullOrWhiteSpace(_settings.PlayerName))
-            {
-                _store.RecordCompletedLap(
-                    _settings.PlayerName,
-                    update.State.TrackId,
-                    update.State.TrackName,
-                    update.CompletedLapMs.Value);
-
-                _contests.RecordCompletedLap(
-                    _settings.PlayerName,
-                    update.State.TrackId,
-                    update.State.TrackName,
-                    update.CompletedLapMs.Value);
-
-                RefreshOverlay();
-                _resultsSync.RequestSync();
-                _overlay?.FlashLapRecorded(_settings.PlayerName);
+        // Live chrono only — coalesce to the latest packet (archi #3).
+        lock (_liveChronoGate)
+        {
+            _pendingLiveLapMs = update.State.CurrentLapTimeMs;
+            if (_liveChronoDispatchQueued)
                 return;
-            }
+            _liveChronoDispatchQueued = true;
+        }
 
-            // Live chrono follows UDP packets; leaderboard / headers stay on events + 250 ms timer.
-            _overlay?.UpdateLiveChrono(update.State.CurrentLapTimeMs);
+        _dispatcher.BeginInvoke(FlushLiveChrono);
+    }
 
-            if (update.LapCompleted ||
-                update.TrackChanged ||
-                update.SessionStarted ||
-                update.SessionEnded)
-                RefreshOverlay();
-        });
+    private void FlushLiveChrono()
+    {
+        uint? ms;
+        lock (_liveChronoGate)
+        {
+            ms = _pendingLiveLapMs;
+            _liveChronoDispatchQueued = false;
+        }
+
+        _overlay?.UpdateLiveChrono(ms);
+    }
+
+    private void ProcessTelemetryEvent(TelemetryUpdate update)
+    {
+        if (update.SessionEnded)
+            _store.CloseActiveSession();
+
+        if (update.TrackChanged ||
+            (update.State.TrackId >= 0 && !_store.HasLiveSession))
+            TryEnsureTrackContext(update.State);
+
+        if (update.LapCompleted &&
+            update.CompletedLapMs is > 0 &&
+            update.State.TrackId >= 0 &&
+            !string.IsNullOrWhiteSpace(_settings.PlayerName))
+        {
+            _store.RecordCompletedLap(
+                _settings.PlayerName,
+                update.State.TrackId,
+                update.State.TrackName,
+                update.CompletedLapMs.Value);
+
+            _contests.RecordCompletedLap(
+                _settings.PlayerName,
+                update.State.TrackId,
+                update.State.TrackName,
+                update.CompletedLapMs.Value);
+
+            RefreshOverlay();
+            _resultsSync.RequestSync();
+            _overlay?.FlashLapRecorded(_settings.PlayerName);
+            return;
+        }
+
+        _overlay?.UpdateLiveChrono(update.State.CurrentLapTimeMs);
+
+        if (update.LapCompleted ||
+            update.TrackChanged ||
+            update.SessionStarted ||
+            update.SessionEnded)
+            RefreshOverlay();
     }
 
     private void TryEnsureTrackContext(TelemetryState state)

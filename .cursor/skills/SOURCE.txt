@@ -1,0 +1,4 @@
+Source: https://github.com/dotnet/skills
+Local checkout: ~/.cursor/plugins/local/dotnet-agent-skills
+Project-scoped so Cursor Agent discovers them from .cursor/skills/.
+Refresh: rsync plugins/{dotnet,dotnet-test,dotnet-msbuild,dotnet-advanced,dotnet-nuget,dotnet-diag,dotnet-upgrade}/skills

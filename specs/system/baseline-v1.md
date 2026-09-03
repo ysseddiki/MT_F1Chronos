@@ -6,7 +6,7 @@
 | **Version** | `v1` |
 | **Produit** | F1 Chronos (`MT_F1Chronos`) |
 | **Statut** | `baseline` (état actuel du code) |
-| **Date** | 2026-09-01 |
+| **Date** | 2026-09-03 |
 | **Portée** | Domaine Core + orchestration App + serveur de résultats (`server/`) |
 | **Source de vérité** | Code sous `src/`, `server/` et `tests/` |
 
@@ -521,7 +521,8 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 ### BR-13 — UI refresh
 
 - Timer overlay **250 ms** pour snapshot / classements
-- Chrono live mis à jour aussi à chaque paquet UDP pertinent
+- Chrono live : paquets UDP coalescés vers le Dispatcher (dernier `CurrentLapTimeMs` gagne) — un seul `BeginInvoke` en file pour le live
+- Événements métier (`LapCompleted`, changement circuit / session) : `BeginInvoke` immédiat, **non** coalescés (pas de perte de tour)
 - Top-most réaffirmé périodiquement (~2 s)
 
 ### BR-14 — Serveur de résultats optionnel
@@ -611,8 +612,13 @@ Variables : [`specs/server/env.md`](../server/env.md). Reprise machine : [`specs
 
 - Pas d’authentification cloud / comptes distants (les comptes du serveur Results restent locaux à ce serveur)
 - Pas d’installeur MSI documenté ici (script `build.ps1` + raccourcis)
-- Throttle UDP→UI (#3 architecture) **non implémenté** dans cette baseline
 - Le serveur Results reste une archive optionnelle : les tenants y sont des regroupements logiques de simus, pas une isolation multi-clients chiffrée
+
+### 4.8 Seams récents (tests / perf)
+
+- UDP→UI : coalesce du **chrono live** ; `LapCompleted` / session / circuit non coalescés (BR-13)
+- `TimeProvider` injectable sur `TrackScoreBoard`, `SessionStore`, `ContestStore` (défaut `System`)
+- Props partagés : `Directory.Build.props` (Nullable, ImplicitUsings, Version produit)
 
 ---
 

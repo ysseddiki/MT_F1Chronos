@@ -16,6 +16,7 @@ public sealed class ContestStore : IDisposable
 
     private readonly string _contestsDirectory;
     private readonly string _indexPath;
+    private readonly TimeProvider _time;
     private readonly List<Contest> _contests = [];
     private readonly Dictionary<string, TrackScoreBoard> _boards = new(StringComparer.Ordinal);
     private readonly object _gate = new();
@@ -23,8 +24,9 @@ public sealed class ContestStore : IDisposable
     private bool _indexDirty;
     private bool _disposed;
 
-    public ContestStore(string? dataDirectory = null)
+    public ContestStore(string? dataDirectory = null, TimeProvider? time = null)
     {
+        _time = time ?? TimeProvider.System;
         var root = dataDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "MT_F1Chronos");
@@ -62,7 +64,7 @@ public sealed class ContestStore : IDisposable
 
             foreach (var contest in _contests)
             {
-                var board = new TrackScoreBoard();
+                var board = new TrackScoreBoard(_time);
                 board.BecameDirty += OnBoardBecameDirty;
                 board.LoadFromDirectory(ContestDirectory(contest.Id));
                 _boards[contest.Id] = board;
@@ -90,18 +92,19 @@ public sealed class ContestStore : IDisposable
         if (string.IsNullOrWhiteSpace(trimmed))
             throw new ArgumentException("Contest name is required.", nameof(name));
 
+        var now = _time.GetUtcNow().UtcDateTime;
         var contest = new Contest
         {
             Name = trimmed,
             Status = startImmediately ? ContestStatus.Active : ContestStatus.Draft,
-            CreatedAt = DateTime.UtcNow,
-            StartedAt = startImmediately ? DateTime.UtcNow : null,
+            CreatedAt = now,
+            StartedAt = startImmediately ? now : null,
         };
 
         lock (_gate)
         {
             _contests.Add(contest);
-            var board = new TrackScoreBoard();
+            var board = new TrackScoreBoard(_time);
             board.BecameDirty += OnBoardBecameDirty;
             _boards[contest.Id] = board;
             Directory.CreateDirectory(ContestDirectory(contest.Id));
@@ -125,7 +128,7 @@ public sealed class ContestStore : IDisposable
                 return true;
 
             contest.Status = ContestStatus.Active;
-            contest.StartedAt ??= DateTime.UtcNow;
+            contest.StartedAt ??= _time.GetUtcNow().UtcDateTime;
             contest.StoppedAt = null;
             _indexDirty = true;
             _flush.Schedule();
@@ -147,7 +150,7 @@ public sealed class ContestStore : IDisposable
                 return true;
 
             contest.Status = ContestStatus.Stopped;
-            contest.StoppedAt = DateTime.UtcNow;
+            contest.StoppedAt = _time.GetUtcNow().UtcDateTime;
             _indexDirty = true;
             _flush.Schedule();
         }

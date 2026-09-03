@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Product version for Core / App; Tests leave Version unset. -->
+    <Version Condition="'$(MSBuildProjectName)' != 'MT_F1Chronos.Tests'">1.1.0</Version>
+  </PropertyGroup>
+</Project>

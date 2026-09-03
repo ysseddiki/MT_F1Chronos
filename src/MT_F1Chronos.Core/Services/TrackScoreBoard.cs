@@ -17,12 +17,18 @@ public sealed class TrackScoreBoard
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    private readonly TimeProvider _time;
     private readonly Dictionary<int, List<ChronoEntry>> _byTrack = new();
     private readonly HashSet<int> _dirty = new();
     private readonly HashSet<string> _deletedIds = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
     public event Action? BecameDirty;
+
+    public TrackScoreBoard(TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+    }
 
     public void LoadFromDirectory(string directory)
     {
@@ -64,14 +70,15 @@ public sealed class TrackScoreBoard
                 _byTrack[trackId] = list;
             }
 
+            var now = _time.GetUtcNow().UtcDateTime;
             list.Add(new ChronoEntry
             {
                 Name = playerName.Trim(),
                 TrackId = trackId,
                 TrackName = trackName,
                 BestLapMs = lapMs,
-                StartedAt = DateTime.UtcNow,
-                EndedAt = DateTime.UtcNow,
+                StartedAt = now,
+                EndedAt = now,
             });
 
             if (list.Count > MaxEntriesPerTrack)

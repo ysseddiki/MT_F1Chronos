@@ -2,10 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <RootNamespace>MT_F1Chronos.Core</RootNamespace>
-    <Version>1.1.0</Version>
   </PropertyGroup>
 
 </Project>

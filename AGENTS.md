@@ -71,10 +71,15 @@ Avant de modifier l’enregistrement de tours ou l’overlay, relire **§3** de 
 - Noms de types / API en **anglais** ; chaînes UI en **français**
 - Persistance JSON camelCase, écriture atomique (`*.tmp` → move)
 - Flush différé stores : **~2 s** (`DeferredFlush` / `TrackScoreBoard`)
+- Horodatage scores : `TimeProvider` (injectable pour tests)
 - Styles ComboBox sombres partagés : `App/Themes/DarkControls.xaml`
 - Lignes de classement Scores / Manage : `LeaderboardRowUi`
 - Ne pas ajouter de NuGet dans Core/App sans besoin réel
 - Pas d’over-engineering : pas de nouveaux frameworks, VMs uniquement si ça clarifie
+
+## Skills Cursor (.NET)
+
+Skills officielles [dotnet/skills](https://github.com/dotnet/skills) au **niveau projet** : `.cursor/skills/` (C#, xUnit, MSBuild, NuGet, diag, upgrade). Cursor les découvre automatiquement pour ce dépôt. Non copiés (hors stack) : MAUI, Blazor, ASP.NET Core, EF, .NET 11.
 
 ## Build & tests
 
@@ -107,7 +112,6 @@ sudo ./scripts/setup-podman-ports.sh  # rootless Podman : ports 80/443
 
 ## Hors scope (sauf demande explicite)
 
-- Throttle / coalesce UDP→UI (point architecture #3, différé)
 - Installateur / auto-update
 - Backend cloud / multi-utilisateur distant (agrégation multi-simu = v2 ; le VPS Results est une archive optionnelle)
 - Refactors massifs hors de la tâche demandée
