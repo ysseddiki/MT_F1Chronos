@@ -262,21 +262,29 @@ def test_tenant_recent_laps_includes_sim_label(tmp_path: Path):
             },
         )
     recent = store.tenant_recent_laps(tenant["id"])
-    assert [r["name"] for r in recent] == ["Bob", "Ada"]
-    labels = {r["simulator_id"]: r["sim_label"] for r in recent}
+    assert [r["name"] for r in recent["rows"]] == ["Bob", "Ada"]
+    labels = {r["simulator_id"]: r["sim_label"] for r in recent["rows"]}
     assert labels[sim_a["id"]] == "Box A"
     assert labels[sim_b["id"]] == "Box B"
+    assert recent["total"] == 2
+    assert recent["page"] == 1
 
     only_ada = store.tenant_recent_laps(tenant["id"], pilot="Ada")
-    assert [r["name"] for r in only_ada] == ["Ada"]
+    assert [r["name"] for r in only_ada["rows"]] == ["Ada"]
 
     by_sim = store.tenant_recent_laps(tenant["id"], simulator_id=sim_b["id"])
-    assert [r["name"] for r in by_sim] == ["Bob"]
+    assert [r["name"] for r in by_sim["rows"]] == ["Bob"]
 
-    by_time_asc = store.tenant_recent_laps(
+    by_name = store.tenant_recent_laps(
         tenant["id"], sort="name", order="asc"
     )
-    assert [r["name"] for r in by_time_asc] == ["Ada", "Bob"]
+    assert [r["name"] for r in by_name["rows"]] == ["Ada", "Bob"]
+
+    page2 = store.tenant_recent_laps(tenant["id"], page=1, page_size=1)
+    assert page2["total"] == 2
+    assert page2["pages"] == 2
+    assert len(page2["rows"]) == 1
+    assert page2["rows"][0]["name"] == "Bob"
 
 
 def test_enqueue_set_player_name(tmp_path: Path):

@@ -27,7 +27,7 @@ from .serializers import (
     user_out,
     versus_out,
 )
-from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS, DEFAULT_LIST_CHRONOS, make_all_tenant
+from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS, DEFAULT_LIST_CHRONOS_PAGE_SIZE, make_all_tenant
 
 BASE = deps.BASE
 STATIC_DIR = BASE / "static"
@@ -512,7 +512,9 @@ def get_sim_recent_laps(
 def get_tenant_recent_laps(
     request: Request,
     tenant_id: str,
-    limit: int = DEFAULT_LIST_CHRONOS,
+    page: int = 1,
+    page_size: int = DEFAULT_LIST_CHRONOS_PAGE_SIZE,
+    limit: int | None = None,
     track_id: int | None = None,
     simulator_id: str | None = None,
     org_id: str | None = None,
@@ -523,7 +525,7 @@ def get_tenant_recent_laps(
     user = deps.require_admin(request)
     tenant = deps.tenant_or_404(tenant_id, user)
     scope = deps.scope_tenant_ids(tenant, user)
-    rows = deps.store().tenant_recent_laps(
+    board = deps.store().tenant_recent_laps(
         tenant["id"],
         limit,
         scope,
@@ -533,8 +535,10 @@ def get_tenant_recent_laps(
         pilot=pilot,
         sort=sort,
         order=order,
+        page=page,
+        page_size=page_size,
     )
-    return {"ok": True, "rows": [lap_out(r) for r in rows]}
+    return {"ok": True, **board_out(board)}
 
 
 @app.get("/api/v1/sims/{sim_id}/contests")

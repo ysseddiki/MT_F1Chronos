@@ -17,7 +17,7 @@ DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 DEFAULT_RECENT_LAPS = 15
 MAX_RECENT_LAPS = 200
-DEFAULT_LIST_CHRONOS = 100
+DEFAULT_LIST_CHRONOS_PAGE_SIZE = DEFAULT_PAGE_SIZE
 
 RECENT_SORT_COLUMNS = {
     "started_at": "started_at",
@@ -765,7 +765,7 @@ class ResultsStore:
     def tenant_recent_laps(
         self,
         tenant_id: str,
-        limit: int = DEFAULT_RECENT_LAPS,
+        limit: int | None = None,
         scope_tenant_ids: list[str] | None = None,
         *,
         track_id: int | None = None,
@@ -774,9 +774,16 @@ class ResultsStore:
         pilot: str | None = None,
         sort: str = "started_at",
         order: str = "desc",
-    ) -> list[dict[str, Any]]:
-        """Liste chrono admin : filtres optionnels + tri (défaut = plus récents)."""
-        limit = self._normalize_recent_limit(limit)
+        page: int = 1,
+        page_size: int = DEFAULT_LIST_CHRONOS_PAGE_SIZE,
+    ) -> dict[str, Any]:
+        """Liste chrono admin : filtres + tri + pagination (défaut = plus récents)."""
+        page, page_size = _normalize_page(page, page_size)
+        # Compat : ancien param `limit` = taille de page
+        if limit is not None:
+            page_size = self._normalize_recent_limit(limit)
+            page, page_size = _normalize_page(page, page_size)
+
         sims = self._sims_for_scope(tenant_id, scope_tenant_ids)
         if org_id:
             org_key = (org_id or "").strip()
@@ -788,7 +795,13 @@ class ResultsStore:
             sims = [s for s in sims if s["id"] == sid]
         sim_ids = [s["id"] for s in sims]
         if not sim_ids:
-            return []
+            return {
+                "rows": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "pages": 1,
+            }
 
         labels: dict[str, str] = {}
         aggregate = tenant_id == ALL_TENANT_KEY
@@ -814,37 +827,55 @@ class ResultsStore:
             where.append("name = ? COLLATE NOCASE")
             params.append(pilot_name)
 
-        sort_sql = RECENT_SORT_COLUMNS.get(sort, "started_at")
-        # sim_label n'est pas une colonne SQL — tri après hydrate
-        sort_in_sql = sort != "sim_label"
-        order_sql = "ASC" if (order or "").lower() == "asc" else "DESC"
+        where_sql = " AND ".join(where)
+        total = int(
+            self._conn.execute(
+                f"SELECT COUNT(*) FROM laps WHERE {where_sql}",
+                params,
+            ).fetchone()[0]
+        )
 
-        if sort_in_sql:
+        sort_key = sort if sort in RECENT_SORT_COLUMNS else "started_at"
+        order_sql = "ASC" if (order or "").lower() == "asc" else "DESC"
+        offset = (page - 1) * page_size
+        pages = max(1, -(-total // page_size)) if total else 1
+
+        if sort_key != "sim_label":
+            sort_sql = RECENT_SORT_COLUMNS[sort_key]
             rows = self._conn.execute(
                 f"""SELECT * FROM laps
-                    WHERE {' AND '.join(where)}
+                    WHERE {where_sql}
                     ORDER BY {sort_sql} {order_sql}, started_at DESC
-                    LIMIT ?""",
-                (*params, limit),
+                    LIMIT ? OFFSET ?""",
+                (*params, page_size, offset),
             ).fetchall()
-            return self._prepare_recent_rows(rows, labels)
+            entries = self._prepare_recent_rows(rows, labels)
+        else:
+            # Libellé simu hydraté en Python — charger le filtre puis paginer.
+            rows = self._conn.execute(
+                f"""SELECT * FROM laps
+                    WHERE {where_sql}
+                    ORDER BY started_at DESC""",
+                params,
+            ).fetchall()
+            entries = self._prepare_recent_rows(rows, labels)
+            reverse = order_sql == "DESC"
+            entries.sort(
+                key=lambda e: (
+                    (e.get("sim_label") or "").casefold(),
+                    e.get("started_at") or "",
+                ),
+                reverse=reverse,
+            )
+            entries = entries[offset : offset + page_size]
 
-        # Tri par libellé simu : charger un peu plus large puis couper
-        fetch_limit = min(max(limit * 4, limit), MAX_RECENT_LAPS * 2)
-        rows = self._conn.execute(
-            f"""SELECT * FROM laps
-                WHERE {' AND '.join(where)}
-                ORDER BY started_at DESC
-                LIMIT ?""",
-            (*params, fetch_limit),
-        ).fetchall()
-        entries = self._prepare_recent_rows(rows, labels)
-        reverse = order_sql == "DESC"
-        entries.sort(
-            key=lambda e: ((e.get("sim_label") or "").casefold(), e.get("started_at") or ""),
-            reverse=reverse,
-        )
-        return entries[:limit]
+        return {
+            "rows": entries,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "pages": pages,
+        }
 
     def _tenant_lap_counts_by_player(
         self,

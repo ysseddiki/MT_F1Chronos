@@ -396,7 +396,7 @@ API web (JSON, camelCase) :
 |---|---|---|
 | `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si HTTPS actif — voir `RESULTS_TLS_MODE`) |
 | `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
-| `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Liste chrono (`started_at` DESC par défaut ; tenant : filtres circuit/simu/org/pilote + tri ; limit 100/défaut tenant, 200 max) |
+| `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Liste chrono (tenant : pagination `page`/`page_size`, filtres circuit/simu/org/pilote + tri ; défaut 20/page) |
 | `GET /api/v1/tenants/{id}/championship` | même visibilité classement | Points par place (réglage `points_by_place`) × meilleur tour / pilote / circuit — **serveur web only** |
 | `GET /api/v1/tenants/{id}/linked-pilots`, `…/pilots/{pseudo}` | même visibilité | Profil public par pseudo ; compte lié optionnel (pas d’e-mail) |
 | `POST /api/v1/admin/settings` | admin | `public_access`, `points_by_place` (ex. `25,18,15,12,10,8,6,4,2,1`) |
@@ -436,7 +436,7 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | Mode affichage | Segmented « Meilleur / joueur » (`best=true`, défaut) vs « Tous les tours » (`?best=false`) |
 | Toolbar simu | `simToolbarStrip` : 2 tuiles (simulateur · statut / **pilote en session**) ; pseudo profil via `/profile` ou menu compte |
 | Tableau | **Classement** (topbar) : `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance = `sim_pseudo` |
-| Liste chrono | Page topbar **admin** `/t/…/recent` ; filtres + `recentLapsPanel`, 100 max affichés |
+| Liste chrono | Page topbar **admin** `/t/…/recent` ; filtres + pagination + `recentLapsPanel` |
 | Championnat | Page topbar **Expérience** `/t/…/championship` : points F1-like (meilleur / pilote / circuit, global org) ; barème `points_by_place` en admin Réglages — **web only**, pas l’overlay |
 | Compte | Menu user (topbar) → `/account` (mdp + infos) |
 | Actions admin | Colonne « … » (`board_manage.js`) ; menu opaque, exclusif |

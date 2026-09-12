@@ -306,15 +306,29 @@ def test_tenant_recent_laps_over_api(client):
 
     r = client.get(f"/api/v1/tenants/{tenant['id']}/recent-laps")
     assert r.status_code == 200
-    assert len(r.json()["rows"]) == 2
+    body = r.json()
+    assert len(body["rows"]) == 2
+    assert body["total"] == 2
+    assert body["page"] == 1
+    assert body["pageSize"] >= 1
 
     filtered = client.get(
         f"/api/v1/tenants/{tenant['id']}/recent-laps",
-        params={"pilot": "Pilote 0", "sort": "best_lap_ms", "order": "asc", "limit": 50},
+        params={"pilot": "Pilote 0", "sort": "best_lap_ms", "order": "asc", "page_size": 50},
     )
     assert filtered.status_code == 200
     names = [row["name"] for row in filtered.json()["rows"]]
     assert names == ["Pilote 0"]
+
+    page1 = client.get(
+        f"/api/v1/tenants/{tenant['id']}/recent-laps",
+        params={"page": 1, "page_size": 1},
+    )
+    assert page1.status_code == 200
+    p1 = page1.json()
+    assert p1["total"] == 2
+    assert p1["pages"] == 2
+    assert len(p1["rows"]) == 1
 
 
 def test_tenant_resolved_by_slug(client):

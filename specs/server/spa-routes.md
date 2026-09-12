@@ -114,7 +114,7 @@ static/js/
 | Endpoint | Accès | Notes |
 |---|---|---|
 | `GET /api/v1/sims/{id}/recent-laps` | **admin** | limit 15 déf., max 200 ; `contest_id` optionnel |
-| `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Liste chrono : `limit` 100 déf. / 200 max ; filtres `track_id`, `simulator_id`, `org_id`, `pilot` ; tri `sort`=`started_at\|best_lap_ms\|name\|track_name\|sim_label` + `order`=`asc\|desc` |
+| `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Liste chrono : `page` / `page_size` (20 déf., 100 max) ; filtres `track_id`, `simulator_id`, `org_id`, `pilot` ; tri `sort` + `order` |
 
 ---
 

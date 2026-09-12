@@ -1,15 +1,15 @@
-// Liste chrono — panneau admin filtrable (circuit, simu, org, pilote, tri).
+// Liste chrono — panneau admin filtrable (circuit, simu, org, pilote, tri) + pagination.
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
-import { recentLapsPanel, banner, visibilityBadge, simToolbarStrip } from '../components.js';
+import { recentLapsPanel, banner, visibilityBadge, simToolbarStrip, pagination } from '../components.js';
 import { onCleanup, replace } from '../router.js';
 import { subscribeChanges, mySimulatorPseudo, isAdmin } from '../state.js';
 import { boardRowManageMenu } from '../board_manage.js';
 import { tenantPath, makePilotHref, isAllTenant } from '../paths.js';
 import { FALLBACK_REFRESH_MS } from './board_page.js';
 
-const LIST_LIMIT = 100;
+const PAGE_SIZE = 20;
 const LIVE_DEBOUNCE_MS = 1500;
 
 const SORT_OPTIONS = [
@@ -72,12 +72,12 @@ export async function recentView(container, [tenantKey]) {
         orgId: '',
         pilot: '',
         sortKey: 'started_at:desc',
+        page: 1,
     };
 
     const filterSlot = h('div', { class: 'chrono-filters panel' });
-    const metaSlot = h('p', { class: 'chrono-list-meta muted' });
     const slot = h('div', {}, h('p', { class: 'loading' }, 'Chargement des chronos…'));
-    container.append(filterSlot, metaSlot, slot);
+    container.append(filterSlot, slot);
 
     let tracks = [];
     let pilots = [];
@@ -96,6 +96,11 @@ export async function recentView(container, [tenantKey]) {
         ? uniqueOrgs(sims)
         : [];
 
+    function resetPageAndLoad() {
+        filters.page = 1;
+        load();
+    }
+
     function renderFilters() {
         clear(filterSlot);
         const controls = [];
@@ -106,7 +111,7 @@ export async function recentView(container, [tenantKey]) {
                 value: String(t.trackId),
                 label: t.trackName || `Circuit ${t.trackId}`,
             })),
-        ], (v) => { filters.trackId = v; load(); }));
+        ], (v) => { filters.trackId = v; resetPageAndLoad(); }));
 
         if (orgs.length > 1) {
             controls.push(filterSelect('Organisation', filters.orgId, [
@@ -119,7 +124,7 @@ export async function recentView(container, [tenantKey]) {
                     if (sim && v && sim.tenantId !== v) filters.simulatorId = '';
                 }
                 renderFilters();
-                load();
+                resetPageAndLoad();
             }));
         }
 
@@ -131,17 +136,17 @@ export async function recentView(container, [tenantKey]) {
                     value: s.id,
                     label: aggregate && s.tenantLabel ? `${s.tenantLabel} · ${s.label}` : s.label,
                 })),
-            ], (v) => { filters.simulatorId = v; load(); }));
+            ], (v) => { filters.simulatorId = v; resetPageAndLoad(); }));
         }
 
         controls.push(filterSelect('Pilote', filters.pilot, [
             { value: '', label: 'Tous les pilotes' },
             ...pilots.map((name) => ({ value: name, label: name })),
-        ], (v) => { filters.pilot = v; load(); }));
+        ], (v) => { filters.pilot = v; resetPageAndLoad(); }));
 
         controls.push(filterSelect('Tri', filters.sortKey,
             SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-            (v) => { filters.sortKey = v; load(); }));
+            (v) => { filters.sortKey = v; resetPageAndLoad(); }));
 
         filterSlot.append(
             h('div', { class: 'chrono-filters-row' }, ...controls),
@@ -153,7 +158,12 @@ export async function recentView(container, [tenantKey]) {
     async function load() {
         const g = ++gen;
         const [sort, order] = (filters.sortKey || 'started_at:desc').split(':');
-        const qs = new URLSearchParams({ limit: String(LIST_LIMIT), sort, order });
+        const qs = new URLSearchParams({
+            page: String(filters.page),
+            page_size: String(PAGE_SIZE),
+            sort,
+            order,
+        });
         if (filters.trackId) qs.set('track_id', filters.trackId);
         if (filters.simulatorId) qs.set('simulator_id', filters.simulatorId);
         if (filters.orgId) qs.set('org_id', filters.orgId);
@@ -162,25 +172,35 @@ export async function recentView(container, [tenantKey]) {
         try {
             const res = await get(`/api/v1/tenants/${tenant.id}/recent-laps?${qs}`);
             if (g !== gen) return;
-            const rows = res.rows || [];
+            const board = {
+                rows: res.rows || [],
+                total: res.total ?? (res.rows || []).length,
+                page: res.page || filters.page,
+                pageSize: res.pageSize || PAGE_SIZE,
+                pages: res.pages || 1,
+            };
+            filters.page = board.page;
             clear(slot);
-            metaSlot.textContent = rows.length
-                ? `${rows.length} chrono${rows.length > 1 ? 's' : ''} affiché${rows.length > 1 ? 's' : ''}${rows.length >= LIST_LIMIT ? ` (max. ${LIST_LIMIT})` : ''}`
-                : '';
-            slot.append(recentLapsPanel(rows, {
-                showSim,
-                highlightName: mySimulatorPseudo() || null,
-                pilotHref,
-                manage: (row) => boardRowManageMenu(row, {
-                    simId: row.simId,
-                    contestId: null,
-                    onDone: load,
+            slot.append(
+                recentLapsPanel(board.rows, {
+                    showSim,
+                    highlightName: mySimulatorPseudo() || null,
+                    pilotHref,
+                    manage: (row) => boardRowManageMenu(row, {
+                        simId: row.simId,
+                        contestId: null,
+                        onDone: load,
+                    }),
                 }),
-            }));
+                pagination(board, (p) => {
+                    filters.page = p;
+                    load();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }),
+            );
         } catch (err) {
             if (g !== gen) return;
             clear(slot);
-            metaSlot.textContent = '';
             slot.append(banner(err.message || 'Erreur de chargement.', 'error'));
         }
     }

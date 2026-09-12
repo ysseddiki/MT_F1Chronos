@@ -185,13 +185,11 @@ function summaryBlock(summary, nameA, nameB) {
         bits.push(h('p', { class: 'versus-relative' }, verdict));
         if (summary.avgGapMs != null) {
             bits.push(h('p', { class: 'versus-gap' },
-                `Écart moyen : ${fmtSignedGap(summary.avgGapMs)} s `,
-                '(A − B, négatif = A plus rapide).'));
+                `Écart moyen : ${fmtSignedGap(summary.avgGapMs)} s`));
         }
         if (summary.levelIndex != null) {
             bits.push(h('p', { class: 'versus-level hint' },
-                `Indice de niveau (A vs B) : ${summary.levelIndex} `,
-                '(100 = égalité, >100 = A plus rapide).'));
+                `Indice de niveau : ${summary.levelIndex}`));
         }
     } else {
         bits.push(h('p', { class: 'versus-relative muted' }, 'Pas assez de circuits communs pour un écart relatif.'));
@@ -244,9 +242,6 @@ function tracksTable(tenant, nameA, nameB, tracks) {
 
     return h('div', { class: 'board-wrap' },
         h('table', { class: 'board versus-table' }, thead, body),
-        h('p', { class: 'hint versus-legend' },
-            'Écart / relatif : valeur de A par rapport à B (négatif = A plus rapide). ',
-            'Ex. −0,30 % → A est 0,30 % plus rapide que B sur ce circuit.'),
     );
 }
 
