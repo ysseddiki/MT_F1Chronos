@@ -139,7 +139,9 @@ function renderVersus(tenant, data) {
 
     wrap.append(
         h('section', { class: 'versus-section' },
-            h('h2', {}, 'Par circuit'),
+            h('div', { class: 'versus-section-head' },
+                h('h2', {}, 'Par circuit'),
+            ),
             tracksTable(tenant, a.name, b.name, tracks),
         ),
     );
@@ -204,45 +206,100 @@ function tracksTable(tenant, nameA, nameB, tracks) {
         return h('p', { class: 'lede' }, 'Aucun circuit à afficher.');
     }
 
-    const thead = h('thead', {}, h('tr', {},
-        h('th', {}, 'Circuit'),
-        h('th', { class: 'time' }, nameA),
-        h('th', { class: 'time' }, nameB),
-        h('th', {}, 'Écart'),
-        h('th', {}, 'Relatif'),
-        h('th', {}, 'Avantage'),
-    ));
+    const commonCount = tracks.filter((t) => t.aMs != null && t.bMs != null).length;
+    let commonOnly = true;
 
-    const body = h('tbody', {},
-        tracks.map((t) => {
-            const gapLabel = t.gapMs == null ? '—' : fmtSignedGap(t.gapMs);
-            const relLabel = t.relativePct == null
-                ? '—'
-                : `${t.relativePct > 0 ? '+' : ''}${t.relativePct.toFixed(2)} %`;
-            let winnerLabel = '—';
-            let winnerClass = '';
-            if (t.winner === 'a') { winnerLabel = nameA; winnerClass = 'winner-a'; }
-            else if (t.winner === 'b') { winnerLabel = nameB; winnerClass = 'winner-b'; }
-            else if (t.winner === 'tie') { winnerLabel = 'Égalité'; winnerClass = 'winner-tie'; }
-            else if (t.aMs != null && t.bMs == null) { winnerLabel = `${nameA} seul`; }
-            else if (t.bMs != null && t.aMs == null) { winnerLabel = `${nameB} seul`; }
+    const toolbar = h('div', { class: 'versus-table-toolbar' });
+    const tableSlot = h('div', { class: 'board-wrap' });
 
-            return h('tr', { class: winnerClass },
-                h('td', {}, t.trackName),
-                h('td', { class: `time${t.winner === 'a' ? ' best' : ''}` },
-                    t.aFormatted || (t.aMs != null ? fmtLap(t.aMs) : '—')),
-                h('td', { class: `time${t.winner === 'b' ? ' best' : ''}` },
-                    t.bFormatted || (t.bMs != null ? fmtLap(t.bMs) : '—')),
-                h('td', { class: 'gap' }, gapLabel),
-                h('td', { class: 'versus-rel' }, relLabel),
-                h('td', {}, winnerLabel),
-            );
-        }),
+    const checkbox = h('input', {
+        type: 'checkbox',
+        checked: commonOnly ? 'checked' : null,
+        onchange: () => {
+            commonOnly = checkbox.checked;
+            renderTable();
+        },
+    });
+    // Propriété native après insert (attribut HTML « checked » via h)
+    queueMicrotask(() => { checkbox.checked = commonOnly; });
+
+    toolbar.append(
+        h('label', { class: 'versus-filter' },
+            checkbox,
+            h('span', {}, 'Circuits en commun uniquement'),
+        ),
+        h('span', { class: 'versus-filter-meta muted' }, ''),
     );
 
-    return h('div', { class: 'board-wrap' },
-        h('table', { class: 'board versus-table' }, thead, body),
-    );
+    function renderTable() {
+        const visible = commonOnly
+            ? tracks.filter((t) => t.aMs != null && t.bMs != null)
+            : tracks;
+        const meta = toolbar.querySelector('.versus-filter-meta');
+        if (meta) {
+            meta.textContent = commonOnly
+                ? `${visible.length} / ${tracks.length} circuit${tracks.length > 1 ? 's' : ''}`
+                : `${visible.length} circuit${visible.length > 1 ? 's' : ''}`;
+        }
+
+        clear(tableSlot);
+        if (!visible.length) {
+            tableSlot.append(h('p', { class: 'lede' },
+                commonOnly
+                    ? 'Aucun circuit où les deux pilotes ont un chrono.'
+                    : 'Aucun circuit à afficher.'));
+            return;
+        }
+
+        const thead = h('thead', {}, h('tr', {},
+            h('th', {}, 'Circuit'),
+            h('th', { class: 'time' }, nameA),
+            h('th', { class: 'time' }, nameB),
+            h('th', {}, 'Écart'),
+            h('th', {}, 'Relatif'),
+            h('th', {}, 'Avantage'),
+        ));
+
+        const body = h('tbody', {},
+            visible.map((t) => {
+                const gapLabel = t.gapMs == null ? '—' : fmtSignedGap(t.gapMs);
+                const relLabel = t.relativePct == null
+                    ? '—'
+                    : `${t.relativePct > 0 ? '+' : ''}${t.relativePct.toFixed(2)} %`;
+                let winnerLabel = '—';
+                let winnerClass = '';
+                if (t.winner === 'a') { winnerLabel = nameA; winnerClass = 'winner-a'; }
+                else if (t.winner === 'b') { winnerLabel = nameB; winnerClass = 'winner-b'; }
+                else if (t.winner === 'tie') { winnerLabel = 'Égalité'; winnerClass = 'winner-tie'; }
+                else if (t.aMs != null && t.bMs == null) { winnerLabel = `${nameA} seul`; }
+                else if (t.bMs != null && t.aMs == null) { winnerLabel = `${nameB} seul`; }
+
+                return h('tr', { class: winnerClass },
+                    h('td', {}, t.trackName),
+                    h('td', { class: `time${t.winner === 'a' ? ' best' : ''}` },
+                        t.aFormatted || (t.aMs != null ? fmtLap(t.aMs) : '—')),
+                    h('td', { class: `time${t.winner === 'b' ? ' best' : ''}` },
+                        t.bFormatted || (t.bMs != null ? fmtLap(t.bMs) : '—')),
+                    h('td', { class: 'gap' }, gapLabel),
+                    h('td', { class: 'versus-rel' }, relLabel),
+                    h('td', {}, winnerLabel),
+                );
+            }),
+        );
+
+        tableSlot.append(h('table', { class: 'board versus-table' }, thead, body));
+    }
+
+    renderTable();
+
+    // Si aucun circuit commun, décocher pour montrer le reste
+    if (!commonCount) {
+        commonOnly = false;
+        checkbox.checked = false;
+        renderTable();
+    }
+
+    return h('div', { class: 'versus-tracks' }, toolbar, tableSlot);
 }
 
 function fmtSignedGap(ms) {
