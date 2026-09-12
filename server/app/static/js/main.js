@@ -8,7 +8,10 @@ import { tenantView } from './views/tenant.js';
 import { simView } from './views/sim.js';
 import { loginView } from './views/login.js';
 import { profileView } from './views/profile.js';
+import { accountView } from './views/account.js';
 import { adminView } from './views/admin.js';
+import { recentView, recentIndexView } from './views/recent.js';
+import { championshipView, championshipIndexView } from './views/championship.js';
 
 // Compatibilité anciennes URLs (signets)
 route(/^\/admin\/login$/, () => replace('/login'));
@@ -21,10 +24,15 @@ route(/^\/contests$/, (_c, _p, q) => {
 route(/^\/sim\/([\w-]+)\/contests\/([\w-]+)$/, (_c, [sid, cid]) => replace(`/sim/${sid}?contest=${cid}`));
 
 route(/^\/$/, (c) => homeView(c));
+route(/^\/t\/([\w-]+)\/recent$/, (c, p) => recentView(c, p));
+route(/^\/t\/([\w-]+)\/championship$/, (c, p) => championshipView(c, p));
 route(/^\/t\/([\w-]+)$/, (c, p, q) => tenantView(c, p, q));
 route(/^\/sim\/([\w-]+)$/, (c, p, q) => simView(c, p, q));
+route(/^\/recent$/, (c) => recentIndexView(c));
+route(/^\/championship$/, (c) => championshipIndexView(c));
 route(/^\/login$/, (c) => loginView(c));
 route(/^\/profile$/, (c) => profileView(c));
+route(/^\/account$/, (c) => accountView(c));
 route(/^\/admin$/, (c, p, q) => adminView(c, p, q));
 
 setTopbarRenderer(renderTopbar);
@@ -34,7 +42,8 @@ setTopbarRenderer(renderTopbar);
         await loadMe();
         if (state.me?.profileRequired
             && location.pathname !== '/profile'
-            && location.pathname !== '/login') {
+            && location.pathname !== '/login'
+            && location.pathname !== '/account') {
             replace('/profile');
         }
     } catch {

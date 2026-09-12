@@ -15,7 +15,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import db, deps
 from .admin_api import router as admin_router
 from .security import SecurityHeadersMiddleware
-from .serializers import board_out, contest_out, lap_out, sim_out, tenant_out, track_out, user_out
+from .serializers import board_out, championship_out, contest_out, lap_out, sim_out, tenant_out, track_out, user_out
 from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS
 
 BASE = deps.BASE
@@ -330,6 +330,15 @@ def get_tenant_leaderboard(
         tenant["id"], track_id, best_per_player=best, page=page, page_size=page_size
     )
     return {"ok": True, **board_out(board)}
+
+
+@app.get("/api/v1/tenants/{tenant_id}/championship")
+def get_tenant_championship(request: Request, tenant_id: str):
+    """Classement à points F1-like (serveur web uniquement) — global organisation."""
+    user = deps.current_user(request)
+    tenant = deps.tenant_or_404(tenant_id, user)
+    data = deps.store().tenant_championship(tenant["id"])
+    return {"ok": True, **championship_out(data)}
 
 
 @app.get("/api/v1/sims")

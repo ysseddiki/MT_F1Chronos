@@ -1,9 +1,8 @@
-// Admin — onglet Réglages : accès public + changement de mot de passe.
+// Admin — onglet Réglages : accès public + barème championnat.
 
 import { h, clear } from '../dom.js';
 import { get, post } from '../api.js';
 import { state } from '../state.js';
-import { replace } from '../router.js';
 import { toast } from '../components.js';
 
 export async function settingsTab(slot) {
@@ -41,38 +40,47 @@ export async function settingsTab(slot) {
         ),
     ));
 
-    // --- Mot de passe du compte courant ---
-    const current = h('input', { type: 'password', autocomplete: 'current-password', required: true });
-    const next = h('input', { type: 'password', autocomplete: 'new-password', required: true, minlength: '8' });
-    const confirm = h('input', { type: 'password', autocomplete: 'new-password', required: true, minlength: '8' });
+    // --- Barème championnat (web uniquement) ---
+    const pointsInput = h('input', {
+        type: 'text',
+        value: overview.pointsByPlace || '25,18,15,12,10,8,6,4,2,1',
+        placeholder: '25,18,15,12,10,8,6,4,2,1',
+        spellcheck: 'false',
+        autocomplete: 'off',
+    });
 
     slot.append(h('form', {
         class: 'panel',
         onsubmit: async (e) => {
             e.preventDefault();
-            if (next.value !== confirm.value) {
-                toast('La confirmation ne correspond pas.', 'error');
-                return;
-            }
             try {
-                const res = await post('/api/v1/auth/change-password', {
-                    current_password: current.value,
-                    new_password: next.value,
+                const res = await post('/api/v1/admin/settings', {
+                    points_by_place: pointsInput.value,
                 });
-                toast(res.message || 'Mot de passe mis à jour.', 'success');
-                current.value = next.value = confirm.value = '';
+                pointsInput.value = res.pointsByPlace || pointsInput.value;
+                toast('Barème du championnat enregistré.', 'success');
             } catch (err) {
                 toast(err.message, 'error');
             }
         },
     },
-        h('h2', {}, 'Mon mot de passe'),
-        h('p', { class: 'hint' }, 'Le .env ne sème que le tout premier compte. Ensuite, tout se passe ici.'),
-        h('div', { class: 'form-row' },
-            h('div', { class: 'field' }, h('label', {}, 'Mot de passe actuel'), current),
-            h('div', { class: 'field' }, h('label', {}, 'Nouveau (8 min.)'), next),
-            h('div', { class: 'field' }, h('label', {}, 'Confirmation'), confirm),
+        h('h2', {}, 'Championnat — points par place'),
+        h('p', { class: 'hint' },
+            'Système de points style F1, uniquement sur le site de résultats (pas l’overlay). ',
+            'Liste séparée par des virgules : P1, P2, P3… Ajoutez un chiffre pour scorer une place de plus. ',
+            'Exemple : 25,18,15,12,10,8,6,4,2,1 ou 25,18,10,8,6,5,4,3,2,1,1,1,1.'),
+        h('div', { class: 'field' },
+            h('label', {}, 'Points par places'),
+            pointsInput,
         ),
-        h('button', { type: 'submit', class: 'btn-primary' }, 'Changer le mot de passe'),
+        h('button', { type: 'submit', class: 'btn-primary' }, 'Enregistrer le barème'),
+    ));
+
+    slot.append(h('div', { class: 'panel' },
+        h('h2', {}, 'Mon compte'),
+        h('p', { class: 'hint' },
+            'Mot de passe et infos personnelles : menu utilisateur (haut droite) → ',
+            h('a', { href: '/account', 'data-link': true }, 'Mon compte'),
+            '.'),
     ));
 }

@@ -4,7 +4,7 @@ import { h, clear, fmtLap, fmtGap, fmtDateTime } from './dom.js';
 import { state, isAdmin, isAuthenticated, isSimRacer, mySimulatorPseudo, loadTenants } from './state.js';
 import { navigate } from './router.js';
 import { post } from './api.js';
-import { tenantPath, tenantKeyFromPath, findTenantByKey } from './paths.js';
+import { tenantPath, tenantKeyFromPath, findTenantByKey, championshipPath, recentPath } from './paths.js';
 
 // ---------- Topbar ----------
 
@@ -18,17 +18,34 @@ export async function renderTopbar(activePath) {
         h('small', {}, 'résultats'),
     );
 
-    const nav = h('nav', {},
-        navLink('/', 'Résultats', activePath === '/' || activePath.startsWith('/t/') || activePath.startsWith('/sim/')),
-        isAdmin() ? navLink('/admin', 'Administration', activePath.startsWith('/admin')) : null,
-    );
-
-    const right = h('div', { class: 'topbar-right' });
-
     let tenants = [];
     try { tenants = await loadTenants(); } catch { /* hors-ligne : switcher vide */ }
     const pathKey = tenantKeyFromPath(activePath);
     const currentTenant = findTenantByKey(tenants, pathKey);
+
+    const classementActive = activePath === '/'
+        || (activePath.startsWith('/t/') && !activePath.includes('/recent') && !activePath.includes('/championship'))
+        || activePath.startsWith('/sim/');
+    const recentActive = activePath.includes('/recent') || activePath === '/recent';
+    const champActive = activePath.includes('/championship') || activePath === '/championship';
+
+    const classementHref = currentTenant ? tenantPath(currentTenant) : '/';
+    const recentHref = currentTenant ? recentPath(currentTenant) : '/recent';
+    const champHref = currentTenant ? championshipPath(currentTenant) : '/championship';
+
+    const navItems = [
+        navLink(classementHref, 'Classement', classementActive),
+        navLink(champHref, 'Championnat', champActive),
+    ];
+    if (isAdmin()) {
+        navItems.push(navLink(recentHref, 'Derniers chronos', recentActive));
+        navItems.push(navLink('/admin', 'Administration', activePath.startsWith('/admin')));
+    }
+
+    const nav = h('nav', {}, ...navItems);
+
+    const right = h('div', { class: 'topbar-right' });
+
     if (tenants.length) {
         const select = h('select', {
             'aria-label': 'Choisir une organisation',
@@ -51,31 +68,7 @@ export async function renderTopbar(activePath) {
     }
 
     if (isAuthenticated()) {
-        const user = state.me.user;
-        const roleLabel = user.role === 'admin' ? 'Admin'
-            : user.role === 'simracer' ? 'SimRacer'
-                : 'Visiteur';
-        const authActions = [
-            isSimRacer()
-                ? h('a', { class: 'btn-ghost btn-sm', href: '/profile', 'data-link': true }, 'Profil')
-                : null,
-            h('span', { class: 'user-chip' },
-                h('span', { class: `role ${user.role}` }, roleLabel),
-                user.email,
-            ),
-            h('button', {
-                class: 'btn-ghost btn-sm',
-                onclick: async () => {
-                    await post('/api/v1/auth/logout');
-                    state.me = null;
-                    state.meLoaded = false;
-                    state.tenants = null;
-                    navigate('/');
-                    location.reload();
-                },
-            }, 'Déconnexion'),
-        ].filter(Boolean);
-        right.append(...authActions);
+        right.append(userMenu(activePath));
     } else {
         right.append(h('a', { class: 'btn btn-sm', href: '/login', 'data-link': true }, 'Connexion'));
     }
@@ -85,6 +78,110 @@ export async function renderTopbar(activePath) {
 
 function navLink(href, label, active) {
     return h('a', { class: `nav-link${active ? ' active' : ''}`, href, 'data-link': true }, label);
+}
+
+let openUserMenuClose = null;
+
+function closeAnyUserMenu() {
+    if (openUserMenuClose) {
+        openUserMenuClose();
+        openUserMenuClose = null;
+    }
+}
+
+function userMenu(activePath) {
+    const user = state.me.user;
+    const roleLabel = user.role === 'admin' ? 'Admin'
+        : user.role === 'simracer' ? 'SimRacer'
+            : 'Visiteur';
+
+    const wrap = h('div', { class: 'user-menu' });
+    const btn = h('button', {
+        class: 'user-menu-trigger',
+        type: 'button',
+        'aria-haspopup': 'true',
+        'aria-expanded': 'false',
+        title: 'Compte',
+    },
+        h('span', { class: `role ${user.role}` }, roleLabel),
+        h('span', { class: 'user-menu-email' }, user.email),
+        h('span', { class: 'user-menu-caret', 'aria-hidden': 'true' }, '▾'),
+    );
+
+    const items = [
+        { label: 'Mon compte', href: '/account' },
+    ];
+    if (isSimRacer()) {
+        items.push({ label: 'Pseudo simulateur', href: '/profile' });
+    }
+    if (isAdmin()) {
+        items.push({ label: 'Administration', href: '/admin' });
+    }
+    items.push({
+        label: 'Déconnexion',
+        danger: true,
+        onClick: async () => {
+            await post('/api/v1/auth/logout');
+            state.me = null;
+            state.meLoaded = false;
+            state.tenants = null;
+            navigate('/');
+            location.reload();
+        },
+    });
+
+    const list = h('div', { class: 'user-menu-list', role: 'menu' },
+        items.map((item) => {
+            if (item.href) {
+                return h('a', {
+                    class: `user-menu-item${activePath === item.href || (item.href !== '/' && activePath.startsWith(item.href)) ? ' active' : ''}`,
+                    href: item.href,
+                    'data-link': true,
+                    role: 'menuitem',
+                    onclick: () => closeMenu(),
+                }, item.label);
+            }
+            return h('button', {
+                class: `user-menu-item${item.danger ? ' danger' : ''}`,
+                type: 'button',
+                role: 'menuitem',
+                onclick: (e) => {
+                    e.stopPropagation();
+                    closeMenu();
+                    item.onClick();
+                },
+            }, item.label);
+        }),
+    );
+
+    let onDocClick = null;
+
+    const closeMenu = () => {
+        wrap.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+        if (onDocClick) document.removeEventListener('click', onDocClick);
+        onDocClick = null;
+        if (openUserMenuClose === closeMenu) openUserMenuClose = null;
+    };
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (wrap.classList.contains('open')) {
+            closeMenu();
+            return;
+        }
+        closeAnyUserMenu();
+        wrap.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        openUserMenuClose = closeMenu;
+        onDocClick = (ev) => {
+            if (!wrap.contains(ev.target)) closeMenu();
+        };
+        setTimeout(() => document.addEventListener('click', onDocClick), 0);
+    });
+
+    wrap.append(btn, list);
+    return wrap;
 }
 
 // ---------- Présence (pastille, pas bouton) ----------

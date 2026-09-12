@@ -50,7 +50,5 @@ export async function tenantView(container, [tenantKey], query) {
         showSim: sims.length > 1,
         fetchBoard: (trackId, best, page) =>
             get(`/api/v1/tenants/${tenantId}/leaderboard?track_id=${trackId}&best=${best}&page=${page}`),
-        fetchRecent: (limit) =>
-            get(`/api/v1/tenants/${tenantId}/recent-laps?limit=${limit}`),
     });
 }

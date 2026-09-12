@@ -77,7 +77,8 @@ def test_stream_emits_data_version(client):
 
 
 def test_spa_fallback_serves_index(client):
-    for path in ["/", "/t/quelque-chose", "/admin", "/login"]:
+    for path in ["/", "/t/quelque-chose", "/t/quelque-chose/recent", "/t/quelque-chose/championship",
+                 "/championship", "/recent", "/account", "/admin", "/login"]:
         r = client.get(path)
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
@@ -441,3 +442,44 @@ def test_simracer_cannot_apply_without_pseudo(client):
     sim_client = _login(client, "sim@club.fr", "motdepasse")
     r = sim_client.post(f"/api/v1/sims/{sim['id']}/apply-my-pseudo")
     assert r.status_code == 400
+
+
+def test_championship_and_points_settings(client):
+    _setup_admin(client)
+    tenant, sim, token = _make_tenant_with_sim(client)
+    client.post(
+        "/api/v1/sync",
+        headers={"X-Results-Token": token},
+        json={
+            "simulatorId": "cli",
+            "global": {
+                "tracks": [{
+                    "trackId": 1,
+                    "trackName": "Melbourne",
+                    "entries": [
+                        {"id": "a", "name": "Ada", "bestLapMs": 79000, "startedAt": "2026-01-01T00:00:00"},
+                        {"id": "b", "name": "Bob", "bestLapMs": 80000, "startedAt": "2026-01-01T00:00:00"},
+                    ],
+                }],
+            },
+        },
+    )
+
+    r = client.post("/api/v1/admin/settings", json={"points_by_place": "10,5"})
+    assert r.status_code == 200, r.text
+    assert r.json()["pointsByPlace"] == "10,5"
+
+    overview = client.get("/api/v1/admin/overview").json()
+    assert overview["pointsByPlace"] == "10,5"
+
+    r = client.post("/api/v1/admin/settings", json={"points_by_place": "bad"})
+    assert r.status_code == 400
+
+    anon = TestClient(client.app)
+    r = anon.get(f"/api/v1/tenants/{tenant['id']}/championship")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["pointsByPlace"] == [10, 5]
+    assert body["standings"][0]["name"] == "Ada"
+    assert body["standings"][0]["points"] == 10
+    assert body["standings"][1]["points"] == 5

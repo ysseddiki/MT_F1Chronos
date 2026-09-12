@@ -56,6 +56,26 @@ def board_out(board: dict) -> dict:
     }
 
 
+def championship_out(data: dict) -> dict:
+    return {
+        "pointsByPlace": list(data["points_by_place"]),
+        "pointsByPlaceRaw": data["points_by_place_raw"],
+        "tracksCounted": data["tracks_counted"],
+        "standings": [
+            {
+                "rank": s["rank"],
+                "name": s["name"],
+                "points": s["points"],
+                "wins": s["wins"],
+                "podiums": s["podiums"],
+                "scoringPlaces": s["scoring_places"],
+                "tracks": s["tracks"],
+            }
+            for s in data["standings"]
+        ],
+    }
+
+
 def track_out(t: dict) -> dict:
     track_id = t["track_id"]
     name = (t.get("track_name") or "").strip() or f"Circuit {track_id}"

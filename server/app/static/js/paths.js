@@ -5,6 +5,14 @@ export function tenantPath(tenant) {
     return `/t/${tenant.slug || tenant.id}`;
 }
 
+export function recentPath(tenant) {
+    return `${tenantPath(tenant)}/recent`;
+}
+
+export function championshipPath(tenant) {
+    return `${tenantPath(tenant)}/championship`;
+}
+
 export function tenantKeyFromPath(path) {
     return path.match(/^\/t\/([\w-]+)/)?.[1] || null;
 }

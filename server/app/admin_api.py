@@ -44,6 +44,7 @@ def overview(request: Request):
         "tenants": [tenant_out(t) for t in store.list_tenants()],
         "sims": [sim_out(s, admin=True) for s in store.list_simulators()],
         "publicAccess": store.get_public_access(),
+        "pointsByPlace": store.get_points_by_place_raw(),
     }
 
 
@@ -338,11 +339,23 @@ def delete_user(request: Request, user_id: str):
 
 
 class SettingsIn(BaseModel):
-    public_access: bool
+    public_access: bool | None = None
+    points_by_place: str | None = None
 
 
 @router.post("/settings")
 def update_settings(request: Request, body: SettingsIn):
     deps.require_admin(request)
-    deps.store().set_public_access(body.public_access)
-    return {"ok": True, "publicAccess": deps.store().get_public_access()}
+    store = deps.store()
+    if body.public_access is not None:
+        store.set_public_access(body.public_access)
+    if body.points_by_place is not None:
+        try:
+            store.set_points_by_place(body.points_by_place)
+        except ValueError as exc:
+            return _err(exc)
+    return {
+        "ok": True,
+        "publicAccess": store.get_public_access(),
+        "pointsByPlace": store.get_points_by_place_raw(),
+    }

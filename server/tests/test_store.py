@@ -349,3 +349,70 @@ def test_create_simulator_accepts_tenant_slug(tmp_path: Path):
     tenant = store.create_tenant("Club")
     sim, _ = store.create_simulator("Box", tenant_id=tenant["slug"])
     assert sim["tenant_id"] == tenant["id"]
+
+
+def test_parse_points_by_place():
+    from app.store import parse_points_by_place, DEFAULT_POINTS_BY_PLACE
+
+    assert parse_points_by_place("25,18,10") == [25, 18, 10]
+    assert parse_points_by_place(DEFAULT_POINTS_BY_PLACE)[0] == 25
+    assert parse_points_by_place("1,1,1,1") == [1, 1, 1, 1]
+    with pytest.raises(ValueError):
+        parse_points_by_place("")
+    with pytest.raises(ValueError):
+        parse_points_by_place("25,abc")
+    with pytest.raises(ValueError):
+        parse_points_by_place("-1,2")
+
+
+def test_points_by_place_setting(tmp_path: Path):
+    store = _store(tmp_path)
+    assert store.get_points_by_place()[0] == 25
+    store.set_points_by_place("10,5,1")
+    assert store.get_points_by_place() == [10, 5, 1]
+    assert store.get_points_by_place_raw() == "10,5,1"
+    with pytest.raises(ValueError):
+        store.set_points_by_place("nope")
+
+
+def test_tenant_championship_awards_points_per_track(tmp_path: Path):
+    store = _store(tmp_path)
+    tenant = store.create_tenant("Club")
+    sim, _ = store.create_simulator("Box", tenant_id=tenant["id"])
+    store.set_points_by_place("25,18,15")
+    store.ingest(
+        sim,
+        {
+            "simulatorId": "cli",
+            "global": {
+                "tracks": [
+                    {
+                        "trackId": 1,
+                        "trackName": "Melbourne",
+                        "entries": [
+                            {"id": "a1", "name": "Ada", "bestLapMs": 79000, "startedAt": "2026-01-01T00:00:00"},
+                            {"id": "b1", "name": "Bob", "bestLapMs": 80000, "startedAt": "2026-01-01T00:00:00"},
+                            {"id": "c1", "name": "Cyd", "bestLapMs": 81000, "startedAt": "2026-01-01T00:00:00"},
+                        ],
+                    },
+                    {
+                        "trackId": 2,
+                        "trackName": "Spa",
+                        "entries": [
+                            {"id": "b2", "name": "Bob", "bestLapMs": 100000, "startedAt": "2026-01-02T00:00:00"},
+                            {"id": "a2", "name": "Ada", "bestLapMs": 101000, "startedAt": "2026-01-02T00:00:00"},
+                        ],
+                    },
+                ]
+            },
+        },
+    )
+    champ = store.tenant_championship(tenant["id"])
+    assert champ["tracks_counted"] == 2
+    by_name = {s["name"]: s for s in champ["standings"]}
+    assert by_name["Ada"]["points"] == 43
+    assert by_name["Bob"]["points"] == 43
+    assert by_name["Cyd"]["points"] == 15
+    assert by_name["Ada"]["wins"] == 1
+    assert by_name["Bob"]["wins"] == 1
+    assert champ["standings"][0]["rank"] == 1

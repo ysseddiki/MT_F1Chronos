@@ -18,8 +18,33 @@ MAX_PAGE_SIZE = 100
 DEFAULT_RECENT_LAPS = 15
 MAX_RECENT_LAPS = 50
 MAX_PLAYER_NAME_LENGTH = 20
+# Points F1-like (P1→Pn) pour le championnat web uniquement — pas l’overlay.
+DEFAULT_POINTS_BY_PLACE = "25,18,15,12,10,8,6,4,2,1"
+MAX_POINTS_PLACES = 40
 
 TENANT_VISIBILITIES = ("public", "private")
+
+
+def parse_points_by_place(raw: str | None) -> list[int]:
+    """Parse « 25,18,10,… » → liste de points par place (longueur = places scorées)."""
+    text = (raw or "").strip()
+    if not text:
+        raise ValueError("Indiquez au moins une valeur (ex. 25,18,15,12,10,8,6,4,2,1).")
+    parts = [p.strip() for p in text.split(",") if p.strip()]
+    if not parts:
+        raise ValueError("Indiquez au moins une valeur (ex. 25,18,15,12,10,8,6,4,2,1).")
+    if len(parts) > MAX_POINTS_PLACES:
+        raise ValueError(f"Maximum {MAX_POINTS_PLACES} places.")
+    out: list[int] = []
+    for part in parts:
+        if not re.fullmatch(r"\d+", part):
+            raise ValueError(f"Valeur invalide : « {part} » (entier ≥ 0 attendu).")
+        out.append(int(part))
+    return out
+
+
+def format_points_by_place(points: list[int]) -> str:
+    return ",".join(str(p) for p in points)
 
 # Chronos affichables : pas de circuit inconnu, pseudo vide, ou temps nul.
 LAP_VALID_SQL = "deleted_at IS NULL AND track_id >= 0 AND name != '' AND best_lap_ms > 0"
@@ -688,6 +713,66 @@ class ResultsStore:
         ).fetchall()
         return self._prepare_recent_rows(rows, labels)
 
+    def tenant_championship(self, tenant_id: str) -> dict[str, Any]:
+        """Classement à points (web) : meilleur tour / pilote / circuit → points P1…Pn."""
+        points = self.get_points_by_place()
+        tracks = self.tenant_track_summaries(tenant_id)
+        # name_key → aggregats
+        totals: dict[str, dict[str, Any]] = {}
+
+        for track in tracks:
+            need = max(len(points), 1)
+            board = self.tenant_leaderboard(
+                tenant_id,
+                int(track["track_id"]),
+                best_per_player=True,
+                page=1,
+                page_size=min(need, MAX_PAGE_SIZE),
+            )
+            rows = board.get("rows") or []
+
+            for place, entry in enumerate(rows):
+                if place >= len(points):
+                    break
+                name = (entry.get("name") or "").strip()
+                if not name or name == "—":
+                    continue
+                key = name.casefold()
+                bucket = totals.get(key)
+                if bucket is None:
+                    bucket = {
+                        "name": name,
+                        "points": 0,
+                        "wins": 0,
+                        "podiums": 0,
+                        "scoring_places": 0,
+                        "tracks": 0,
+                    }
+                    totals[key] = bucket
+                pts = points[place]
+                bucket["points"] += pts
+                bucket["tracks"] += 1
+                if pts > 0:
+                    bucket["scoring_places"] += 1
+                if place == 0:
+                    bucket["wins"] += 1
+                if place < 3:
+                    bucket["podiums"] += 1
+
+        standings = sorted(
+            totals.values(),
+            key=lambda r: (-int(r["points"]), -int(r["wins"]), r["name"].casefold()),
+        )
+        for i, row in enumerate(standings, start=1):
+            row["rank"] = i
+
+        return {
+            "points_by_place": points,
+            "points_by_place_raw": format_points_by_place(points),
+            "tracks_counted": len(tracks),
+            "standings": standings,
+        }
+
     def get_lap(self, sim_id: str, entry_id: str) -> dict[str, Any] | None:
         row = self._conn.execute(
             "SELECT * FROM laps WHERE simulator_id = ? AND id = ?",
@@ -953,6 +1038,30 @@ class ResultsStore:
         )
         self._conn.commit()
         self._touch()
+
+    def get_points_by_place(self) -> list[int]:
+        row = self._conn.execute(
+            "SELECT value FROM settings WHERE key = 'points_by_place'"
+        ).fetchone()
+        raw = row["value"] if row is not None else DEFAULT_POINTS_BY_PLACE
+        try:
+            return parse_points_by_place(raw)
+        except ValueError:
+            return parse_points_by_place(DEFAULT_POINTS_BY_PLACE)
+
+    def get_points_by_place_raw(self) -> str:
+        return format_points_by_place(self.get_points_by_place())
+
+    def set_points_by_place(self, raw: str) -> list[int]:
+        points = parse_points_by_place(raw)
+        self._conn.execute(
+            """INSERT INTO settings (key, value) VALUES ('points_by_place', ?)
+               ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
+            (format_points_by_place(points),),
+        )
+        self._conn.commit()
+        self._touch()
+        return points
 
     def _inverse_job(self, job_type: str, payload: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
         if job_type == "deleteEntry":
