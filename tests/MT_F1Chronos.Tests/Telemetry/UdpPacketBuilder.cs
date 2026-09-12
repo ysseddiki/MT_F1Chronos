@@ -78,4 +78,25 @@ internal static class UdpPacketBuilder
         Encoding.ASCII.GetBytes(code).CopyTo(buffer, Profile.HeaderSize);
         return buffer;
     }
+
+    /// <summary>
+    /// Minimal Time Trial packet (3× data sets). Only player session-best fields are filled.
+    /// </summary>
+    public static byte[] TimeTrialPacket(
+        uint sessionBestLapMs = 0,
+        bool customSetup = false,
+        ulong sessionUid = 1,
+        byte playerCarIndex = 0)
+    {
+        var setSize = Profile.TimeTrialDataSetSize;
+        var buffer = new byte[Profile.HeaderSize + setSize * 3];
+        Header(F1UdpConstants.PacketTimeTrial, sessionUid, playerCarIndex).CopyTo(buffer, 0);
+
+        var offset = Profile.HeaderSize;
+        buffer[offset] = playerCarIndex;
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            buffer.AsSpan(offset + Profile.TimeTrialLapTimeOffset, 4), sessionBestLapMs);
+        buffer[offset + Profile.TimeTrialCustomSetupOffset] = customSetup ? (byte)1 : (byte)0;
+        return buffer;
+    }
 }

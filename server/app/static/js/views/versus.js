@@ -183,6 +183,11 @@ function summaryBlock(summary, nameA, nameB) {
         else if (pct > 0.05) verdict = `${nameB} est en moyenne ${abs} % plus rapide`;
         else verdict = 'Niveau quasi égal sur les circuits communs';
         bits.push(h('p', { class: 'versus-relative' }, verdict));
+        if (summary.avgGapMs != null) {
+            bits.push(h('p', { class: 'versus-gap' },
+                `Écart moyen : ${fmtSignedGap(summary.avgGapMs)} s `,
+                '(A − B, négatif = A plus rapide).'));
+        }
         if (summary.levelIndex != null) {
             bits.push(h('p', { class: 'versus-level hint' },
                 `Indice de niveau (A vs B) : ${summary.levelIndex} `,

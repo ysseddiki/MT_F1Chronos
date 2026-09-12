@@ -640,6 +640,8 @@ def test_versus_compares_two_pilots(client):
     assert body["summary"]["winsB"] == 1
     assert body["summary"]["avgRelativePct"] is not None
     assert body["summary"]["levelIndex"] is not None
+    # Melbourne −2000 + Spa +5000 → moyenne +1500 ms
+    assert body["summary"]["avgGapMs"] == 1500
     tracks = {t["trackName"]: t for t in body["tracks"]}
     assert tracks["Melbourne"]["winner"] == "a"
     assert tracks["Melbourne"]["gapMs"] == -2000

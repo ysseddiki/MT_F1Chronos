@@ -279,8 +279,7 @@ export function applyMyPseudoButton(sim, pseudo) {
 }
 
 function simInfoTile(sim) {
-    return h('div', { class: 'sim-toolbar-tile sim-tile' },
-        h('span', { class: 'sim-toolbar-tile-label' }, 'Simulateur'),
+    return h('div', { class: 'sim-row-main' },
         h('a', {
             class: 'sim-toolbar-label',
             href: `/sim/${sim.id}`,
@@ -309,22 +308,20 @@ function simPilotTile(sim) {
         }
     }
 
-    return h('div', { class: 'sim-toolbar-tile pilot-tile' },
-        h('span', { class: 'sim-toolbar-tile-label' }, 'Pilote en session'),
-        h('div', { class: 'pilot-tile-body' },
-            h('strong', { class: 'pilot-name' }, playerName),
-            actions.length ? h('div', { class: 'pilot-tile-actions' }, actions) : null,
-        ),
+    return h('div', { class: 'sim-row-pilot' },
+        h('span', { class: 'sim-row-pilot-label' }, 'Pilote'),
+        h('strong', { class: 'pilot-name' }, playerName),
+        actions.length ? h('div', { class: 'pilot-tile-actions' }, actions) : null,
     );
 }
 
-/** Bandeau simulateur(s) : tuile simu + tuile pilote en session. */
+/** Bandeau simulateur(s) : une ligne compacte par simu (statut + pilote). */
 export function simToolbarStrip(sims) {
     if (!sims?.length) return null;
     return h('div', { class: 'sim-toolbar panel' },
         h('h2', {}, sims.length > 1 ? 'Simulateurs' : 'Simulateur'),
         h('div', { class: 'sim-toolbar-list' },
-            sims.map((sim) => h('div', { class: 'sim-toolbar-item sim-toolbar-split' },
+            sims.map((sim) => h('div', { class: 'sim-toolbar-item sim-toolbar-row' },
                 simInfoTile(sim),
                 simPilotTile(sim),
             )),

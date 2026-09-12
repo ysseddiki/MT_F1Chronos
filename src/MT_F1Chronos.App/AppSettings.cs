@@ -32,6 +32,12 @@ public sealed class AppSettings
     /// <summary>When true, overlay (and default scores filter) show only each player's best lap.</summary>
     public bool BestPerPlayer { get; set; }
 
+    /// <summary>
+    /// When false, valid Time Trial laps with menu « setup personnalisé » are not recorded.
+    /// Live MFD brake bias / differential changes do not set that flag.
+    /// </summary>
+    public bool CountCustomSetupLaps { get; set; } = true;
+
     /// <summary>Optional results server. Off by default — the overlay keeps working fully offline.</summary>
     public bool ResultsServerEnabled { get; set; }
 

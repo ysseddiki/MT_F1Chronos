@@ -165,6 +165,7 @@ public partial class DebugWindow : Window
         personalBest : {FormatNullableMs(s.ParsedPersonalBestMs)}
         currentLastLap : {FormatNullableMs(s.ParsedCurrentLastLapMs)}
         currentLap : {FormatNullableMs(s.ParsedCurrentLapMs)}
+        customSetup (TT menu) : {BoolLabel(s.HasCustomSetup)}
         """;
 
     private static string BuildStoreText(TelemetryDebugSnapshot s)

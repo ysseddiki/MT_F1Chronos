@@ -81,5 +81,6 @@ public static class ResultsSnapshotBuilder
         Name = entry.Name,
         BestLapMs = entry.BestLapMs ?? 0,
         StartedAt = entry.StartedAt,
+        CustomSetup = entry.CustomSetup,
     };
 }

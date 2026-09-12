@@ -421,6 +421,11 @@ td.pilot-linked .pilot-link {
     max-width: 22rem;
     line-height: 1.35;
 }
+.versus-gap {
+    margin: 0 0 6px;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.95rem;
+}
 .versus-level { margin: 0; }
 
 .versus-section { margin-bottom: 24px; }
@@ -741,89 +746,99 @@ a.card:hover {
     gap: 6px;
 }
 
+.sim-toolbar.panel {
+    padding: 14px 16px;
+}
+.sim-toolbar.panel > h2 {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+}
+
 .sim-toolbar-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-}
-
-.sim-toolbar-item.sim-toolbar-split {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
-    padding: 0;
-    border-bottom: 0;
-}
-
-.sim-toolbar-tile {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-    padding: 14px 16px;
+    gap: 0;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--bg-soft);
+    overflow: hidden;
 }
 
-.sim-toolbar-tile-label {
-    font-size: 0.68rem;
+.sim-toolbar-item.sim-toolbar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px 20px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(148, 163, 216, 0.1);
+}
+.sim-toolbar-item.sim-toolbar-row:last-child { border-bottom: 0; }
+
+.sim-row-main {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.sim-row-pilot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    min-width: 0;
+    justify-content: flex-end;
+}
+
+.sim-row-pilot-label {
+    font-size: 0.65rem;
     font-weight: 800;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
 }
 
-.pilot-tile {
-    border-color: rgba(249, 115, 22, 0.28);
-    background: rgba(249, 115, 22, 0.07);
-}
-
-.pilot-tile-body {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px 12px;
-}
-
 .pilot-name {
-    font-size: 1.35rem;
-    font-weight: 800;
-    line-height: 1.1;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.2;
     letter-spacing: -0.01em;
 }
 
 .pilot-tile-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
+    margin-left: 2px;
 }
 
 .pilot-edit-btn {
     display: inline-flex;
     align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 0.78rem;
+}
+
+.sim-toolbar .presence {
+    font-size: 0.78rem;
     gap: 6px;
+}
+.sim-toolbar .presence .dot {
+    width: 7px;
+    height: 7px;
 }
 
 @media (max-width: 720px) {
-    .sim-toolbar-item.sim-toolbar-split {
+    .sim-toolbar-item.sim-toolbar-row {
         grid-template-columns: 1fr;
+        gap: 6px;
     }
+    .sim-row-pilot { justify-content: flex-start; }
 }
-
-.sim-toolbar-item {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 14px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(148, 163, 216, 0.08);
-}
-.sim-toolbar-item:last-child { border-bottom: 0; padding-bottom: 0; }
-.sim-toolbar-item:first-child { padding-top: 0; }
 
 .sim-toolbar-label {
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--text);
     text-decoration: none;

@@ -191,7 +191,8 @@ public sealed class ContestStore : IDisposable
         return true;
     }
 
-    public void RecordCompletedLap(string playerName, int trackId, string trackName, uint lapMs)
+    public void RecordCompletedLap(
+        string playerName, int trackId, string trackName, uint lapMs, bool customSetup = false)
     {
         if (string.IsNullOrWhiteSpace(playerName) || trackId < 0 || lapMs == 0)
             return;
@@ -209,7 +210,7 @@ public sealed class ContestStore : IDisposable
         }
 
         foreach (var board in targets)
-            board.Record(playerName, trackId, trackName, lapMs);
+            board.Record(playerName, trackId, trackName, lapMs, customSetup);
     }
 
     public IReadOnlyList<LeaderboardRow> GetLeaderboard(

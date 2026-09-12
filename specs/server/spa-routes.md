@@ -16,7 +16,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 | `/t/all/championship` | `championship.js` | **Expérience** toutes orgs |
 | `/t/{slug|id}/championship` | `championship.js` | **Expérience** à points (global org, web only) |
 | `/t/{slug|id}/pilot/{pseudo}` | `pilot.js` | Profil public (chronos) ; badge compte si `sim_pseudo` lié |
-| `/t/{slug|id}/versus` | `versus.js` | Duel pilote vs pilote (écarts, % relatif, circuits) |
+| `/t/{slug|id}/versus` | `versus.js` | Duel pilote vs pilote (écarts ms, % relatif, circuits) |
 | `/t/{slug|id}/recent` | `recent.js` | **Derniers chronos** (admin) — journal tous circuits |
 | `/sim/{id}` | `sim.js` | Classement **global** du simulateur |
 | `/sim/{id}?contest={cid}` | `sim.js` | Classement **concours** (lié à ce simu uniquement) |
@@ -141,4 +141,4 @@ Règle : pour chaque circuit du global org, classement « meilleur tour / joueur
 | Endpoint | Notes |
 |---|---|
 | `GET /api/v1/tenants/{id}/pilot-names` | Pseudos avec chronos |
-| `GET /api/v1/tenants/{id}/versus?a=&b=` | Duel : wins, avgRelativePct, levelIndex, tracks[] |
+| `GET /api/v1/tenants/{id}/versus?a=&b=` | Duel : wins, avgRelativePct, avgGapMs, levelIndex, tracks[] |

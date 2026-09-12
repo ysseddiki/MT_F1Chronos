@@ -11,6 +11,9 @@ public sealed class ChronoEntry
     public uint? BestLapMs { get; set; }
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
     public DateTime? EndedAt { get; set; }
+
+    /// <summary>True when the lap used Time Trial menu custom car setup.</summary>
+    public bool CustomSetup { get; set; }
 }
 
 public sealed class ChronoDatabase
@@ -84,6 +87,8 @@ public sealed class OverlaySnapshot
     public int ContestLeaderboardSize { get; init; } = LeaderboardSizes.Extended;
     public IReadOnlyList<LeaderboardRow> ContestLeaderboard { get; init; } = [];
     public bool BestPerPlayer { get; init; }
+    public bool CountCustomSetupLaps { get; init; } = true;
+    public bool HasCustomSetup { get; init; }
     public bool IsConnected { get; init; }
     public bool IsTimeTrial { get; init; }
 }

@@ -42,6 +42,7 @@ F1 (UDP :20888)
 | `TrackId` | `int` | `-1` | ID circuit F1 UDP |
 | `TrackName` | `string` | `"Inconnu"` | Libellé résolu |
 | `BestLapMs` | `uint?` | — | Temps du tour (ms) ; seuls `> 0` comptent |
+| `CustomSetup` | `bool` | `false` | Setup perso menu TT (`m_customSetup`) |
 | `StartedAt` | `DateTime` | `UtcNow` | Horodatage d’enregistrement |
 | `EndedAt` | `DateTime?` | — | Généralement égal à `StartedAt` à l’écriture |
 
@@ -83,6 +84,8 @@ F1 (UDP :20888)
 | `ContestLeaderboardSize` | `int` | `10` |
 | `ContestLeaderboard` | `IReadOnlyList<LeaderboardRow>` | `[]` |
 | `BestPerPlayer` | `bool` | |
+| `CountCustomSetupLaps` | `bool` | défaut `true` |
+| `HasCustomSetup` | `bool` | flag TT menu courant |
 | `IsConnected` | `bool` | dernier paquet &lt; 3 s |
 | `IsTimeTrial` | `bool` | |
 
@@ -143,6 +146,7 @@ F1 (UDP :20888)
 | `ContestLeaderboardSize` | `10` | |
 | `HideGlobalWhenContest` | `false` | |
 | `BestPerPlayer` | `false` | |
+| `CountCustomSetupLaps` | `true` | Si `false`, ignore les tours TT en setup perso (menu) |
 
 #### Serveur de résultats (optionnel)
 
@@ -181,7 +185,7 @@ Le logiciel du simulateur **n’a pas besoin** du serveur : UDP, overlay, stores
 
 #### `TelemetryState` (état de travail mutable → publication via `Clone()`)
 
-Champs principaux : `IsReceiving`, `LastPacketUtc`, `SessionUid`, `TrackId` / `RawTrackId`, `TrackLengthMeters`, `SessionType`, `GameMode`, `PlayerCarIndex` / `ResolvedCarIndex`, `DriverStatus`, `CurrentLapInvalid`, formats paquet, `SessionBestLapMs` / `PersonalBestLapMs` / `CurrentLastLapMs` / `CurrentLapTimeMs`, `LastEventCode`.
+Champs principaux : `IsReceiving`, `LastPacketUtc`, `SessionUid`, `TrackId` / `RawTrackId`, `TrackLengthMeters`, `SessionType`, `GameMode`, `PlayerCarIndex` / `ResolvedCarIndex`, `DriverStatus`, `CurrentLapInvalid`, formats paquet, `SessionBestLapMs` / `PersonalBestLapMs` / `CurrentLastLapMs` / `CurrentLapTimeMs`, `LastEventCode`, `HasCustomSetup`.
 
 | Propriété calculée | Règle |
 |---|---|
@@ -189,6 +193,7 @@ Champs principaux : `IsReceiving`, `LastPacketUtc`, `SessionUid`, `TrackId` / `R
 | `IsTimeTrial` | `SessionType == 13` **ou** `GameMode == 5` |
 | `TrackName` | `F1UdpConstants.GetTrackName` |
 | `EffectiveBestLapMs` | session ?? personal ?? last |
+| `HasCustomSetup` | Paquet Time Trial (`14`) : `m_customSetup` du dataset session-best joueur. Flag **menu garage TT**, pas frein/différentiel MFD. |
 
 #### `TelemetryUpdate` (événement publié)
 
@@ -352,7 +357,7 @@ Responsabilités publiques (contrat UI) :
 | Domaine | Méthodes |
 |---|---|
 | Cycle de vie | `CreateOverlay`, `Start`, `Dispose` |
-| Overlay | `PositionOverlay`, `SetOverlayWidth`, `SaveOverlayPosition`, `SetLeaderboardSize`, `SetContestLeaderboardSize`, `SetBestPerPlayer`, `PromptPlayerName` |
+| Overlay | `PositionOverlay`, `SetOverlayWidth`, `SaveOverlayPosition`, `SetLeaderboardSize`, `SetContestLeaderboardSize`, `SetBestPerPlayer`, `SetCountCustomSetupLaps`, `PromptPlayerName` |
 | Admin / fenêtres | `ShowAdminWindow` (password), `ShowManageScores`, `ShowAllScores`, `ShowContestScores`, `ShowDebugWindow`, `ChangeAdminPassword` |
 | Concours | `ListContests`, `CreateContest`, `StartContest`, `StopContest`, `DeleteContest`, `SetOverlayContest`, `Get/SetOverlayDisplayMode` |
 | Export | `ExportScores(format, contestId?, trackId?)`, `ListExportTracks` |
@@ -466,8 +471,9 @@ Un tour n’est persisté que si **toutes** les conditions sont vraies :
 3. `CompletedLapMs > 0`
 4. `TrackId >= 0`
 5. Pseudo joueur non vide (trim)
+6. Si `HasCustomSetup` **et** `CountCustomSetupLaps == false` → **pas** d’enregistrement (option overlay)
 
-Effets : écriture dans **SessionStore (global)** **et** dans **chaque concours `Active`** éligible.
+Effets : écriture dans **SessionStore (global)** **et** dans **chaque concours `Active`** éligible. `ChronoEntry.CustomSetup` mémorise le flag TT.
 
 ### BR-02 — Anti faux-positif session
 

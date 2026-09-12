@@ -84,13 +84,14 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
         _liveTrackName = trackName;
     }
 
-    public void RecordCompletedLap(string playerName, int trackId, string trackName, uint lapMs)
+    public void RecordCompletedLap(
+        string playerName, int trackId, string trackName, uint lapMs, bool customSetup = false)
     {
         if (string.IsNullOrWhiteSpace(playerName) || trackId < 0 || lapMs == 0)
             return;
 
         EnsureTrackContext(trackId, trackName);
-        _board.Record(playerName, trackId, trackName, lapMs);
+        _board.Record(playerName, trackId, trackName, lapMs, customSetup);
         _liveLastLapMs = lapMs;
     }
 
@@ -182,7 +183,8 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
         string contestLabel = "",
         int contestLeaderboardSize = LeaderboardSizes.Extended,
         IReadOnlyList<LeaderboardRow>? contestLeaderboard = null,
-        bool bestPerPlayer = false)
+        bool bestPerPlayer = false,
+        bool countCustomSetupLaps = true)
     {
         var trackId = ResolveOverlayTrackId(state);
         var size = LeaderboardSizes.Normalize(leaderboardSize);
@@ -206,6 +208,8 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
             ContestLeaderboardSize = contestSize,
             ContestLeaderboard = contestLeaderboard ?? [],
             BestPerPlayer = bestPerPlayer,
+            CountCustomSetupLaps = countCustomSetupLaps,
+            HasCustomSetup = state.HasCustomSetup,
             IsConnected = state.IsReceiving &&
                           (DateTime.UtcNow - state.LastPacketUtc).TotalSeconds < 3,
             IsTimeTrial = state.IsTimeTrial,

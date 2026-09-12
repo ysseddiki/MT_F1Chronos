@@ -172,6 +172,7 @@ public sealed class F1UdpPacketParser
             GameMode = state.GameMode,
             SessionUid = state.SessionUid,
             IsTimeTrial = state.IsTimeTrial,
+            HasCustomSetup = state.HasCustomSetup,
 
             PlayerCarIndex = state.PlayerCarIndex,
             ResolvedCarIndex = state.ResolvedCarIndex,
@@ -306,6 +307,10 @@ public sealed class F1UdpPacketParser
 
         if (buffer.Length > offset)
             state.GameMode = buffer[offset];
+
+        // Custom setup flag only exists on Time Trial packets.
+        if (!state.IsTimeTrial)
+            state.HasCustomSetup = false;
     }
 
     private bool ShouldAcceptTrackUpdate(TelemetryState state, int newTrackId)
@@ -448,6 +453,10 @@ public sealed class F1UdpPacketParser
 
         if (buffer.Length < offset + Profile.TimeTrialDataSetSize)
             return;
+
+        // Player session-best dataset: official TT menu flag (custom setup vs stock).
+        // Not derived from CarSetup brake bias / differential (MFD live adjusts).
+        state.HasCustomSetup = buffer[offset + Profile.TimeTrialCustomSetupOffset] != 0;
 
         _timeTrialSessionBestMs = ReadTimeTrialLapTime(buffer, offset);
         if (_timeTrialSessionBestMs > 0)

@@ -151,6 +151,15 @@ public sealed class AppController : IDisposable
 
     public bool GetBestPerPlayer() => _settings.BestPerPlayer;
 
+    public void SetCountCustomSetupLaps(bool enabled)
+    {
+        _settings.CountCustomSetupLaps = enabled;
+        SaveSettings();
+        RefreshOverlay();
+    }
+
+    public bool GetCountCustomSetupLaps() => _settings.CountCustomSetupLaps;
+
     public void PromptPlayerName(bool required = false)
     {
         if (_promptOpen)
@@ -614,17 +623,28 @@ public sealed class AppController : IDisposable
             update.State.TrackId >= 0 &&
             !string.IsNullOrWhiteSpace(_settings.PlayerName))
         {
+            var customSetup = update.State.HasCustomSetup;
+            if (customSetup && !_settings.CountCustomSetupLaps)
+            {
+                // Setup perso exclu par option overlay — ne pas enregistrer (BR custom setup).
+                _overlay?.UpdateLiveChrono(update.State.CurrentLapTimeMs);
+                RefreshOverlay();
+                return;
+            }
+
             _store.RecordCompletedLap(
                 _settings.PlayerName,
                 update.State.TrackId,
                 update.State.TrackName,
-                update.CompletedLapMs.Value);
+                update.CompletedLapMs.Value,
+                customSetup);
 
             _contests.RecordCompletedLap(
                 _settings.PlayerName,
                 update.State.TrackId,
                 update.State.TrackName,
-                update.CompletedLapMs.Value);
+                update.CompletedLapMs.Value,
+                customSetup);
 
             RefreshOverlay();
             _resultsSync.RequestSync();

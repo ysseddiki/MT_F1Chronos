@@ -137,4 +137,32 @@ public class F1UdpPacketParserTests
             state, out var update));
         Assert.False(update!.LapCompleted);
     }
+
+    [Fact]
+    public void TimeTrialPacket_SetsHasCustomSetup_FromMenuFlag()
+    {
+        var parser = new F1UdpPacketParser();
+        parser.SetFormat(2025);
+        var state = new TelemetryState();
+
+        Assert.True(parser.TryParse(
+            UdpPacketBuilder.TimeTrialPacket(sessionBestLapMs: 80_000, customSetup: true),
+            state, out _));
+        Assert.True(state.HasCustomSetup);
+        Assert.Equal(80_000u, state.SessionBestLapMs);
+
+        Assert.True(parser.TryParse(
+            UdpPacketBuilder.TimeTrialPacket(sessionBestLapMs: 79_000, customSetup: false),
+            state, out _));
+        Assert.False(state.HasCustomSetup);
+    }
+
+    [Fact]
+    public void TimeTrialCustomSetupOffset_IsLastFlagsBeforeValid()
+    {
+        // 2025: u8 car + u8 team + 4×u32 times + 4 assists + custom + valid = 24
+        Assert.Equal(22, UdpFormatProfile.Format2025.TimeTrialCustomSetupOffset);
+        // 2026: u8 car + u16 team + … = 25 → custom at 23
+        Assert.Equal(23, UdpFormatProfile.Format2026.TimeTrialCustomSetupOffset);
+    }
 }

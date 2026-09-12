@@ -995,6 +995,7 @@ class ResultsStore:
 
         tracks: list[dict[str, Any]] = []
         relative_samples: list[float] = []
+        gap_samples: list[int] = []
         wins_a = wins_b = ties = 0
 
         for tid in track_ids:
@@ -1017,6 +1018,7 @@ class ResultsStore:
             if ea and eb:
                 gap = int(ea["best_lap_ms"]) - int(eb["best_lap_ms"])
                 row["gap_ms"] = gap
+                gap_samples.append(gap)
                 # % de A par rapport à B : négatif = A plus rapide
                 row["relative_pct"] = round(gap / float(eb["best_lap_ms"]) * 100.0, 3)
                 relative_samples.append(row["relative_pct"])
@@ -1036,6 +1038,11 @@ class ResultsStore:
         avg_rel = (
             round(sum(relative_samples) / len(relative_samples), 3)
             if relative_samples
+            else None
+        )
+        avg_gap_ms = (
+            int(round(sum(gap_samples) / len(gap_samples)))
+            if gap_samples
             else None
         )
         # Indice de niveau : 100 = égalité ; >100 = A plus rapide en moyenne
@@ -1062,6 +1069,7 @@ class ResultsStore:
                 "wins_b": wins_b,
                 "ties": ties,
                 "avg_relative_pct": avg_rel,
+                "avg_gap_ms": avg_gap_ms,
                 "level_index": level_index,
                 "faster": (
                     "a" if avg_rel is not None and avg_rel < 0

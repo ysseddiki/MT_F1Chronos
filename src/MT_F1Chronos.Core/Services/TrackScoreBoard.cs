@@ -57,7 +57,7 @@ public sealed class TrackScoreBoard
         }
     }
 
-    public void Record(string playerName, int trackId, string trackName, uint lapMs)
+    public void Record(string playerName, int trackId, string trackName, uint lapMs, bool customSetup = false)
     {
         if (string.IsNullOrWhiteSpace(playerName) || trackId < 0 || lapMs == 0)
             return;
@@ -79,6 +79,7 @@ public sealed class TrackScoreBoard
                 BestLapMs = lapMs,
                 StartedAt = now,
                 EndedAt = now,
+                CustomSetup = customSetup,
             });
 
             if (list.Count > MaxEntriesPerTrack)
@@ -338,6 +339,7 @@ public sealed class TrackScoreBoard
                 BestLapMs = entry.BestLapMs,
                 StartedAt = entry.StartedAt,
                 EndedAt = entry.EndedAt ?? entry.StartedAt,
+                CustomSetup = entry.CustomSetup,
             });
             _deletedIds.Remove(entry.Id);
             MarkDirtyLocked(entry.TrackId);

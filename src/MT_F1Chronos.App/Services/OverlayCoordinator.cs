@@ -87,7 +87,8 @@ internal sealed class OverlayCoordinator
             contestLabel: contestLabel,
             contestLeaderboardSize: contestSize,
             contestLeaderboard: contestBoard,
-            bestPerPlayer: _settings.BestPerPlayer));
+            bestPerPlayer: _settings.BestPerPlayer,
+            countCustomSetupLaps: _settings.CountCustomSetupLaps));
         overlay.UpdateResultsServerStatus(_getSyncStatus());
     }
 }

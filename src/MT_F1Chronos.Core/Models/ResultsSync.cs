@@ -118,6 +118,7 @@ public sealed class ResultsEntrySnapshot
     public string Name { get; set; } = string.Empty;
     public uint BestLapMs { get; set; }
     public DateTime StartedAt { get; set; }
+    public bool CustomSetup { get; set; }
 }
 
 public sealed class ResultsContestSnapshot

@@ -14,6 +14,12 @@ public sealed class UdpFormatProfile
     public int TimeTrialDataSetSize { get; init; }
     public int TimeTrialLapTimeOffset { get; init; }
 
+    /// <summary>
+    /// Offset of <c>m_customSetup</c> within a TimeTrialDataSet
+    /// (menu setup perso — pas frein / différentiel MFD).
+    /// </summary>
+    public int TimeTrialCustomSetupOffset => TimeTrialDataSetSize - 2;
+
     public static UdpFormatProfile For(ushort format) =>
         format switch
         {

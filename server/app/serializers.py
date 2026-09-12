@@ -129,6 +129,7 @@ def versus_out(data: dict) -> dict:
             "winsB": data["summary"]["wins_b"],
             "ties": data["summary"]["ties"],
             "avgRelativePct": data["summary"]["avg_relative_pct"],
+            "avgGapMs": data["summary"]["avg_gap_ms"],
             "levelIndex": data["summary"]["level_index"],
             "faster": data["summary"]["faster"],
         },

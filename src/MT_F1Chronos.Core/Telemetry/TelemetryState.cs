@@ -27,6 +27,12 @@ public sealed class TelemetryState
     public uint? CurrentLapTimeMs { get; set; }
     public string? LastEventCode { get; set; }
 
+    /// <summary>
+    /// Time Trial menu « setup personnalisé » (<c>m_customSetup</c>).
+    /// Independent of live MFD brake bias / on-throttle diff.
+    /// </summary>
+    public bool HasCustomSetup { get; set; }
+
     public bool IsOnTrack =>
         DriverStatus is 1 or 2 or 4;
 
@@ -49,6 +55,7 @@ public sealed class TelemetryState
         CurrentLapTimeMs = null;
         DriverStatus = 0;
         CurrentLapInvalid = 0;
+        HasCustomSetup = false;
     }
 
     /// <summary>Deep-enough copy for safe cross-thread publication.</summary>
@@ -75,6 +82,7 @@ public sealed class TelemetryState
         CurrentLapTimeMs = CurrentLapTimeMs,
         LastEventCode = LastEventCode,
         TimeTrialSessionType = TimeTrialSessionType,
+        HasCustomSetup = HasCustomSetup,
     };
 }
 

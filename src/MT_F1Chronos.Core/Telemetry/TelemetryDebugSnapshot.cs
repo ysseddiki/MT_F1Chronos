@@ -47,6 +47,7 @@ public sealed class TelemetryDebugSnapshot
     public byte GameMode { get; init; }
     public ulong SessionUid { get; init; }
     public bool IsTimeTrial { get; init; }
+    public bool HasCustomSetup { get; init; }
 
     public byte PlayerCarIndex { get; init; }
     public byte ResolvedCarIndex { get; init; }
