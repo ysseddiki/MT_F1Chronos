@@ -8,7 +8,7 @@ from fastapi import HTTPException, Request
 from . import db
 from .auth import ROLE_ADMIN, ROLE_SIMRACER, UserAuth
 from .security import LoginRateLimiter
-from .store import ResultsStore
+from .store import ResultsStore, ALL_TENANT_KEY, make_all_tenant
 
 BASE = Path(__file__).resolve().parent
 
@@ -81,6 +81,17 @@ def visible_tenants(user: dict | None) -> list[dict]:
     return [t for t in store().list_tenants() if can_view_tenant(user, t)]
 
 
+def visible_tenant_ids(user: dict | None) -> list[str]:
+    return [t["id"] for t in visible_tenants(user)]
+
+
+def scope_tenant_ids(tenant: dict, user: dict | None) -> list[str] | None:
+    """Pour l’org virtuelle « all », la portée = orgs visibles ; sinon None."""
+    if tenant.get("id") == ALL_TENANT_KEY:
+        return visible_tenant_ids(user)
+    return None
+
+
 def require_user(request: Request) -> dict:
     user = current_user(request)
     if user is None:
@@ -103,7 +114,16 @@ def require_simracer(request: Request) -> dict:
 
 
 def tenant_or_404(tenant_key: str, user: dict | None) -> dict:
-    tenant = store().resolve_tenant(tenant_key)
+    key = (tenant_key or "").strip()
+    if key == ALL_TENANT_KEY:
+        visible = visible_tenants(user)
+        if not visible:
+            raise HTTPException(404, "Organisation introuvable.")
+        sim_count = sum(
+            len(store().list_simulators_for_tenant(t["id"])) for t in visible
+        )
+        return make_all_tenant(sim_count=sim_count, org_count=len(visible))
+    tenant = store().resolve_tenant(key)
     if tenant is None or not can_view_tenant(user, tenant):
         raise HTTPException(404, "Organisation introuvable.")
     return tenant

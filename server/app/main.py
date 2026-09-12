@@ -25,8 +25,9 @@ from .serializers import (
     tenant_out,
     track_out,
     user_out,
+    versus_out,
 )
-from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS
+from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS, make_all_tenant
 
 BASE = deps.BASE
 STATIC_DIR = BASE / "static"
@@ -294,9 +295,17 @@ def apply_my_sim_pseudo(request: Request, sim_id: str):
 @app.get("/api/v1/tenants")
 def list_tenants(request: Request):
     user = deps.current_user(request)
+    visible = deps.visible_tenants(user)
+    tenants = [tenant_out(t) for t in visible]
+    if len(visible) >= 2:
+        sim_count = sum(len(deps.store().list_simulators_for_tenant(t["id"])) for t in visible)
+        tenants = [
+            tenant_out(make_all_tenant(sim_count=sim_count, org_count=len(visible))),
+            *tenants,
+        ]
     return {
         "ok": True,
-        "tenants": [tenant_out(t) for t in deps.visible_tenants(user)],
+        "tenants": tenants,
         "publicAccess": deps.store().get_public_access(),
     }
 
@@ -305,7 +314,11 @@ def list_tenants(request: Request):
 def get_tenant(request: Request, tenant_id: str):
     user = deps.current_user(request)
     tenant = deps.tenant_or_404(tenant_id, user)
-    sims = deps.store().list_simulators_for_tenant(tenant["id"])
+    scope = deps.scope_tenant_ids(tenant, user)
+    if scope is not None:
+        sims = deps.store().list_simulators_for_tenants(scope)
+    else:
+        sims = deps.store().list_simulators_for_tenant(tenant["id"])
     tenant_payload = tenant_out(tenant)
     tenant_payload["simCount"] = len(sims)
     return {
@@ -319,9 +332,13 @@ def get_tenant(request: Request, tenant_id: str):
 def get_tenant_tracks(request: Request, tenant_id: str):
     user = deps.current_user(request)
     tenant = deps.tenant_or_404(tenant_id, user)
+    scope = deps.scope_tenant_ids(tenant, user)
     return {
         "ok": True,
-        "tracks": [track_out(t) for t in deps.store().tenant_track_summaries(tenant["id"])],
+        "tracks": [
+            track_out(t)
+            for t in deps.store().tenant_track_summaries(tenant["id"], scope)
+        ],
     }
 
 
@@ -336,8 +353,14 @@ def get_tenant_leaderboard(
 ):
     user = deps.current_user(request)
     tenant = deps.tenant_or_404(tenant_id, user)
+    scope = deps.scope_tenant_ids(tenant, user)
     board = deps.store().tenant_leaderboard(
-        tenant["id"], track_id, best_per_player=best, page=page, page_size=page_size
+        tenant["id"],
+        track_id,
+        best_per_player=best,
+        page=page,
+        page_size=page_size,
+        scope_tenant_ids=scope,
     )
     return {"ok": True, **board_out(board)}
 
@@ -347,7 +370,8 @@ def get_tenant_championship(request: Request, tenant_id: str):
     """Classement à points F1-like (serveur web uniquement) — global organisation."""
     user = deps.current_user(request)
     tenant = deps.tenant_or_404(tenant_id, user)
-    data = deps.store().tenant_championship(tenant["id"])
+    scope = deps.scope_tenant_ids(tenant, user)
+    data = deps.store().tenant_championship(tenant["id"], scope)
     return {"ok": True, **championship_out(data)}
 
 
@@ -361,26 +385,62 @@ def get_tenant_linked_pilots(request: Request, tenant_id: str):
 
 @app.get("/api/v1/tenants/{tenant_id}/pilots/{pseudo}")
 def get_tenant_pilot_profile(request: Request, tenant_id: str, pseudo: str):
-    """Profil public d’un pilote — uniquement si un compte a ce pseudo simulateur."""
+    """Profil public d’un pilote (chronos par pseudo) — compte lié optionnel."""
     user = deps.current_user(request)
     tenant = deps.tenant_or_404(tenant_id, user)
-    linked = deps.auth().get_user_by_sim_pseudo(pseudo)
-    if linked is None:
-        raise HTTPException(404, "Aucun compte lié à ce pseudo.")
-    canonical = (linked.get("sim_pseudo") or "").strip()
-    profile = deps.store().tenant_pilot_profile(tenant["id"], canonical)
-    role = linked.get("role") or "visitor"
+    scope = deps.scope_tenant_ids(tenant, user)
+    name = (pseudo or "").strip()
+    if not name:
+        raise HTTPException(400, "Pseudo manquant.")
+    linked = deps.auth().get_user_by_sim_pseudo(name)
+    canonical = (linked.get("sim_pseudo") or "").strip() if linked else name
+    profile = deps.store().tenant_pilot_profile(tenant["id"], canonical, scope)
+    display = (profile.get("name") or canonical).strip() or canonical
+    pilot_payload: dict = {
+        "simPseudo": display,
+        "linked": linked is not None,
+        "role": None,
+        "memberSince": None,
+    }
+    if linked is not None:
+        pilot_payload["role"] = linked.get("role") or "visitor"
+        pilot_payload["memberSince"] = linked.get("created_at")
     return {
         "ok": True,
         "tenant": tenant_out(tenant),
-        "pilot": {
-            "simPseudo": canonical,
-            "role": role,
-            "linked": True,
-            "memberSince": linked.get("created_at"),
-        },
+        "pilot": pilot_payload,
         "profile": pilot_profile_out(profile),
     }
+
+
+@app.get("/api/v1/tenants/{tenant_id}/pilot-names")
+def get_tenant_pilot_names(request: Request, tenant_id: str):
+    """Liste des pseudos ayant des chronos (pour sélecteurs Versus / filtres)."""
+    user = deps.current_user(request)
+    tenant = deps.tenant_or_404(tenant_id, user)
+    scope = deps.scope_tenant_ids(tenant, user)
+    return {
+        "ok": True,
+        "names": deps.store().tenant_pilot_names(tenant["id"], scope),
+    }
+
+
+@app.get("/api/v1/tenants/{tenant_id}/versus")
+def get_tenant_versus(
+    request: Request,
+    tenant_id: str,
+    a: str = "",
+    b: str = "",
+):
+    """Comparaison tête-à-tête de deux pilotes (écarts + duel par circuit)."""
+    user = deps.current_user(request)
+    tenant = deps.tenant_or_404(tenant_id, user)
+    scope = deps.scope_tenant_ids(tenant, user)
+    try:
+        data = deps.store().tenant_versus(tenant["id"], a, b, scope)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"ok": True, "tenant": tenant_out(tenant), **versus_out(data)}
 
 
 @app.get("/api/v1/sims")
@@ -456,7 +516,8 @@ def get_tenant_recent_laps(
 ):
     user = deps.require_admin(request)
     tenant = deps.tenant_or_404(tenant_id, user)
-    rows = deps.store().tenant_recent_laps(tenant["id"], limit)
+    scope = deps.scope_tenant_ids(tenant, user)
+    rows = deps.store().tenant_recent_laps(tenant["id"], limit, scope)
     return {"ok": True, "rows": [lap_out(r) for r in rows]}
 
 

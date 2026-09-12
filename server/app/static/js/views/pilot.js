@@ -5,7 +5,7 @@ import { get } from '../api.js';
 import { visibilityBadge } from '../components.js';
 import { replace } from '../router.js';
 import { mySimulatorPseudo } from '../state.js';
-import { tenantPath, pilotPath } from '../paths.js';
+import { tenantPath, pilotPath, isAllTenant, versusPath } from '../paths.js';
 
 const ROLE_LABEL = {
     admin: 'Administrateur',
@@ -45,14 +45,34 @@ export async function pilotView(container, [tenantKey, rawPseudo]) {
 
     const { tenant, pilot, profile } = data;
     const canonical = tenant.slug || tenant.id;
-    if (canonical !== tenantKey || pilot.simPseudo !== pseudo) {
+    if (canonical !== tenantKey) {
+        replace(pilotPath(tenant, pilot.simPseudo));
+        return;
+    }
+    if ((pilot.simPseudo || '').toLowerCase() !== pseudo.toLowerCase()) {
         replace(pilotPath(tenant, pilot.simPseudo));
         return;
     }
 
     const me = (mySimulatorPseudo() || '').trim().toLowerCase() === pilot.simPseudo.toLowerCase();
     const xp = profile.experience;
+    const linked = !!pilot.linked;
     document.title = `${pilot.simPseudo} — Profil — F1 Chronos`;
+
+    const metaBits = [];
+    if (linked) {
+        metaBits.push(h('span', { class: `role-pill ${pilot.role || 'visitor'}` }, ROLE_LABEL[pilot.role] || pilot.role || 'Compte'));
+        metaBits.push(h('span', { class: 'pilot-meta-sep' }, '·'));
+        metaBits.push(h('span', {}, 'Compte lié'));
+        if (pilot.memberSince) {
+            metaBits.push(h('span', { class: 'pilot-meta-sep' }, '·'));
+            metaBits.push(h('span', {}, `membre depuis ${fmtDateTime(pilot.memberSince)}`));
+        }
+    } else {
+        metaBits.push(h('span', { class: 'role-pill guest' }, 'Sans compte'));
+        metaBits.push(h('span', { class: 'pilot-meta-sep' }, '·'));
+        metaBits.push(h('span', {}, 'Profil basé sur les chronos enregistrés'));
+    }
 
     clear(container);
     container.append(
@@ -63,18 +83,15 @@ export async function pilotView(container, [tenantKey, rawPseudo]) {
                 h('h1', { class: me ? 'pilot-me' : '' },
                     pilot.simPseudo,
                     ' ',
-                    visibilityBadge(tenant.visibility),
+                    visibilityBadge(tenant.visibility, { aggregate: isAllTenant(tenant) }),
                 ),
-                h('p', { class: 'lede pilot-meta' },
-                    h('span', { class: `role-pill ${pilot.role}` }, ROLE_LABEL[pilot.role] || pilot.role),
-                    h('span', { class: 'pilot-meta-sep' }, '·'),
-                    'Compte lié',
-                    pilot.memberSince
-                        ? h('span', {},
-                            h('span', { class: 'pilot-meta-sep' }, '·'),
-                            `membre depuis ${fmtDateTime(pilot.memberSince)}`,
-                        )
-                        : null,
+                h('p', { class: 'lede pilot-meta' }, ...metaBits),
+                h('p', { class: 'pilot-actions' },
+                    h('a', {
+                        class: 'btn btn-sm',
+                        href: versusPath(tenant, pilot.simPseudo),
+                        'data-link': true,
+                    }, 'Comparer en Versus'),
                 ),
             ),
         ),

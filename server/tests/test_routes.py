@@ -78,7 +78,7 @@ def test_stream_emits_data_version(client):
 
 def test_spa_fallback_serves_index(client):
     for path in ["/", "/t/quelque-chose", "/t/quelque-chose/recent", "/t/quelque-chose/championship",
-                 "/t/quelque-chose/pilot/Ada", "/championship", "/recent", "/account", "/admin", "/login"]:
+                 "/t/quelque-chose/pilot/Ada", "/t/quelque-chose/versus", "/versus", "/championship", "/recent", "/account", "/admin", "/login"]:
         r = client.get(path)
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
@@ -492,7 +492,13 @@ def test_pilot_profile_requires_linked_account(client):
 
     anon = TestClient(client.app)
     r = anon.get(f"/api/v1/tenants/{tenant['id']}/pilots/Pilote%200")
-    assert r.status_code == 404
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["pilot"]["simPseudo"] == "Pilote 0"
+    assert body["pilot"]["linked"] is False
+    assert body["pilot"]["role"] is None
+    assert body["profile"]["totalLaps"] >= 1
+    assert body["profile"]["bests"]
 
     r = client.post(
         "/api/v1/admin/users",
@@ -534,3 +540,110 @@ def test_sim_pseudo_unique_across_users(client):
     assert a.patch("/api/v1/profile/sim-pseudo", json={"sim_pseudo": "Ace"}).status_code == 200
     r = b.patch("/api/v1/profile/sim-pseudo", json={"sim_pseudo": "ace"})
     assert r.status_code == 400
+
+
+def test_all_tenant_aggregates_visible_orgs(client):
+    _setup_admin(client)
+    t1, sim1, token1 = _make_tenant_with_sim(client, label="Club A", sim_label="Box A")
+    t2, sim2, token2 = _make_tenant_with_sim(client, label="Club B", sim_label="Box B")
+    client.post(
+        "/api/v1/sync",
+        headers={"X-Results-Token": token1},
+        json={
+            "simulatorId": "cli-a",
+            "global": {"tracks": [{
+                "trackId": 1,
+                "trackName": "Melbourne",
+                "entries": [
+                    {"id": "a1", "name": "Ada", "bestLapMs": 79000, "startedAt": "2026-01-01T00:00:00"},
+                ],
+            }]},
+        },
+    )
+    client.post(
+        "/api/v1/sync",
+        headers={"X-Results-Token": token2},
+        json={
+            "simulatorId": "cli-b",
+            "global": {"tracks": [{
+                "trackId": 1,
+                "trackName": "Melbourne",
+                "entries": [
+                    {"id": "b1", "name": "Bob", "bestLapMs": 78000, "startedAt": "2026-01-01T00:00:00"},
+                ],
+            }]},
+        },
+    )
+
+    listed = client.get("/api/v1/tenants").json()["tenants"]
+    assert listed[0]["id"] == "all"
+    assert listed[0]["isAggregate"] is True
+    assert listed[0]["orgCount"] == 2
+
+    r = client.get("/api/v1/tenants/all")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["tenant"]["slug"] == "all"
+    assert len(body["sims"]) == 2
+
+    board = client.get("/api/v1/tenants/all/leaderboard?track_id=1&best=true").json()
+    assert board["total"] == 2
+    assert board["rows"][0]["name"] == "Bob"
+    assert board["rows"][1]["name"] == "Ada"
+
+    champ = client.get("/api/v1/tenants/all/championship").json()
+    assert champ["tracksCounted"] == 1
+    assert champ["standings"][0]["name"] == "Bob"
+    assert champ["standings"][0]["points"] == 25
+
+    pilot = client.get("/api/v1/tenants/all/pilots/Ada").json()
+    assert pilot["profile"]["totalLaps"] == 1
+
+
+def test_versus_compares_two_pilots(client):
+    _setup_admin(client)
+    tenant, sim, token = _make_tenant_with_sim(client)
+    client.post(
+        "/api/v1/sync",
+        headers={"X-Results-Token": token},
+        json={
+            "simulatorId": "cli-vs",
+            "global": {"tracks": [
+                {
+                    "trackId": 1,
+                    "trackName": "Melbourne",
+                    "entries": [
+                        {"id": "a1", "name": "Ada", "bestLapMs": 80000, "startedAt": "2026-01-01T00:00:00"},
+                        {"id": "b1", "name": "Bob", "bestLapMs": 82000, "startedAt": "2026-01-01T00:00:00"},
+                    ],
+                },
+                {
+                    "trackId": 2,
+                    "trackName": "Spa",
+                    "entries": [
+                        {"id": "a2", "name": "Ada", "bestLapMs": 105000, "startedAt": "2026-01-02T00:00:00"},
+                        {"id": "b2", "name": "Bob", "bestLapMs": 100000, "startedAt": "2026-01-02T00:00:00"},
+                    ],
+                },
+            ]},
+        },
+    )
+
+    names = client.get(f"/api/v1/tenants/{tenant['id']}/pilot-names").json()["names"]
+    assert "Ada" in names and "Bob" in names
+
+    r = client.get(f"/api/v1/tenants/{tenant['id']}/versus?a=Ada&b=Bob")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["summary"]["commonTracks"] == 2
+    assert body["summary"]["winsA"] == 1
+    assert body["summary"]["winsB"] == 1
+    assert body["summary"]["avgRelativePct"] is not None
+    assert body["summary"]["levelIndex"] is not None
+    tracks = {t["trackName"]: t for t in body["tracks"]}
+    assert tracks["Melbourne"]["winner"] == "a"
+    assert tracks["Melbourne"]["gapMs"] == -2000
+    assert tracks["Spa"]["winner"] == "b"
+
+    bad = client.get(f"/api/v1/tenants/{tenant['id']}/versus?a=Ada&b=Ada")
+    assert bad.status_code == 400

@@ -23,6 +23,22 @@ DEFAULT_POINTS_BY_PLACE = "25,18,15,12,10,8,6,4,2,1"
 MAX_POINTS_PLACES = 40
 
 TENANT_VISIBILITIES = ("public", "private")
+# Org virtuelle : agrège tous les simulateurs visibles (pas une ligne SQLite).
+ALL_TENANT_KEY = "all"
+RESERVED_TENANT_SLUGS = frozenset({ALL_TENANT_KEY})
+
+
+def make_all_tenant(*, sim_count: int = 0, org_count: int = 0) -> dict[str, Any]:
+    return {
+        "id": ALL_TENANT_KEY,
+        "slug": ALL_TENANT_KEY,
+        "label": "Toutes les organisations",
+        "visibility": "public",
+        "created_at": None,
+        "sim_count": sim_count,
+        "org_count": org_count,
+        "is_aggregate": True,
+    }
 
 
 def parse_points_by_place(raw: str | None) -> list[int]:
@@ -121,9 +137,15 @@ class ResultsStore:
 
     def _unique_slug(self, base: str, exclude_id: str | None = None) -> str:
         slug = slugify(base)
+        if slug in RESERVED_TENANT_SLUGS:
+            slug = f"{slug}-org"
         candidate = slug
         n = 2
         while True:
+            if candidate in RESERVED_TENANT_SLUGS:
+                candidate = f"{slug}-{n}"
+                n += 1
+                continue
             if exclude_id:
                 row = self._conn.execute(
                     "SELECT id FROM tenants WHERE slug = ? AND id != ?",
@@ -179,6 +201,8 @@ class ResultsStore:
             )
         if slug is not None:
             slug = slugify(slug.strip() or (label or tenant["label"]))
+            if slug in RESERVED_TENANT_SLUGS:
+                raise ValueError("Ce slug est réservé.")
             existing = self._conn.execute(
                 "SELECT id FROM tenants WHERE slug = ? AND id != ?", (slug, tenant_id)
             ).fetchone()
@@ -214,6 +238,44 @@ class ResultsStore:
             (tenant_id,),
         ).fetchall()
         return [self._with_presence(dict(r)) for r in rows]
+
+    def list_simulators_for_tenants(self, tenant_ids: list[str]) -> list[dict[str, Any]]:
+        if not tenant_ids:
+            return []
+        placeholders = ",".join("?" * len(tenant_ids))
+        rows = self._conn.execute(
+            f"""SELECT s.*, t.label AS tenant_label
+                FROM simulators s
+                JOIN tenants t ON t.id = s.tenant_id
+                WHERE s.tenant_id IN ({placeholders})
+                ORDER BY t.label COLLATE NOCASE, s.label COLLATE NOCASE""",
+            tenant_ids,
+        ).fetchall()
+        return [self._with_presence(dict(r)) for r in rows]
+
+    def _sims_for_scope(
+        self,
+        tenant_id: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        if tenant_id == ALL_TENANT_KEY:
+            return self.list_simulators_for_tenants(scope_tenant_ids or [])
+        return self.list_simulators_for_tenant(tenant_id)
+
+    def _sim_ids_and_labels(
+        self,
+        tenant_id: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> tuple[list[str], dict[str, str]]:
+        sims = self._sims_for_scope(tenant_id, scope_tenant_ids)
+        sim_ids = [s["id"] for s in sims]
+        labels: dict[str, str] = {}
+        aggregate = tenant_id == ALL_TENANT_KEY
+        for s in sims:
+            label = s.get("label") or ""
+            org = (s.get("tenant_label") or "").strip()
+            labels[s["id"]] = f"{org} · {label}" if aggregate and org else label
+        return sim_ids, labels
 
     def assign_simulator_to_tenant(self, sim_id: str, tenant_id: str) -> bool:
         if self.get_simulator(sim_id) is None:
@@ -537,8 +599,12 @@ class ResultsStore:
         ).fetchall()
         return [r["id"] for r in rows]
 
-    def tenant_track_summaries(self, tenant_id: str) -> list[dict[str, Any]]:
-        sim_ids = self._sim_ids_for_tenant(tenant_id)
+    def tenant_track_summaries(
+        self,
+        tenant_id: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        sim_ids, _ = self._sim_ids_and_labels(tenant_id, scope_tenant_ids)
         if not sim_ids:
             return []
         placeholders = ",".join("?" * len(sim_ids))
@@ -560,14 +626,11 @@ class ResultsStore:
         best_per_player: bool = False,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
+        scope_tenant_ids: list[str] | None = None,
     ) -> dict[str, Any]:
-        sim_ids = self._sim_ids_for_tenant(tenant_id)
+        sim_ids, labels = self._sim_ids_and_labels(tenant_id, scope_tenant_ids)
         if not sim_ids:
             return self._paginate([], page, page_size)
-        labels = {
-            s["id"]: s["label"]
-            for s in self.list_simulators_for_tenant(tenant_id)
-        }
         placeholders = ",".join("?" * len(sim_ids))
         rows = self._conn.execute(
             f"""SELECT * FROM laps
@@ -694,15 +757,12 @@ class ResultsStore:
         self,
         tenant_id: str,
         limit: int = DEFAULT_RECENT_LAPS,
+        scope_tenant_ids: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         limit = self._normalize_recent_limit(limit)
-        sim_ids = self._sim_ids_for_tenant(tenant_id)
+        sim_ids, labels = self._sim_ids_and_labels(tenant_id, scope_tenant_ids)
         if not sim_ids:
             return []
-        labels = {
-            s["id"]: s["label"]
-            for s in self.list_simulators_for_tenant(tenant_id)
-        }
         placeholders = ",".join("?" * len(sim_ids))
         rows = self._conn.execute(
             f"""SELECT * FROM laps
@@ -713,9 +773,13 @@ class ResultsStore:
         ).fetchall()
         return self._prepare_recent_rows(rows, labels)
 
-    def _tenant_lap_counts_by_player(self, tenant_id: str) -> dict[str, int]:
+    def _tenant_lap_counts_by_player(
+        self,
+        tenant_id: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> dict[str, int]:
         """Nombre total de tours valides (global) par pilote, clé = name.casefold()."""
-        sim_ids = self._sim_ids_for_tenant(tenant_id)
+        sim_ids, _ = self._sim_ids_and_labels(tenant_id, scope_tenant_ids)
         if not sim_ids:
             return {}
         placeholders = ",".join("?" * len(sim_ids))
@@ -735,11 +799,15 @@ class ResultsStore:
             out[name.casefold()] = int(row["lap_count"])
         return out
 
-    def tenant_championship(self, tenant_id: str) -> dict[str, Any]:
+    def tenant_championship(
+        self,
+        tenant_id: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Classement à points (web) : meilleur tour / pilote / circuit → points P1…Pn."""
         points = self.get_points_by_place()
-        tracks = self.tenant_track_summaries(tenant_id)
-        lap_counts = self._tenant_lap_counts_by_player(tenant_id)
+        tracks = self.tenant_track_summaries(tenant_id, scope_tenant_ids)
+        lap_counts = self._tenant_lap_counts_by_player(tenant_id, scope_tenant_ids)
         # name_key → aggregats
         totals: dict[str, dict[str, Any]] = {}
 
@@ -751,6 +819,7 @@ class ResultsStore:
                 best_per_player=True,
                 page=1,
                 page_size=min(need, MAX_PAGE_SIZE),
+                scope_tenant_ids=scope_tenant_ids,
             )
             rows = board.get("rows") or []
 
@@ -806,17 +875,14 @@ class ResultsStore:
         player_name: str,
         *,
         limit: int | None = None,
+        scope_tenant_ids: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         name = (player_name or "").strip()
         if not name:
             return []
-        sim_ids = self._sim_ids_for_tenant(tenant_id)
+        sim_ids, labels = self._sim_ids_and_labels(tenant_id, scope_tenant_ids)
         if not sim_ids:
             return []
-        labels = {
-            s["id"]: s["label"]
-            for s in self.list_simulators_for_tenant(tenant_id)
-        }
         placeholders = ",".join("?" * len(sim_ids))
         sql = f"""SELECT * FROM laps
                   WHERE simulator_id IN ({placeholders})
@@ -843,17 +909,23 @@ class ResultsStore:
             key=lambda x: ((x.get("track_name") or "").casefold(), x["track_id"]),
         )
 
-    def tenant_pilot_profile(self, tenant_id: str, player_name: str) -> dict[str, Any]:
+    def tenant_pilot_profile(
+        self,
+        tenant_id: str,
+        player_name: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Stats + meilleurs tours + récents pour un pseudo (global org)."""
         name = (player_name or "").strip()
-        all_laps = self.tenant_laps_for_player(tenant_id, name)
-        # Re-fetch unordered by time for bests — all_laps is DESC by started_at; OK for bests
+        all_laps = self.tenant_laps_for_player(
+            tenant_id, name, scope_tenant_ids=scope_tenant_ids
+        )
         bests = self._best_per_track(all_laps)
         for i, e in enumerate(bests, start=1):
             e["rank"] = i
             e["formatted"] = e.get("formatted") or format_lap(int(e["best_lap_ms"]))
         recent = all_laps[:DEFAULT_RECENT_LAPS]
-        champ = self.tenant_championship(tenant_id)
+        champ = self.tenant_championship(tenant_id, scope_tenant_ids)
         standing = next(
             (
                 s
@@ -869,6 +941,136 @@ class ResultsStore:
             "experience": standing,
             "bests": bests,
             "recent": recent,
+        }
+
+    def tenant_pilot_names(
+        self,
+        tenant_id: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> list[str]:
+        """Pseudos ayant au moins un chrono valide (global) dans la portée."""
+        sim_ids, _ = self._sim_ids_and_labels(tenant_id, scope_tenant_ids)
+        if not sim_ids:
+            return []
+        placeholders = ",".join("?" * len(sim_ids))
+        rows = self._conn.execute(
+            f"""SELECT name, COUNT(*) AS n
+                FROM laps
+                WHERE simulator_id IN ({placeholders})
+                  AND contest_id IS NULL AND {LAP_VALID_SQL}
+                GROUP BY name COLLATE NOCASE
+                ORDER BY n DESC, name COLLATE NOCASE""",
+            sim_ids,
+        ).fetchall()
+        out: list[str] = []
+        for row in rows:
+            name = (row["name"] or "").strip()
+            if name:
+                out.append(name)
+        return out
+
+    def tenant_versus(
+        self,
+        tenant_id: str,
+        name_a: str,
+        name_b: str,
+        scope_tenant_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Comparaison tête-à-tête : écarts absolus / relatifs + duel par circuit."""
+        a = (name_a or "").strip()
+        b = (name_b or "").strip()
+        if not a or not b:
+            raise ValueError("Indiquez deux pseudos.")
+        if a.casefold() == b.casefold():
+            raise ValueError("Choisissez deux pilotes différents.")
+
+        profile_a = self.tenant_pilot_profile(tenant_id, a, scope_tenant_ids)
+        profile_b = self.tenant_pilot_profile(tenant_id, b, scope_tenant_ids)
+        display_a = profile_a["name"]
+        display_b = profile_b["name"]
+
+        bests_a = {int(e["track_id"]): e for e in profile_a["bests"]}
+        bests_b = {int(e["track_id"]): e for e in profile_b["bests"]}
+        track_ids = sorted(set(bests_a) | set(bests_b))
+
+        tracks: list[dict[str, Any]] = []
+        relative_samples: list[float] = []
+        wins_a = wins_b = ties = 0
+
+        for tid in track_ids:
+            ea = bests_a.get(tid)
+            eb = bests_b.get(tid)
+            track_name = (
+                (ea or eb or {}).get("track_name") or f"Circuit {tid}"
+            )
+            row: dict[str, Any] = {
+                "track_id": tid,
+                "track_name": track_name,
+                "a_ms": int(ea["best_lap_ms"]) if ea else None,
+                "b_ms": int(eb["best_lap_ms"]) if eb else None,
+                "a_formatted": (ea or {}).get("formatted"),
+                "b_formatted": (eb or {}).get("formatted"),
+                "gap_ms": None,
+                "relative_pct": None,
+                "winner": None,
+            }
+            if ea and eb:
+                gap = int(ea["best_lap_ms"]) - int(eb["best_lap_ms"])
+                row["gap_ms"] = gap
+                # % de A par rapport à B : négatif = A plus rapide
+                row["relative_pct"] = round(gap / float(eb["best_lap_ms"]) * 100.0, 3)
+                relative_samples.append(row["relative_pct"])
+                if gap < 0:
+                    row["winner"] = "a"
+                    wins_a += 1
+                elif gap > 0:
+                    row["winner"] = "b"
+                    wins_b += 1
+                else:
+                    row["winner"] = "tie"
+                    ties += 1
+            tracks.append(row)
+
+        tracks.sort(key=lambda r: (r.get("track_name") or "").casefold())
+
+        avg_rel = (
+            round(sum(relative_samples) / len(relative_samples), 3)
+            if relative_samples
+            else None
+        )
+        # Indice de niveau : 100 = égalité ; >100 = A plus rapide en moyenne
+        level_index = (
+            round(100.0 - avg_rel, 2) if avg_rel is not None else None
+        )
+
+        return {
+            "a": {
+                "name": display_a,
+                "total_laps": profile_a["total_laps"],
+                "tracks_driven": profile_a["tracks_driven"],
+                "experience": profile_a.get("experience"),
+            },
+            "b": {
+                "name": display_b,
+                "total_laps": profile_b["total_laps"],
+                "tracks_driven": profile_b["tracks_driven"],
+                "experience": profile_b.get("experience"),
+            },
+            "summary": {
+                "common_tracks": len(relative_samples),
+                "wins_a": wins_a,
+                "wins_b": wins_b,
+                "ties": ties,
+                "avg_relative_pct": avg_rel,
+                "level_index": level_index,
+                "faster": (
+                    "a" if avg_rel is not None and avg_rel < 0
+                    else "b" if avg_rel is not None and avg_rel > 0
+                    else "tie" if avg_rel == 0
+                    else None
+                ),
+            },
+            "tracks": tracks,
         }
 
     def get_lap(self, sim_id: str, entry_id: str) -> dict[str, Any] | None:

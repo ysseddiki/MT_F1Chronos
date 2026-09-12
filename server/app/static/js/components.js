@@ -4,7 +4,7 @@ import { h, clear, fmtLap, fmtGap, fmtDateTime } from './dom.js';
 import { state, isAdmin, isAuthenticated, isSimRacer, mySimulatorPseudo, loadTenants } from './state.js';
 import { navigate } from './router.js';
 import { post } from './api.js';
-import { tenantPath, tenantKeyFromPath, findTenantByKey, championshipPath, recentPath } from './paths.js';
+import { tenantPath, tenantKeyFromPath, findTenantByKey, championshipPath, recentPath, versusPath, ALL_TENANT_KEY } from './paths.js';
 
 // ---------- Topbar ----------
 
@@ -22,20 +22,29 @@ export async function renderTopbar(activePath) {
     try { tenants = await loadTenants(); } catch { /* hors-ligne : switcher vide */ }
     const pathKey = tenantKeyFromPath(activePath);
     const currentTenant = findTenantByKey(tenants, pathKey);
+    const allTenant = findTenantByKey(tenants, ALL_TENANT_KEY);
+    const navTenant = currentTenant || allTenant || tenants[0] || null;
 
     const classementActive = activePath === '/'
-        || (activePath.startsWith('/t/') && !activePath.includes('/recent') && !activePath.includes('/championship'))
+        || (activePath.startsWith('/t/')
+            && !activePath.includes('/recent')
+            && !activePath.includes('/championship')
+            && !activePath.includes('/pilot/')
+            && !activePath.includes('/versus'))
         || activePath.startsWith('/sim/');
     const recentActive = activePath.includes('/recent') || activePath === '/recent';
     const champActive = activePath.includes('/championship') || activePath === '/championship';
+    const versusActive = activePath.includes('/versus') || activePath === '/versus';
 
-    const classementHref = currentTenant ? tenantPath(currentTenant) : '/';
-    const recentHref = currentTenant ? recentPath(currentTenant) : '/recent';
-    const champHref = currentTenant ? championshipPath(currentTenant) : '/championship';
+    const classementHref = navTenant ? tenantPath(navTenant) : '/';
+    const recentHref = navTenant ? recentPath(navTenant) : '/recent';
+    const champHref = navTenant ? championshipPath(navTenant) : '/championship';
+    const versusHref = navTenant ? versusPath(navTenant) : '/versus';
 
     const navItems = [
         navLink(classementHref, 'Classement', classementActive),
         navLink(champHref, 'Expérience', champActive),
+        navLink(versusHref, 'Versus', versusActive),
     ];
     if (isAdmin()) {
         navItems.push(navLink(recentHref, 'Derniers chronos', recentActive));
@@ -50,17 +59,15 @@ export async function renderTopbar(activePath) {
             'aria-label': 'Choisir une organisation',
             onchange: (e) => {
                 const key = e.target.value;
-                if (!key) navigate('/');
-                else {
-                    const t = tenants.find((x) => (x.slug || x.id) === key);
-                    navigate(t ? tenantPath(t) : `/t/${key}`);
-                }
+                const t = tenants.find((x) => (x.slug || x.id) === key);
+                navigate(t ? tenantPath(t) : `/t/${key}`);
             },
         },
-            h('option', { value: '', selected: !currentTenant }, 'Toutes les organisations'),
             tenants.map((t) => h('option', {
                 value: t.slug || t.id,
-                selected: currentTenant?.id === t.id,
+                selected: currentTenant
+                    ? currentTenant.id === t.id
+                    : (t.slug || t.id) === ALL_TENANT_KEY,
             }, t.label)),
         );
         right.append(h('div', { class: 'tenant-switch' }, select));
@@ -197,7 +204,10 @@ export function presence(sim) {
     return wrap;
 }
 
-export function visibilityBadge(visibility) {
+export function visibilityBadge(visibility, { aggregate = false } = {}) {
+    if (aggregate) {
+        return h('span', { class: 'badge aggregate' }, 'Toutes');
+    }
     return visibility === 'private'
         ? h('span', { class: 'badge private' }, 'Privé')
         : h('span', { class: 'badge public' }, 'Public');

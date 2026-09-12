@@ -4,9 +4,9 @@ import { h, clear } from '../dom.js';
 import { get } from '../api.js';
 import { recentLapsPanel, banner, visibilityBadge, simToolbarStrip } from '../components.js';
 import { onCleanup, replace } from '../router.js';
-import { subscribeChanges, mySimulatorPseudo, isAdmin, loadLinkedPilots } from '../state.js';
+import { subscribeChanges, mySimulatorPseudo, isAdmin } from '../state.js';
 import { boardRowManageMenu } from '../board_manage.js';
-import { tenantPath, makePilotHref } from '../paths.js';
+import { tenantPath, makePilotHref, isAllTenant } from '../paths.js';
 import { FALLBACK_REFRESH_MS } from './board_page.js';
 
 const RECENT_LAPS_LIMIT = 15;
@@ -35,9 +35,8 @@ export async function recentView(container, [tenantKey]) {
         return;
     }
 
-    let linked = new Set();
-    try { linked = await loadLinkedPilots(tenant.id); } catch { /* ignore */ }
-    const pilotHref = makePilotHref(tenant, linked);
+    const pilotHref = makePilotHref(tenant);
+    const aggregate = isAllTenant(tenant);
 
     document.title = `Derniers chronos — ${tenant.label} — F1 Chronos`;
 
@@ -45,10 +44,12 @@ export async function recentView(container, [tenantKey]) {
         h('div', { class: 'page-head' },
             h('div', { class: 'titles' },
                 h('a', { class: 'back-link', href: tenantPath(tenant), 'data-link': true }, `← ${tenant.label}`),
-                h('p', { class: 'kicker' }, 'Journal'),
-                h('h1', {}, 'Derniers chronos', ' ', visibilityBadge(tenant.visibility)),
+                h('p', { class: 'kicker' }, aggregate ? 'Journal global' : 'Journal'),
+                h('h1', {}, 'Derniers chronos', ' ', visibilityBadge(tenant.visibility, { aggregate })),
                 h('p', { class: 'lede' },
-                    'Les 15 derniers tours enregistrés, tous circuits confondus.'),
+                    aggregate
+                        ? 'Les 15 derniers tours, toutes organisations et circuits confondus.'
+                        : 'Les 15 derniers tours enregistrés, tous circuits confondus.'),
             ),
         ),
     );
@@ -112,12 +113,17 @@ export async function recentIndexView(container) {
         return;
     }
     const { loadTenants } = await import('../state.js');
-    const { recentPath } = await import('../paths.js');
+    const { recentPath, isAllTenant } = await import('../paths.js');
     let tenants;
     try {
         tenants = await loadTenants(true);
     } catch (err) {
         container.append(h('p', { class: 'lede' }, err.message));
+        return;
+    }
+    const all = tenants.find((t) => isAllTenant(t));
+    if (all) {
+        replace(recentPath(all));
         return;
     }
     if (tenants.length === 1) {

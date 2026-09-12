@@ -4,8 +4,8 @@ import { h, clear } from '../dom.js';
 import { get } from '../api.js';
 import { visibilityBadge } from '../components.js';
 import { onCleanup, replace } from '../router.js';
-import { subscribeChanges, mySimulatorPseudo, loadLinkedPilots } from '../state.js';
-import { tenantPath, championshipPath, makePilotHref } from '../paths.js';
+import { subscribeChanges, mySimulatorPseudo } from '../state.js';
+import { tenantPath, championshipPath, makePilotHref, isAllTenant } from '../paths.js';
 import { FALLBACK_REFRESH_MS } from './board_page.js';
 
 const LIVE_DEBOUNCE_MS = 1500;
@@ -33,9 +33,8 @@ export async function championshipView(container, [tenantKey]) {
         return;
     }
 
-    let linked = new Set();
-    try { linked = await loadLinkedPilots(tenant.id); } catch { /* ignore */ }
-    const pilotHref = makePilotHref(tenant, linked);
+    const pilotHref = makePilotHref(tenant);
+    const aggregate = isAllTenant(tenant);
 
     document.title = `Expérience — ${tenant.label} — F1 Chronos`;
 
@@ -47,10 +46,12 @@ export async function championshipView(container, [tenantKey]) {
         h('div', { class: 'page-head' },
             h('div', { class: 'titles' },
                 h('a', { class: 'back-link', href: tenantPath(tenant), 'data-link': true }, `← ${tenant.label}`),
-                h('p', { class: 'kicker' }, 'Progression'),
-                h('h1', {}, 'Expérience', ' ', visibilityBadge(tenant.visibility)),
+                h('p', { class: 'kicker' }, aggregate ? 'Progression globale' : 'Progression'),
+                h('h1', {}, 'Expérience', ' ', visibilityBadge(tenant.visibility, { aggregate })),
                 h('p', { class: 'lede' },
-                    `Points attribués sur chaque circuit (meilleur tour / pilote). `,
+                    aggregate
+                        ? 'Points sur chaque circuit, toutes organisations confondues (meilleur tour / pilote). '
+                        : 'Points attribués sur chaque circuit (meilleur tour / pilote). ',
                     `${champ.tracksCounted || 0} circuit${(champ.tracksCounted || 0) > 1 ? 's' : ''} comptabilisé${(champ.tracksCounted || 0) > 1 ? 's' : ''}.`),
             ),
         ),
@@ -152,6 +153,11 @@ export async function championshipIndexView(container) {
         tenants = await loadTenants(true);
     } catch (err) {
         container.append(h('p', { class: 'lede' }, err.message));
+        return;
+    }
+    const all = tenants.find((t) => isAllTenant(t));
+    if (all) {
+        replace(championshipPath(all));
         return;
     }
     if (tenants.length === 1) {

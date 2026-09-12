@@ -277,6 +277,7 @@ td.pilot-linked .pilot-link {
 }
 .role-pill.simracer { background: rgba(225, 6, 0, 0.15); color: #ff6b5a; }
 .role-pill.visitor { background: var(--orange-soft); color: var(--orange); }
+.role-pill.guest { background: rgba(143, 160, 194, 0.15); color: var(--muted); }
 
 .pilot-stat-strip {
     display: grid;
@@ -312,6 +313,128 @@ td.pilot-linked .pilot-link {
     font-size: 1.05rem;
     margin: 0 0 12px;
     color: var(--text);
+}
+
+.pilot-actions { margin-top: 10px; }
+
+/* ---------- Versus ---------- */
+
+.versus-picker { margin-bottom: 22px; }
+.versus-picker-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 14px;
+    align-items: end;
+    margin-bottom: 14px;
+}
+.versus-vs {
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--orange);
+    padding-bottom: 12px;
+}
+.versus-pilot-select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line-strong);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+}
+
+.versus-heroes {
+    display: grid;
+    grid-template-columns: 1fr minmax(200px, 0.9fr) 1fr;
+    gap: 14px;
+    margin-bottom: 28px;
+    align-items: stretch;
+}
+.versus-card {
+    padding: 18px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(30, 41, 66, 0.95), rgba(16, 22, 38, 0.98));
+}
+.versus-card.faster {
+    border-color: rgba(249, 115, 22, 0.55);
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2);
+}
+.versus-side {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+.versus-name {
+    display: inline-block;
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+.versus-card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.versus-card-stats .muted {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.versus-card-stats strong {
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.versus-summary {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 16px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+}
+.versus-score {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 2.2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.versus-score .win { color: var(--orange); }
+.versus-score-sep { color: var(--muted); font-size: 1.4rem; }
+.versus-score-label { margin: 4px 0 12px; color: var(--muted); font-size: 0.85rem; }
+.versus-relative {
+    margin: 0 0 8px;
+    font-weight: 700;
+    max-width: 22rem;
+    line-height: 1.35;
+}
+.versus-level { margin: 0; }
+
+.versus-section { margin-bottom: 24px; }
+.versus-section h2 { margin: 0 0 12px; font-size: 1.05rem; }
+.versus-table td.best { color: var(--orange); font-weight: 800; }
+.versus-table tr.winner-a td:nth-child(2),
+.versus-table tr.winner-b td:nth-child(3) { color: var(--orange); }
+.versus-rel { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.versus-legend { margin-top: 10px; }
+
+@media (max-width: 860px) {
+    .versus-picker-row { grid-template-columns: 1fr; }
+    .versus-vs { padding: 0; text-align: center; }
+    .versus-heroes { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 800px) {
@@ -365,6 +488,12 @@ h2 { font-size: 1.08rem; font-weight: 700; }
 }
 .badge.public { background: var(--blue-soft); color: var(--blue); }
 .badge.private { background: var(--orange-soft); color: var(--orange); }
+.badge.aggregate { background: rgba(249, 115, 22, 0.18); color: var(--orange); }
+
+.card-all {
+    border-color: rgba(249, 115, 22, 0.45);
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(30, 41, 66, 0.9));
+}
 
 .presence {
     display: inline-flex;

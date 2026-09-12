@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def tenant_out(t: dict) -> dict:
-    return {
+    out = {
         "id": t["id"],
         "slug": t.get("slug") or t["id"],
         "label": t["label"],
@@ -12,6 +12,11 @@ def tenant_out(t: dict) -> dict:
         "simCount": t.get("sim_count"),
         "createdAt": t.get("created_at"),
     }
+    if t.get("is_aggregate"):
+        out["isAggregate"] = True
+        if t.get("org_count") is not None:
+            out["orgCount"] = t["org_count"]
+    return out
 
 
 def sim_out(s: dict, admin: bool = False) -> dict:
@@ -26,6 +31,8 @@ def sim_out(s: dict, admin: bool = False) -> dict:
         "lastSeenUtc": s.get("last_seen_utc"),
         "syncIntervalSeconds": s.get("sync_interval_seconds") or 120,
     }
+    if s.get("tenant_label"):
+        out["tenantLabel"] = s["tenant_label"]
     if admin:
         out["clientId"] = s.get("client_id")
     return out
@@ -100,6 +107,45 @@ def pilot_profile_out(data: dict) -> dict:
         "experience": experience_standing_out(data.get("experience")),
         "bests": [lap_out(r) for r in data["bests"]],
         "recent": [lap_out(r) for r in data["recent"]],
+    }
+
+
+def versus_pilot_out(p: dict) -> dict:
+    return {
+        "name": p["name"],
+        "totalLaps": p["total_laps"],
+        "tracksDriven": p["tracks_driven"],
+        "experience": experience_standing_out(p.get("experience")),
+    }
+
+
+def versus_out(data: dict) -> dict:
+    return {
+        "a": versus_pilot_out(data["a"]),
+        "b": versus_pilot_out(data["b"]),
+        "summary": {
+            "commonTracks": data["summary"]["common_tracks"],
+            "winsA": data["summary"]["wins_a"],
+            "winsB": data["summary"]["wins_b"],
+            "ties": data["summary"]["ties"],
+            "avgRelativePct": data["summary"]["avg_relative_pct"],
+            "levelIndex": data["summary"]["level_index"],
+            "faster": data["summary"]["faster"],
+        },
+        "tracks": [
+            {
+                "trackId": t["track_id"],
+                "trackName": t["track_name"],
+                "aMs": t["a_ms"],
+                "bMs": t["b_ms"],
+                "aFormatted": t["a_formatted"],
+                "bFormatted": t["b_formatted"],
+                "gapMs": t["gap_ms"],
+                "relativePct": t["relative_pct"],
+                "winner": t["winner"],
+            }
+            for t in data["tracks"]
+        ],
     }
 
 
