@@ -415,4 +415,7 @@ def test_tenant_championship_awards_points_per_track(tmp_path: Path):
     assert by_name["Cyd"]["points"] == 15
     assert by_name["Ada"]["wins"] == 1
     assert by_name["Bob"]["wins"] == 1
+    assert by_name["Ada"]["total_laps"] == 2
+    assert by_name["Bob"]["total_laps"] == 2
+    assert by_name["Cyd"]["total_laps"] == 1
     assert champ["standings"][0]["rank"] == 1

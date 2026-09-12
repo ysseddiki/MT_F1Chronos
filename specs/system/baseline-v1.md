@@ -431,7 +431,7 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | Toolbar simu | `simToolbarStrip` : 2 tuiles (simulateur · statut / **pilote en session**) ; pseudo profil via `/profile` ou menu compte |
 | Tableau | **Classement** (topbar) : `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance = `sim_pseudo` |
 | Derniers chronos | Page topbar **admin** `/t/…/recent` (plus d’onglet board) ; `recentLapsPanel`, 15 max ; API admin |
-| Championnat | Page topbar `/t/…/championship` : points F1-like (meilleur / pilote / circuit, global org) ; barème `points_by_place` en admin Réglages — **web only**, pas l’overlay |
+| Championnat | Page topbar **Expérience** `/t/…/championship` : points F1-like (meilleur / pilote / circuit, global org) ; barème `points_by_place` en admin Réglages — **web only**, pas l’overlay |
 | Compte | Menu user (topbar) → `/account` (mdp + infos) |
 | Actions admin | Colonne « … » (`board_manage.js`) ; menu opaque, exclusif |
 | Live | `subscribeChanges` (SSE) + repli 60 s |
@@ -441,7 +441,7 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | Route | Rôle |
 |---|---|
 | `/t/{slug}` | Classement agrégé tenant (multi-sims) |
-| `/t/{slug}/championship` | Championnat à points (global org) |
+| `/t/{slug}/championship` | Expérience (points global org) |
 | `/t/{slug}/recent` | Journal derniers chronos (admin) |
 | `/sim/{id}` | Classement **global** du simulateur |
 | `/sim/{id}?contest={cid}` | Classement **concours** (concours de ce simu uniquement) |

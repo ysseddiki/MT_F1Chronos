@@ -58,13 +58,13 @@ export async function settingsTab(slot) {
                     points_by_place: pointsInput.value,
                 });
                 pointsInput.value = res.pointsByPlace || pointsInput.value;
-                toast('Barème du championnat enregistré.', 'success');
+                toast('Barème Expérience enregistré.', 'success');
             } catch (err) {
                 toast(err.message, 'error');
             }
         },
     },
-        h('h2', {}, 'Championnat — points par place'),
+        h('h2', {}, 'Expérience — points par place'),
         h('p', { class: 'hint' },
             'Système de points style F1, uniquement sur le site de résultats (pas l’overlay). ',
             'Liste séparée par des virgules : P1, P2, P3… Ajoutez un chiffre pour scorer une place de plus. ',

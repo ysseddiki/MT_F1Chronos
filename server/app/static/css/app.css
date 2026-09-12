@@ -219,6 +219,28 @@ a:hover { color: #7fb0ff; }
 
 .champ-scale { margin-bottom: 18px; }
 .championship-table .pos { width: 3rem; }
+.championship-table th.champ-primary,
+.championship-table td.champ-primary {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.championship-table td.champ-points {
+    font-variant-numeric: tabular-nums;
+    color: var(--orange);
+    font-size: 1.12rem;
+}
+.championship-table th.champ-secondary,
+.championship-table td.champ-secondary {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+.championship-table thead th.champ-secondary {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
 
 /* ---------- Layout ---------- */
 

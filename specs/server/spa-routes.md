@@ -12,7 +12,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 |---|---|---|
 | `/` | `home.js` | Accueil, redirection tenant si un seul |
 | `/t/{slug\|id}` | `tenant.js` | **Classement** agrégé organisation |
-| `/t/{slug\|id}/championship` | `championship.js` | **Championnat** à points (global org, web only) |
+| `/t/{slug\|id}/championship` | `championship.js` | **Expérience** à points (global org, web only) |
 | `/t/{slug\|id}/recent` | `recent.js` | **Derniers chronos** (admin) — journal tous circuits |
 | `/sim/{id}` | `sim.js` | Classement **global** du simulateur |
 | `/sim/{id}?contest={cid}` | `sim.js` | Classement **concours** (lié à ce simu uniquement) |
@@ -28,7 +28,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 | Lien | Qui | Cible |
 |---|---|---|
 | Classement | tous | org courante ou `/` |
-| Championnat | tous | `/t/…/championship` |
+| Expérience | tous | `/t/…/championship` |
 | Derniers chronos | admin | `/t/…/recent` |
 | Administration | admin | `/admin` |
 | Menu user (clic) | connecté | Mon compte / Pseudo / Admin / Déconnexion |
@@ -61,7 +61,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 |---|---|
 | Tableau + pagination | `components.js` → `boardTable`, `pagination` |
 | Derniers chronos | page `recent.js` + `recentLapsPanel` ; API `GET …/recent-laps` |
-| Championnat | page `championship.js` ; API `GET …/championship` |
+| Expérience | page `championship.js` ; API `GET …/championship` |
 | Toolbar simus | `components.js` → `simToolbarStrip` |
 | Actions admin « … » | `board_manage.js` → `actionMenu` |
 | Live SSE | `state.js` → `subscribeChanges` |
@@ -76,7 +76,7 @@ static/js/
 ├── router.js
 ├── api.js
 ├── state.js
-├── components.js     # topbar (Classement / Championnat / …), menus
+├── components.js     # topbar (Classement / Expérience / …), menus
 ├── board_manage.js
 ├── dom.js
 ├── paths.js
@@ -100,7 +100,7 @@ static/js/
 
 - Créés sur le **simulateur** (overlay WPF) → synchronisés via `POST /api/v1/sync`
 - Affichage web : **uniquement** via `/sim/{id}?contest=…`
-- Pas d’agrégation inter-simus pour les concours ; le **championnat** agrège uniquement le **global** org
+- Pas d’agrégation inter-simus pour les concours ; l’**Expérience** agrège uniquement le **global** org
 
 ---
 
@@ -113,7 +113,7 @@ static/js/
 
 ---
 
-## API — championnat (web only)
+## API — Expérience / championship (web only)
 
 | Endpoint | Accès | Notes |
 |---|---|---|

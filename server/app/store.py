@@ -713,10 +713,33 @@ class ResultsStore:
         ).fetchall()
         return self._prepare_recent_rows(rows, labels)
 
+    def _tenant_lap_counts_by_player(self, tenant_id: str) -> dict[str, int]:
+        """Nombre total de tours valides (global) par pilote, clé = name.casefold()."""
+        sim_ids = self._sim_ids_for_tenant(tenant_id)
+        if not sim_ids:
+            return {}
+        placeholders = ",".join("?" * len(sim_ids))
+        rows = self._conn.execute(
+            f"""SELECT name, COUNT(*) AS lap_count
+                FROM laps
+                WHERE simulator_id IN ({placeholders})
+                  AND contest_id IS NULL AND {LAP_VALID_SQL}
+                GROUP BY name COLLATE NOCASE""",
+            sim_ids,
+        ).fetchall()
+        out: dict[str, int] = {}
+        for row in rows:
+            name = (row["name"] or "").strip()
+            if not name:
+                continue
+            out[name.casefold()] = int(row["lap_count"])
+        return out
+
     def tenant_championship(self, tenant_id: str) -> dict[str, Any]:
         """Classement à points (web) : meilleur tour / pilote / circuit → points P1…Pn."""
         points = self.get_points_by_place()
         tracks = self.tenant_track_summaries(tenant_id)
+        lap_counts = self._tenant_lap_counts_by_player(tenant_id)
         # name_key → aggregats
         totals: dict[str, dict[str, Any]] = {}
 
@@ -747,6 +770,7 @@ class ResultsStore:
                         "podiums": 0,
                         "scoring_places": 0,
                         "tracks": 0,
+                        "total_laps": 0,
                     }
                     totals[key] = bucket
                 pts = points[place]
@@ -758,6 +782,9 @@ class ResultsStore:
                     bucket["wins"] += 1
                 if place < 3:
                     bucket["podiums"] += 1
+
+        for key, bucket in totals.items():
+            bucket["total_laps"] = lap_counts.get(key, 0)
 
         standings = sorted(
             totals.values(),

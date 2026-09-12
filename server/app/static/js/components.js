@@ -35,11 +35,10 @@ export async function renderTopbar(activePath) {
 
     const navItems = [
         navLink(classementHref, 'Classement', classementActive),
-        navLink(champHref, 'Championnat', champActive),
+        navLink(champHref, 'Expérience', champActive),
     ];
     if (isAdmin()) {
         navItems.push(navLink(recentHref, 'Derniers chronos', recentActive));
-        navItems.push(navLink('/admin', 'Administration', activePath.startsWith('/admin')));
     }
 
     const nav = h('nav', {}, ...navItems);

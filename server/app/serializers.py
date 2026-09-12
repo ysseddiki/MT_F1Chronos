@@ -66,6 +66,7 @@ def championship_out(data: dict) -> dict:
                 "rank": s["rank"],
                 "name": s["name"],
                 "points": s["points"],
+                "totalLaps": s.get("total_laps", 0),
                 "wins": s["wins"],
                 "podiums": s["podiums"],
                 "scoringPlaces": s["scoring_places"],

@@ -1,4 +1,4 @@
-// Championnat à points (web) — meilleur tour / pilote / circuit → points P1…Pn.
+// Expérience (points web) — meilleur tour / pilote / circuit → points P1…Pn.
 
 import { h, clear } from '../dom.js';
 import { get } from '../api.js';
@@ -33,7 +33,7 @@ export async function championshipView(container, [tenantKey]) {
         return;
     }
 
-    document.title = `Championnat — ${tenant.label} — F1 Chronos`;
+    document.title = `Expérience — ${tenant.label} — F1 Chronos`;
 
     const highlight = (mySimulatorPseudo() || '').trim().toLowerCase();
     const points = champ.pointsByPlace || [];
@@ -43,8 +43,8 @@ export async function championshipView(container, [tenantKey]) {
         h('div', { class: 'page-head' },
             h('div', { class: 'titles' },
                 h('a', { class: 'back-link', href: tenantPath(tenant), 'data-link': true }, `← ${tenant.label}`),
-                h('p', { class: 'kicker' }, 'Saison'),
-                h('h1', {}, 'Championnat', ' ', visibilityBadge(tenant.visibility)),
+                h('p', { class: 'kicker' }, 'Progression'),
+                h('h1', {}, 'Expérience', ' ', visibilityBadge(tenant.visibility)),
                 h('p', { class: 'lede' },
                     `Points attribués sur chaque circuit (meilleur tour / pilote). `,
                     `${champ.tracksCounted || 0} circuit${(champ.tracksCounted || 0) > 1 ? 's' : ''} comptabilisé${(champ.tracksCounted || 0) > 1 ? 's' : ''}.`),
@@ -106,24 +106,26 @@ function renderStandings(slot, standings, highlight) {
     }
 
     const thead = h('thead', {}, h('tr', {},
-        h('th', { class: 'pos' }, '#'),
-        h('th', {}, 'Pilote'),
-        h('th', { class: 'time' }, 'Points'),
-        h('th', {}, 'Victoires'),
-        h('th', {}, 'Podiums'),
-        h('th', {}, 'Circuits'),
+        h('th', { class: 'pos champ-primary' }, '#'),
+        h('th', { class: 'champ-primary' }, 'Pilote'),
+        h('th', { class: 'time champ-primary' }, 'Points'),
+        h('th', { class: 'champ-secondary' }, 'Tours'),
+        h('th', { class: 'champ-secondary' }, 'Victoires'),
+        h('th', { class: 'champ-secondary' }, 'Podiums'),
+        h('th', { class: 'champ-secondary' }, 'Circuits'),
     ));
 
     const body = h('tbody', {},
         standings.map((row) => {
             const me = highlight && (row.name || '').trim().toLowerCase() === highlight;
             return h('tr', { class: me ? 'row-me' : '' },
-                h('td', { class: 'pos' }, String(row.rank)),
-                h('td', { class: `pilot${me ? ' pilot-me' : ''}` }, row.name),
-                h('td', { class: 'time' }, String(row.points)),
-                h('td', {}, String(row.wins)),
-                h('td', {}, String(row.podiums)),
-                h('td', {}, String(row.tracks)),
+                h('td', { class: 'pos champ-primary' }, String(row.rank)),
+                h('td', { class: `pilot champ-primary${me ? ' pilot-me' : ''}` }, row.name),
+                h('td', { class: 'time champ-primary champ-points' }, String(row.points)),
+                h('td', { class: 'champ-secondary' }, String(row.totalLaps ?? 0)),
+                h('td', { class: 'champ-secondary' }, String(row.wins)),
+                h('td', { class: 'champ-secondary' }, String(row.podiums)),
+                h('td', { class: 'champ-secondary' }, String(row.tracks)),
             );
         }),
     );
@@ -147,10 +149,10 @@ export async function championshipIndexView(container) {
         replace(championshipPath(tenants[0]));
         return;
     }
-    document.title = 'Championnat — F1 Chronos';
+    document.title = 'Expérience — F1 Chronos';
     container.append(
-        h('p', { class: 'kicker' }, 'Saison'),
-        h('h1', {}, 'Championnat'),
+        h('p', { class: 'kicker' }, 'Progression'),
+        h('h1', {}, 'Expérience'),
         h('p', { class: 'lede' }, 'Choisissez une organisation.'),
         !tenants.length
             ? h('p', { class: 'lede' }, 'Aucune organisation visible.')
