@@ -4,11 +4,12 @@ import { h, clear } from '../dom.js';
 import { get } from '../api.js';
 import { visibilityBadge } from '../components.js';
 import { renderBoardPage } from './board_page.js';
-import { tenantPath } from '../paths.js';
+import { tenantPath, makePilotHref } from '../paths.js';
 import { replace } from '../router.js';
+import { loadLinkedPilots } from '../state.js';
 
 export async function tenantView(container, [tenantKey], query) {
-    let data, tracksData;
+    let data, tracksData, linked;
     try {
         [data, tracksData] = await Promise.all([
             get(`/api/v1/tenants/${tenantKey}`),
@@ -27,6 +28,11 @@ export async function tenantView(container, [tenantKey], query) {
         return;
     }
     const tenantId = tenant.id;
+    try {
+        linked = await loadLinkedPilots(tenantId);
+    } catch {
+        linked = new Set();
+    }
     const tracks = tracksData.tracks;
     const focusSim = sims.find((s) => s.currentTrackId >= 0);
 
@@ -48,6 +54,7 @@ export async function tenantView(container, [tenantKey], query) {
         focusTrackId: focusSim?.currentTrackId ?? null,
         liveTrackId: focusSim?.currentTrackId >= 0 ? focusSim.currentTrackId : null,
         showSim: sims.length > 1,
+        pilotHref: makePilotHref(tenant, linked),
         fetchBoard: (trackId, best, page) =>
             get(`/api/v1/tenants/${tenantId}/leaderboard?track_id=${trackId}&best=${best}&page=${page}`),
     });

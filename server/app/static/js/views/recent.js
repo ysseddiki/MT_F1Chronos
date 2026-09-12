@@ -4,9 +4,9 @@ import { h, clear } from '../dom.js';
 import { get } from '../api.js';
 import { recentLapsPanel, banner, visibilityBadge, simToolbarStrip } from '../components.js';
 import { onCleanup, replace } from '../router.js';
-import { subscribeChanges, mySimulatorPseudo, isAdmin } from '../state.js';
+import { subscribeChanges, mySimulatorPseudo, isAdmin, loadLinkedPilots } from '../state.js';
 import { boardRowManageMenu } from '../board_manage.js';
-import { tenantPath } from '../paths.js';
+import { tenantPath, makePilotHref } from '../paths.js';
 import { FALLBACK_REFRESH_MS } from './board_page.js';
 
 const RECENT_LAPS_LIMIT = 15;
@@ -34,6 +34,10 @@ export async function recentView(container, [tenantKey]) {
         replace(`/t/${canonical}/recent`);
         return;
     }
+
+    let linked = new Set();
+    try { linked = await loadLinkedPilots(tenant.id); } catch { /* ignore */ }
+    const pilotHref = makePilotHref(tenant, linked);
 
     document.title = `Derniers chronos — ${tenant.label} — F1 Chronos`;
 
@@ -66,6 +70,7 @@ export async function recentView(container, [tenantKey]) {
             slot.append(recentLapsPanel(res.rows || [], {
                 showSim: sims.length > 1,
                 highlightName: mySimulatorPseudo() || null,
+                pilotHref,
                 manage: (row) => boardRowManageMenu(row, {
                     simId: row.simId,
                     contestId: null,

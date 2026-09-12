@@ -4,8 +4,9 @@ import { h, clear } from '../dom.js';
 import { get } from '../api.js';
 import { contestBoardSelect } from '../components.js';
 import { renderBoardPage } from './board_page.js';
-import { tenantPath } from '../paths.js';
+import { tenantPath, makePilotHref } from '../paths.js';
 import { setQuery, replace } from '../router.js';
+import { loadLinkedPilots } from '../state.js';
 
 export async function simView(container, [simId], query) {
     const contestId = query.get('contest') || null;
@@ -42,6 +43,11 @@ export async function simView(container, [simId], query) {
         return;
     }
 
+    let linked = new Set();
+    if (tenant?.id) {
+        try { linked = await loadLinkedPilots(tenant.id); } catch { /* ignore */ }
+    }
+
     const tracks = tracksData.tracks;
     const boardScope = contestBoardSelect(contests, contest?.id ?? null, (id) => {
         setQuery({ contest: id || null, track: null, page: null });
@@ -73,6 +79,7 @@ export async function simView(container, [simId], query) {
         focusTrackId,
         liveTrackId: sim.currentTrackId >= 0 ? sim.currentTrackId : null,
         showSim: false,
+        pilotHref: tenant ? makePilotHref(tenant, linked) : null,
         fetchBoard: (trackId, best, page) => {
             const qs = new URLSearchParams({
                 track_id: String(trackId),

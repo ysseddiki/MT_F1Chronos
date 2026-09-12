@@ -80,6 +80,7 @@ export function renderBoardPage(container, query, ctx) {
                 boardTable(board.rows, {
                     showSim: ctx.showSim,
                     highlightName: mySimulatorPseudo() || null,
+                    pilotHref: ctx.pilotHref || null,
                     manage: buildManage(() => loadBoard()),
                 }),
                 pagination(board, (p) => setQuery({ page: p > 1 ? p : null })),

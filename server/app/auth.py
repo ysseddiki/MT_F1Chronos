@@ -123,6 +123,41 @@ class UserAuth:
         ).fetchone()
         return self._user_with_access(row)
 
+    def get_user_by_sim_pseudo(self, pseudo: str) -> dict | None:
+        """Compte actif dont le pseudo simulateur correspond (insensible à la casse)."""
+        pseudo = (pseudo or "").strip()
+        if not pseudo:
+            return None
+        row = self._conn.execute(
+            """SELECT * FROM users
+               WHERE disabled = 0 AND TRIM(sim_pseudo) != ''
+                 AND sim_pseudo = ? COLLATE NOCASE
+               ORDER BY created_at ASC
+               LIMIT 1""",
+            (pseudo,),
+        ).fetchone()
+        return self._user_with_access(row)
+
+    def list_active_sim_pseudos(self) -> list[str]:
+        """Pseudos liés à un compte actif (pour rendre les noms cliquables)."""
+        rows = self._conn.execute(
+            """SELECT sim_pseudo FROM users
+               WHERE disabled = 0 AND TRIM(sim_pseudo) != ''
+               ORDER BY sim_pseudo COLLATE NOCASE"""
+        ).fetchall()
+        seen: set[str] = set()
+        out: list[str] = []
+        for row in rows:
+            name = (row["sim_pseudo"] or "").strip()
+            if not name:
+                continue
+            key = name.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(name)
+        return out
+
     def list_users(self) -> list[dict]:
         rows = self._conn.execute(
             "SELECT * FROM users ORDER BY email COLLATE NOCASE"
@@ -270,6 +305,9 @@ class UserAuth:
         sim_pseudo = (sim_pseudo or "").strip()[:MAX_SIM_PSEUDO_LENGTH]
         if not sim_pseudo:
             raise ValueError("Le pseudo simulateur est obligatoire (20 caractères max.).")
+        other = self.get_user_by_sim_pseudo(sim_pseudo)
+        if other is not None and other["id"] != user_id:
+            raise ValueError("Ce pseudo simulateur est déjà utilisé par un autre compte.")
         self._conn.execute(
             "UPDATE users SET sim_pseudo = ? WHERE id = ?",
             (sim_pseudo, user_id),

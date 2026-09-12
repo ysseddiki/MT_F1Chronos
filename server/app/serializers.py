@@ -77,6 +77,32 @@ def championship_out(data: dict) -> dict:
     }
 
 
+def experience_standing_out(s: dict | None) -> dict | None:
+    if not s:
+        return None
+    return {
+        "rank": s["rank"],
+        "name": s["name"],
+        "points": s["points"],
+        "totalLaps": s.get("total_laps", 0),
+        "wins": s["wins"],
+        "podiums": s["podiums"],
+        "scoringPlaces": s.get("scoring_places", 0),
+        "tracks": s["tracks"],
+    }
+
+
+def pilot_profile_out(data: dict) -> dict:
+    return {
+        "name": data["name"],
+        "totalLaps": data["total_laps"],
+        "tracksDriven": data["tracks_driven"],
+        "experience": experience_standing_out(data.get("experience")),
+        "bests": [lap_out(r) for r in data["bests"]],
+        "recent": [lap_out(r) for r in data["recent"]],
+    }
+
+
 def track_out(t: dict) -> dict:
     track_id = t["track_id"]
     name = (t.get("track_name") or "").strip() or f"Circuit {track_id}"

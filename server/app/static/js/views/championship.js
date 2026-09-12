@@ -4,8 +4,8 @@ import { h, clear } from '../dom.js';
 import { get } from '../api.js';
 import { visibilityBadge } from '../components.js';
 import { onCleanup, replace } from '../router.js';
-import { subscribeChanges, mySimulatorPseudo } from '../state.js';
-import { tenantPath, championshipPath } from '../paths.js';
+import { subscribeChanges, mySimulatorPseudo, loadLinkedPilots } from '../state.js';
+import { tenantPath, championshipPath, makePilotHref } from '../paths.js';
 import { FALLBACK_REFRESH_MS } from './board_page.js';
 
 const LIVE_DEBOUNCE_MS = 1500;
@@ -32,6 +32,10 @@ export async function championshipView(container, [tenantKey]) {
         replace(championshipPath(tenant));
         return;
     }
+
+    let linked = new Set();
+    try { linked = await loadLinkedPilots(tenant.id); } catch { /* ignore */ }
+    const pilotHref = makePilotHref(tenant, linked);
 
     document.title = `Expérience — ${tenant.label} — F1 Chronos`;
 
@@ -62,7 +66,7 @@ export async function championshipView(container, [tenantKey]) {
 
     const slot = h('div', { class: 'champ-table-slot' });
     container.append(slot);
-    renderStandings(slot, champ.standings || [], highlight);
+    renderStandings(slot, champ.standings || [], highlight, pilotHref);
 
     let gen = 0;
     async function reload() {
@@ -78,7 +82,7 @@ export async function championshipView(container, [tenantKey]) {
                     ? `P1→P${pts.length} : ${pts.join(', ')} — réglable dans Administration → Réglages.`
                     : 'Aucun point configuré. — réglable dans Administration → Réglages.';
             }
-            renderStandings(slot, next.standings || [], highlight);
+            renderStandings(slot, next.standings || [], highlight, pilotHref);
         } catch {
             /* ignore transient */
         }
@@ -98,7 +102,7 @@ export async function championshipView(container, [tenantKey]) {
     });
 }
 
-function renderStandings(slot, standings, highlight) {
+function renderStandings(slot, standings, highlight, pilotHref) {
     clear(slot);
     if (!standings.length) {
         slot.append(h('p', { class: 'lede' }, 'Aucun point pour l’instant — enregistrez des chronos sur au moins un circuit.'));
@@ -118,9 +122,14 @@ function renderStandings(slot, standings, highlight) {
     const body = h('tbody', {},
         standings.map((row) => {
             const me = highlight && (row.name || '').trim().toLowerCase() === highlight;
+            const name = (row.name || '').trim();
+            const href = pilotHref?.(name) || null;
+            const nameNode = href
+                ? h('a', { class: 'pilot-link', href, 'data-link': true, title: 'Voir le profil' }, name)
+                : name;
             return h('tr', { class: me ? 'row-me' : '' },
                 h('td', { class: 'pos champ-primary' }, String(row.rank)),
-                h('td', { class: `pilot champ-primary${me ? ' pilot-me' : ''}` }, row.name),
+                h('td', { class: `pilot champ-primary${me ? ' pilot-me' : ''}${href ? ' pilot-linked' : ''}` }, nameNode),
                 h('td', { class: 'time champ-primary champ-points' }, String(row.points)),
                 h('td', { class: 'champ-secondary' }, String(row.totalLaps ?? 0)),
                 h('td', { class: 'champ-secondary' }, String(row.wins)),

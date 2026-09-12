@@ -393,6 +393,7 @@ API web (JSON, camelCase) :
 | `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
 | `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Derniers chronos enregistrés (`started_at` DESC, `limit` 15/défaut, 50 max ; tous circuits ; option `contest_id` côté simu) |
 | `GET /api/v1/tenants/{id}/championship` | même visibilité classement | Points par place (réglage `points_by_place`) × meilleur tour / pilote / circuit — **serveur web only** |
+| `GET /api/v1/tenants/{id}/linked-pilots`, `…/pilots/{pseudo}` | même visibilité | Pseudos liés / profil public (pas d’e-mail) |
 | `POST /api/v1/admin/settings` | admin | `public_access`, `points_by_place` (ex. `25,18,15,12,10,8,6,4,2,1`) |
 | `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent le tableau principal (`loadBoard()`) **et** le panneau « Derniers chronos » (`loadRecent()`) — debounce 1,5 s, anti-réponse obsolète `loadGen` / `recentGen` — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
 | `PATCH /api/v1/profile/sim-pseudo`, `POST /api/v1/sims/{id}/apply-my-pseudo` | rôle `simracer` | Profil pseudo simulateur + application live (`setPlayerName` job, pseudo du profil uniquement) |
@@ -442,6 +443,7 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 |---|---|
 | `/t/{slug}` | Classement agrégé tenant (multi-sims) |
 | `/t/{slug}/championship` | Expérience (points global org) |
+| `/t/{slug}/pilot/{pseudo}` | Profil public (compte lié via `sim_pseudo`) |
 | `/t/{slug}/recent` | Journal derniers chronos (admin) |
 | `/sim/{id}` | Classement **global** du simulateur |
 | `/sim/{id}?contest={cid}` | Classement **concours** (concours de ce simu uniquement) |
@@ -655,7 +657,7 @@ Variables : [`specs/server/env.md`](../server/env.md). Reprise machine : [`specs
 | Orchestration | `src/MT_F1Chronos.App/Services/{AppController,SettingsStore,AdminPassword,OverlayCoordinator,ScoreExportService,ResultsSyncClient}.cs` |
 | Settings | `src/MT_F1Chronos.App/AppSettings.cs`, `OverlaySizes.cs` |
 | Serveur API | `server/app/{main,admin_api,auth,store,db,deps}.py` |
-| Serveur SPA | `server/app/static/js/{main,router,components,board_manage,state,paths}.js`, `views/{tenant,sim,board_page,championship,recent,account}.js` |
+| Serveur SPA | `server/app/static/js/{main,router,components,board_manage,state,paths}.js`, `views/{tenant,sim,board_page,championship,recent,account,pilot}.js` |
 | Caddy TLS | `server/caddy/*.Caddyfile`, `scripts/{init-env,validate-results-env,up-results}.sh` |
 | OpenSpec | `specs/{onboarding,README}.md`, `specs/system/`, `specs/server/`, `specs/archives/` |
 | Tests overlay | `tests/MT_F1Chronos.Tests/` |

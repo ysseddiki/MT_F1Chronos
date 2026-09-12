@@ -8,6 +8,8 @@ export const state = {
     tenants: null,
 };
 
+const linkedPilotsByTenant = new Map();
+
 export async function loadMe(force = false) {
     if (state.meLoaded && !force) return state.me;
     state.me = await get('/api/v1/auth/me');
@@ -24,6 +26,25 @@ export async function loadTenants(force = false) {
 
 export function invalidateTenants() {
     state.tenants = null;
+}
+
+/** Pseudos liés à un compte (Set en minuscules) pour une org. */
+export async function loadLinkedPilots(tenantId, force = false) {
+    if (!tenantId) return new Set();
+    if (!force && linkedPilotsByTenant.has(tenantId)) {
+        return linkedPilotsByTenant.get(tenantId);
+    }
+    const data = await get(`/api/v1/tenants/${tenantId}/linked-pilots`);
+    const set = new Set(
+        (data.pseudos || []).map((p) => (p || '').trim().toLowerCase()).filter(Boolean),
+    );
+    linkedPilotsByTenant.set(tenantId, set);
+    return set;
+}
+
+export function invalidateLinkedPilots(tenantId = null) {
+    if (tenantId) linkedPilotsByTenant.delete(tenantId);
+    else linkedPilotsByTenant.clear();
 }
 
 export function isAdmin() {

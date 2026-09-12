@@ -11,9 +11,10 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 | Pattern | Vue | Description |
 |---|---|---|
 | `/` | `home.js` | Accueil, redirection tenant si un seul |
-| `/t/{slug\|id}` | `tenant.js` | **Classement** agrégé organisation |
-| `/t/{slug\|id}/championship` | `championship.js` | **Expérience** à points (global org, web only) |
-| `/t/{slug\|id}/recent` | `recent.js` | **Derniers chronos** (admin) — journal tous circuits |
+| `/t/{slug|id}` | `tenant.js` | **Classement** agrégé organisation |
+| `/t/{slug|id}/championship` | `championship.js` | **Expérience** à points (global org, web only) |
+| `/t/{slug|id}/pilot/{pseudo}` | `pilot.js` | Profil public si compte lié (`sim_pseudo`) |
+| `/t/{slug|id}/recent` | `recent.js` | **Derniers chronos** (admin) — journal tous circuits |
 | `/sim/{id}` | `sim.js` | Classement **global** du simulateur |
 | `/sim/{id}?contest={cid}` | `sim.js` | Classement **concours** (lié à ce simu uniquement) |
 | `/championship` | `championship.js` | Sélecteur d’org (ou redirect si une seule) |
@@ -85,6 +86,7 @@ static/js/
     ├── tenant.js
     ├── sim.js
     ├── championship.js
+    ├── pilot.js
     ├── recent.js
     ├── account.js
     ├── login.js
@@ -121,3 +123,11 @@ static/js/
 | `POST /api/v1/admin/settings` | admin | `points_by_place` : `"25,18,15,…"` (places scorées = nb de valeurs) |
 
 Règle : pour chaque circuit du global org, classement « meilleur tour / joueur » → P1 reçoit le 1er chiffre, etc. Somme sur tous les circuits. **Hors scope overlay WPF.**
+
+
+## API — profils pilotes
+
+| Endpoint | Accès | Notes |
+|---|---|---|
+| `GET /api/v1/tenants/{id}/linked-pilots` | même visibilité classement | Pseudos avec compte actif |
+| `GET /api/v1/tenants/{id}/pilots/{pseudo}` | idem | 404 si pas de compte lié ; pas d’e-mail ; stats + bests + récents |

@@ -800,6 +800,77 @@ class ResultsStore:
             "standings": standings,
         }
 
+    def tenant_laps_for_player(
+        self,
+        tenant_id: str,
+        player_name: str,
+        *,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        name = (player_name or "").strip()
+        if not name:
+            return []
+        sim_ids = self._sim_ids_for_tenant(tenant_id)
+        if not sim_ids:
+            return []
+        labels = {
+            s["id"]: s["label"]
+            for s in self.list_simulators_for_tenant(tenant_id)
+        }
+        placeholders = ",".join("?" * len(sim_ids))
+        sql = f"""SELECT * FROM laps
+                  WHERE simulator_id IN ({placeholders})
+                    AND contest_id IS NULL AND {LAP_VALID_SQL}
+                    AND name = ? COLLATE NOCASE
+                  ORDER BY started_at DESC"""
+        params: list[Any] = [*sim_ids, name]
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(self._normalize_recent_limit(limit))
+        rows = self._conn.execute(sql, params).fetchall()
+        return self._prepare_recent_rows(rows, labels)
+
+    @staticmethod
+    def _best_per_track(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        best: dict[int, dict[str, Any]] = {}
+        for e in entries:
+            tid = int(e["track_id"])
+            prev = best.get(tid)
+            if prev is None or e["best_lap_ms"] < prev["best_lap_ms"]:
+                best[tid] = e
+        return sorted(
+            best.values(),
+            key=lambda x: ((x.get("track_name") or "").casefold(), x["track_id"]),
+        )
+
+    def tenant_pilot_profile(self, tenant_id: str, player_name: str) -> dict[str, Any]:
+        """Stats + meilleurs tours + récents pour un pseudo (global org)."""
+        name = (player_name or "").strip()
+        all_laps = self.tenant_laps_for_player(tenant_id, name)
+        # Re-fetch unordered by time for bests — all_laps is DESC by started_at; OK for bests
+        bests = self._best_per_track(all_laps)
+        for i, e in enumerate(bests, start=1):
+            e["rank"] = i
+            e["formatted"] = e.get("formatted") or format_lap(int(e["best_lap_ms"]))
+        recent = all_laps[:DEFAULT_RECENT_LAPS]
+        champ = self.tenant_championship(tenant_id)
+        standing = next(
+            (
+                s
+                for s in champ["standings"]
+                if (s.get("name") or "").casefold() == name.casefold()
+            ),
+            None,
+        )
+        return {
+            "name": standing["name"] if standing else (all_laps[0]["name"] if all_laps else name),
+            "total_laps": len(all_laps),
+            "tracks_driven": len(bests),
+            "experience": standing,
+            "bests": bests,
+            "recent": recent,
+        }
+
     def get_lap(self, sim_id: str, entry_id: str) -> dict[str, Any] | None:
         row = self._conn.execute(
             "SELECT * FROM laps WHERE simulator_id = ? AND id = ?",

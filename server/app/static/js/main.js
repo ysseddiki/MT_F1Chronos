@@ -12,6 +12,7 @@ import { accountView } from './views/account.js';
 import { adminView } from './views/admin.js';
 import { recentView, recentIndexView } from './views/recent.js';
 import { championshipView, championshipIndexView } from './views/championship.js';
+import { pilotView } from './views/pilot.js';
 
 // Compatibilité anciennes URLs (signets)
 route(/^\/admin\/login$/, () => replace('/login'));
@@ -26,6 +27,7 @@ route(/^\/sim\/([\w-]+)\/contests\/([\w-]+)$/, (_c, [sid, cid]) => replace(`/sim
 route(/^\/$/, (c) => homeView(c));
 route(/^\/t\/([\w-]+)\/recent$/, (c, p) => recentView(c, p));
 route(/^\/t\/([\w-]+)\/championship$/, (c, p) => championshipView(c, p));
+route(/^\/t\/([\w-]+)\/pilot\/(.+)$/, (c, p) => pilotView(c, p));
 route(/^\/t\/([\w-]+)$/, (c, p, q) => tenantView(c, p, q));
 route(/^\/sim\/([\w-]+)$/, (c, p, q) => simView(c, p, q));
 route(/^\/recent$/, (c) => recentIndexView(c));

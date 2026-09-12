@@ -510,7 +510,21 @@ export function trackChips(tracks, currentId, onSelect) {
 
 // ---------- Tableau de classement ----------
 
-export function boardTable(rows, { showSim = false, manage = null, highlightName = null } = {}) {
+function pilotNameCell(name, { me = false, pilotHref = null } = {}) {
+    const label = (name || '').trim() || '—';
+    const href = pilotHref?.(label) || null;
+    const content = href
+        ? h('a', {
+            class: 'pilot-link',
+            href,
+            'data-link': true,
+            title: 'Voir le profil',
+        }, label)
+        : label;
+    return h('td', { class: `pilot${me ? ' pilot-me' : ''}${href ? ' pilot-linked' : ''}` }, content);
+}
+
+export function boardTable(rows, { showSim = false, manage = null, highlightName = null, pilotHref = null } = {}) {
     const leaderMs = rows.length ? rows[0].bestLapMs : 0;
     const cols = 4 + (showSim ? 1 : 0) + (manage ? 1 : 0);
     const highlight = (highlightName || '').trim();
@@ -531,7 +545,7 @@ export function boardTable(rows, { showSim = false, manage = null, highlightName
             const me = isMe(row.name);
             const cells = [
                 h('td', {}, h('span', { class: `rank${row.rank <= 3 ? ` p${row.rank}` : ''}` }, `P${row.rank}`)),
-                h('td', { class: `pilot${me ? ' pilot-me' : ''}` }, (row.name || '').trim() || '—'),
+                pilotNameCell(row.name, { me, pilotHref }),
                 showSim ? h('td', { class: 'sim-tag' }, row.simLabel || '—') : null,
                 h('td', { class: 'time' }, row.formatted || fmtLap(row.bestLapMs)),
                 h('td', { class: 'gap' }, fmtGap(row.bestLapMs - leaderMs)),
@@ -545,7 +559,7 @@ export function boardTable(rows, { showSim = false, manage = null, highlightName
 }
 
 /** Derniers chronos enregistrés (tous circuits), triés par horodatage décroissant. */
-export function recentLapsPanel(rows, { showSim = false, manage = null, highlightName = null } = {}) {
+export function recentLapsPanel(rows, { showSim = false, manage = null, highlightName = null, pilotHref = null } = {}) {
     if (!rows?.length) {
         return h('p', { class: 'lede' }, 'Aucun chrono enregistré pour l’instant.');
     }
@@ -567,7 +581,7 @@ export function recentLapsPanel(rows, { showSim = false, manage = null, highligh
             const me = isMe(row.name);
             const cells = [
                 h('td', { class: 'recent-when muted' }, fmtDateTime(row.startedAt)),
-                h('td', { class: `pilot${me ? ' pilot-me' : ''}` }, (row.name || '').trim() || '—'),
+                pilotNameCell(row.name, { me, pilotHref }),
                 h('td', {}, (row.trackName || '').trim() || '—'),
                 showSim ? h('td', { class: 'sim-tag' }, row.simLabel || '—') : null,
                 h('td', { class: 'time' }, row.formatted || fmtLap(row.bestLapMs)),

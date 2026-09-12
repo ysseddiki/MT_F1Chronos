@@ -49,6 +49,8 @@ export async function profileView(container) {
                 const res = await patch('/api/v1/profile/sim-pseudo', { sim_pseudo: pseudo.value });
                 state.me = null;
                 state.meLoaded = false;
+                const { invalidateLinkedPilots } = await import('../state.js');
+                invalidateLinkedPilots();
                 await loadMe(true);
                 toast(res.message || 'Profil mis à jour.', 'success');
                 if (!state.me.profileRequired) navigate('/');

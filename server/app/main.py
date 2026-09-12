@@ -15,7 +15,17 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import db, deps
 from .admin_api import router as admin_router
 from .security import SecurityHeadersMiddleware
-from .serializers import board_out, championship_out, contest_out, lap_out, sim_out, tenant_out, track_out, user_out
+from .serializers import (
+    board_out,
+    championship_out,
+    contest_out,
+    lap_out,
+    pilot_profile_out,
+    sim_out,
+    tenant_out,
+    track_out,
+    user_out,
+)
 from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS
 
 BASE = deps.BASE
@@ -339,6 +349,38 @@ def get_tenant_championship(request: Request, tenant_id: str):
     tenant = deps.tenant_or_404(tenant_id, user)
     data = deps.store().tenant_championship(tenant["id"])
     return {"ok": True, **championship_out(data)}
+
+
+@app.get("/api/v1/tenants/{tenant_id}/linked-pilots")
+def get_tenant_linked_pilots(request: Request, tenant_id: str):
+    """Pseudos liés à un compte (pour liens cliquables dans les tableaux)."""
+    user = deps.current_user(request)
+    deps.tenant_or_404(tenant_id, user)
+    return {"ok": True, "pseudos": deps.auth().list_active_sim_pseudos()}
+
+
+@app.get("/api/v1/tenants/{tenant_id}/pilots/{pseudo}")
+def get_tenant_pilot_profile(request: Request, tenant_id: str, pseudo: str):
+    """Profil public d’un pilote — uniquement si un compte a ce pseudo simulateur."""
+    user = deps.current_user(request)
+    tenant = deps.tenant_or_404(tenant_id, user)
+    linked = deps.auth().get_user_by_sim_pseudo(pseudo)
+    if linked is None:
+        raise HTTPException(404, "Aucun compte lié à ce pseudo.")
+    canonical = (linked.get("sim_pseudo") or "").strip()
+    profile = deps.store().tenant_pilot_profile(tenant["id"], canonical)
+    role = linked.get("role") or "visitor"
+    return {
+        "ok": True,
+        "tenant": tenant_out(tenant),
+        "pilot": {
+            "simPseudo": canonical,
+            "role": role,
+            "linked": True,
+            "memberSince": linked.get("created_at"),
+        },
+        "profile": pilot_profile_out(profile),
+    }
 
 
 @app.get("/api/v1/sims")

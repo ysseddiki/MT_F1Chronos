@@ -69,6 +69,8 @@ export async function accountView(container) {
                     const res = await patch('/api/v1/profile/sim-pseudo', { sim_pseudo: pseudo.value });
                     state.me = null;
                     state.meLoaded = false;
+                    const { invalidateLinkedPilots } = await import('../state.js');
+                    invalidateLinkedPilots();
                     await loadMe(true);
                     toast(res.message || 'Pseudo mis à jour.', 'success');
                     submit.disabled = false;

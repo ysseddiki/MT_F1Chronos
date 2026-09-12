@@ -78,7 +78,7 @@ def test_stream_emits_data_version(client):
 
 def test_spa_fallback_serves_index(client):
     for path in ["/", "/t/quelque-chose", "/t/quelque-chose/recent", "/t/quelque-chose/championship",
-                 "/championship", "/recent", "/account", "/admin", "/login"]:
+                 "/t/quelque-chose/pilot/Ada", "/championship", "/recent", "/account", "/admin", "/login"]:
         r = client.get(path)
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
@@ -483,3 +483,54 @@ def test_championship_and_points_settings(client):
     assert body["standings"][0]["name"] == "Ada"
     assert body["standings"][0]["points"] == 10
     assert body["standings"][1]["points"] == 5
+
+
+def test_pilot_profile_requires_linked_account(client):
+    _setup_admin(client)
+    tenant, sim, token = _make_tenant_with_sim(client)
+    _sync_laps(client, token, count=2)
+
+    anon = TestClient(client.app)
+    r = anon.get(f"/api/v1/tenants/{tenant['id']}/pilots/Pilote%200")
+    assert r.status_code == 404
+
+    r = client.post(
+        "/api/v1/admin/users",
+        json={"email": "sim@club.fr", "password": "motdepasse", "role": "simracer", "tenant_ids": [tenant["id"]]},
+    )
+    assert r.status_code == 200
+    sim_client = _login(client, "sim@club.fr", "motdepasse")
+    r = sim_client.patch("/api/v1/profile/sim-pseudo", json={"sim_pseudo": "Pilote 0"})
+    assert r.status_code == 200, r.text
+
+    linked = anon.get(f"/api/v1/tenants/{tenant['id']}/linked-pilots")
+    assert linked.status_code == 200
+    assert "Pilote 0" in linked.json()["pseudos"]
+
+    r = anon.get(f"/api/v1/tenants/{tenant['id']}/pilots/Pilote%200")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["pilot"]["simPseudo"] == "Pilote 0"
+    assert body["pilot"]["linked"] is True
+    assert body["pilot"]["role"] == "simracer"
+    assert "email" not in body["pilot"]
+    assert body["profile"]["totalLaps"] >= 1
+    assert body["profile"]["bests"]
+
+
+def test_sim_pseudo_unique_across_users(client):
+    _setup_admin(client)
+    tenant, _, _ = _make_tenant_with_sim(client)
+    client.post(
+        "/api/v1/admin/users",
+        json={"email": "a@club.fr", "password": "motdepasse", "role": "simracer", "tenant_ids": [tenant["id"]]},
+    )
+    client.post(
+        "/api/v1/admin/users",
+        json={"email": "b@club.fr", "password": "motdepasse", "role": "simracer", "tenant_ids": [tenant["id"]]},
+    )
+    a = _login(client, "a@club.fr", "motdepasse")
+    b = _login(client, "b@club.fr", "motdepasse")
+    assert a.patch("/api/v1/profile/sim-pseudo", json={"sim_pseudo": "Ace"}).status_code == 200
+    r = b.patch("/api/v1/profile/sim-pseudo", json={"sim_pseudo": "ace"})
+    assert r.status_code == 400

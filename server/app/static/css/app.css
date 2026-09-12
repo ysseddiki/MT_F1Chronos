@@ -242,6 +242,85 @@ a:hover { color: #7fb0ff; }
     text-transform: none;
 }
 
+a.pilot-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.45);
+    transition: color 0.15s, border-color 0.15s;
+}
+a.pilot-link:hover {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+}
+td.pilot-linked .pilot-link {
+    font-weight: inherit;
+}
+
+.pilot-profile-head { margin-bottom: 8px; }
+.pilot-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.pilot-meta-sep { color: var(--muted); opacity: 0.7; }
+.role-pill {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--blue-soft);
+    color: var(--blue);
+}
+.role-pill.simracer { background: rgba(225, 6, 0, 0.15); color: #ff6b5a; }
+.role-pill.visitor { background: var(--orange-soft); color: var(--orange); }
+
+.pilot-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    margin: 18px 0 28px;
+}
+.pilot-stat {
+    padding: 14px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(30, 41, 66, 0.9), rgba(16, 22, 38, 0.95));
+    text-align: center;
+}
+.pilot-stat-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+.pilot-stat-value {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+}
+.pilot-section { margin-bottom: 28px; }
+.pilot-section h2 {
+    font-size: 1.05rem;
+    margin: 0 0 12px;
+    color: var(--text);
+}
+
+@media (max-width: 800px) {
+    .pilot-stat-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+    .pilot-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ---------- Layout ---------- */
 
 .page { max-width: 1080px; margin: 0 auto; padding: 26px 20px 80px; }
