@@ -17,7 +17,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 | `/t/{slug|id}/championship` | `championship.js` | **Expérience** à points (global org, web only) |
 | `/t/{slug|id}/pilot/{pseudo}` | `pilot.js` | Profil public (chronos) ; badge compte si `sim_pseudo` lié |
 | `/t/{slug|id}/versus` | `versus.js` | Duel pilote vs pilote (écarts ms, % relatif, circuits) |
-| `/t/{slug|id}/recent` | `recent.js` | **Derniers chronos** (admin) — journal tous circuits |
+| `/t/{slug|id}/recent` | `recent.js` | **Liste chrono** (admin) — filtres circuit / simu / org / pilote + tri |
 | `/sim/{id}` | `sim.js` | Classement **global** du simulateur |
 | `/sim/{id}?contest={cid}` | `sim.js` | Classement **concours** (lié à ce simu uniquement) |
 | `/championship` | `championship.js` | Sélecteur d’org (ou redirect si une seule) |
@@ -33,7 +33,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 |---|---|---|
 | Classement | tous | org courante ou `/` |
 | Expérience | tous | `/t/…/championship` |
-| Derniers chronos | admin | `/t/…/recent` |
+| Liste chrono | admin | `/t/…/recent` |
 | Administration | admin | `/admin` |
 | Menu user (clic) | connecté | Mon compte / Pseudo / Admin / Déconnexion |
 
@@ -64,7 +64,7 @@ Bootstrap : `static/js/main.js` → `router.js` (history API).
 | Composant | Fichier |
 |---|---|
 | Tableau + pagination | `components.js` → `boardTable`, `pagination` |
-| Derniers chronos | page `recent.js` + `recentLapsPanel` ; API `GET …/recent-laps` |
+| Liste chrono | page `recent.js` + filtres + `recentLapsPanel` ; API `GET …/recent-laps` |
 | Expérience | page `championship.js` ; API `GET …/championship` |
 | Toolbar simus | `components.js` → `simToolbarStrip` |
 | Actions admin « … » | `board_manage.js` → `actionMenu` |
@@ -113,8 +113,8 @@ static/js/
 
 | Endpoint | Accès | Notes |
 |---|---|---|
-| `GET /api/v1/sims/{id}/recent-laps` | **admin** | limit 15 déf., max 50 ; `contest_id` optionnel |
-| `GET /api/v1/tenants/{id}/recent-laps` | **admin** | global multi-sims |
+| `GET /api/v1/sims/{id}/recent-laps` | **admin** | limit 15 déf., max 200 ; `contest_id` optionnel |
+| `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Liste chrono : `limit` 100 déf. / 200 max ; filtres `track_id`, `simulator_id`, `org_id`, `pilot` ; tri `sort`=`started_at\|best_lap_ms\|name\|track_name\|sim_label` + `order`=`asc\|desc` |
 
 ---
 

@@ -396,11 +396,11 @@ API web (JSON, camelCase) :
 |---|---|---|
 | `POST /api/v1/auth/{login,logout,setup,change-password}`, `GET /auth/me` | public | Session cookie signé (`SessionMiddleware`, SameSite=lax, Secure si HTTPS actif — voir `RESULTS_TLS_MODE`) |
 | `GET /api/v1/tenants…`, `GET /api/v1/sims…` | filtré par visibilité | Lecture classements (pagination `page`/`page_size`, 20/défaut, 100 max ; `best=true` par défaut = meilleur tour par pilote) |
-| `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Derniers chronos enregistrés (`started_at` DESC, `limit` 15/défaut, 50 max ; tous circuits ; option `contest_id` côté simu) |
+| `GET /api/v1/sims/{id}/recent-laps`, `GET /api/v1/tenants/{id}/recent-laps` | **admin** | Liste chrono (`started_at` DESC par défaut ; tenant : filtres circuit/simu/org/pilote + tri ; limit 100/défaut tenant, 200 max) |
 | `GET /api/v1/tenants/{id}/championship` | même visibilité classement | Points par place (réglage `points_by_place`) × meilleur tour / pilote / circuit — **serveur web only** |
 | `GET /api/v1/tenants/{id}/linked-pilots`, `…/pilots/{pseudo}` | même visibilité | Profil public par pseudo ; compte lié optionnel (pas d’e-mail) |
 | `POST /api/v1/admin/settings` | admin | `public_access`, `points_by_place` (ex. `25,18,15,12,10,8,6,4,2,1`) |
-| `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent le tableau principal (`loadBoard()`) **et** le panneau « Derniers chronos » (`loadRecent()`) — debounce 1,5 s, anti-réponse obsolète `loadGen` / `recentGen` — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
+| `GET /api/v1/stream` | public | SSE : battement « données changées » (compteur de version, sans contenu) ; les pages de classement rechargent le tableau principal (`loadBoard()`) **et** la Liste chrono admin (`load()`) — debounce 1,5 s, anti-réponse obsolète — feuille **live** (bornée par l’intervalle de sync du simu). Connexion bornée (`RESULTS_STREAM_MAX_AGE`, 300 s/défaut), EventSource reconnecte ; repli intervalle 60 s |
 | `PATCH /api/v1/profile/sim-pseudo`, `POST /api/v1/sims/{id}/apply-my-pseudo` | rôle `simracer` | Profil pseudo simulateur + application live (`setPlayerName` job, pseudo du profil uniquement) |
 
 | `/api/v1/admin/*` | rôle `admin` | CRUD tenants/sims/users, gestion chronos, jobs, réglages |
@@ -436,7 +436,7 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | Mode affichage | Segmented « Meilleur / joueur » (`best=true`, défaut) vs « Tous les tours » (`?best=false`) |
 | Toolbar simu | `simToolbarStrip` : 2 tuiles (simulateur · statut / **pilote en session**) ; pseudo profil via `/profile` ou menu compte |
 | Tableau | **Classement** (topbar) : `boardTable` paginé (20/page) ; colonne simu si multi-sims ; surbrillance = `sim_pseudo` |
-| Derniers chronos | Page topbar **admin** `/t/…/recent` (plus d’onglet board) ; `recentLapsPanel`, 15 max ; API admin |
+| Liste chrono | Page topbar **admin** `/t/…/recent` ; filtres + `recentLapsPanel`, 100 max affichés |
 | Championnat | Page topbar **Expérience** `/t/…/championship` : points F1-like (meilleur / pilote / circuit, global org) ; barème `points_by_place` en admin Réglages — **web only**, pas l’overlay |
 | Compte | Menu user (topbar) → `/account` (mdp + infos) |
 | Actions admin | Colonne « … » (`board_manage.js`) ; menu opaque, exclusif |
@@ -450,7 +450,7 @@ Docker : `docker compose up --build` / `podman compose up --build`. Caddy **80+4
 | `/t/{slug}` | Classement agrégé tenant (multi-sims) |
 | `/t/{slug}/championship` | Expérience (points global org) |
 | `/t/{slug}/pilot/{pseudo}` | Profil public (tous pseudos ; compte lié optionnel) |
-| `/t/{slug}/recent` | Journal derniers chronos (admin) |
+| `/t/{slug}/recent` | Liste chrono (admin, filtres) |
 | `/sim/{id}` | Classement **global** du simulateur |
 | `/sim/{id}?contest={cid}` | Classement **concours** (concours de ce simu uniquement) |
 | `/account` | Infos / mot de passe du compte connecté |

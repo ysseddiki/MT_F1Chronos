@@ -47,7 +47,7 @@ export async function renderTopbar(activePath) {
         navLink(versusHref, 'Versus', versusActive),
     ];
     if (isAdmin()) {
-        navItems.push(navLink(recentHref, 'Derniers chronos', recentActive));
+        navItems.push(navLink(recentHref, 'Liste chrono', recentActive));
     }
 
     const nav = h('nav', {}, ...navItems);

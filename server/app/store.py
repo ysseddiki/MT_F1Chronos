@@ -16,7 +16,16 @@ from .online import is_simulator_connected
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 DEFAULT_RECENT_LAPS = 15
-MAX_RECENT_LAPS = 50
+MAX_RECENT_LAPS = 200
+DEFAULT_LIST_CHRONOS = 100
+
+RECENT_SORT_COLUMNS = {
+    "started_at": "started_at",
+    "best_lap_ms": "best_lap_ms",
+    "name": "name COLLATE NOCASE",
+    "track_name": "track_name COLLATE NOCASE",
+    "sim_label": "sim_label COLLATE NOCASE",
+}
 MAX_PLAYER_NAME_LENGTH = 20
 # Points F1-like (P1→Pn) pour le championnat web uniquement — pas l’overlay.
 DEFAULT_POINTS_BY_PLACE = "25,18,15,12,10,8,6,4,2,1"
@@ -758,20 +767,84 @@ class ResultsStore:
         tenant_id: str,
         limit: int = DEFAULT_RECENT_LAPS,
         scope_tenant_ids: list[str] | None = None,
+        *,
+        track_id: int | None = None,
+        simulator_id: str | None = None,
+        org_id: str | None = None,
+        pilot: str | None = None,
+        sort: str = "started_at",
+        order: str = "desc",
     ) -> list[dict[str, Any]]:
+        """Liste chrono admin : filtres optionnels + tri (défaut = plus récents)."""
         limit = self._normalize_recent_limit(limit)
-        sim_ids, labels = self._sim_ids_and_labels(tenant_id, scope_tenant_ids)
+        sims = self._sims_for_scope(tenant_id, scope_tenant_ids)
+        if org_id:
+            org_key = (org_id or "").strip()
+            org = self.resolve_tenant(org_key)
+            org_tid = org["id"] if org else org_key
+            sims = [s for s in sims if s.get("tenant_id") == org_tid]
+        if simulator_id:
+            sid = simulator_id.strip()
+            sims = [s for s in sims if s["id"] == sid]
+        sim_ids = [s["id"] for s in sims]
         if not sim_ids:
             return []
+
+        labels: dict[str, str] = {}
+        aggregate = tenant_id == ALL_TENANT_KEY
+        for s in sims:
+            label = s.get("label") or ""
+            org = (s.get("tenant_label") or "").strip()
+            labels[s["id"]] = f"{org} · {label}" if aggregate and org else label
+
         placeholders = ",".join("?" * len(sim_ids))
+        where = [
+            f"simulator_id IN ({placeholders})",
+            "contest_id IS NULL",
+            LAP_VALID_SQL,
+        ]
+        params: list[Any] = list(sim_ids)
+
+        if track_id is not None and track_id >= 0:
+            where.append("track_id = ?")
+            params.append(int(track_id))
+
+        pilot_name = (pilot or "").strip()
+        if pilot_name:
+            where.append("name = ? COLLATE NOCASE")
+            params.append(pilot_name)
+
+        sort_sql = RECENT_SORT_COLUMNS.get(sort, "started_at")
+        # sim_label n'est pas une colonne SQL — tri après hydrate
+        sort_in_sql = sort != "sim_label"
+        order_sql = "ASC" if (order or "").lower() == "asc" else "DESC"
+
+        if sort_in_sql:
+            rows = self._conn.execute(
+                f"""SELECT * FROM laps
+                    WHERE {' AND '.join(where)}
+                    ORDER BY {sort_sql} {order_sql}, started_at DESC
+                    LIMIT ?""",
+                (*params, limit),
+            ).fetchall()
+            return self._prepare_recent_rows(rows, labels)
+
+        # Tri par libellé simu : charger un peu plus large puis couper
+        fetch_limit = min(max(limit * 4, limit), MAX_RECENT_LAPS * 2)
         rows = self._conn.execute(
             f"""SELECT * FROM laps
-                WHERE simulator_id IN ({placeholders})
-                  AND contest_id IS NULL AND {LAP_VALID_SQL}
-                ORDER BY started_at DESC LIMIT ?""",
-            (*sim_ids, limit),
+                WHERE {' AND '.join(where)}
+                ORDER BY started_at DESC
+                LIMIT ?""",
+            (*params, fetch_limit),
         ).fetchall()
-        return self._prepare_recent_rows(rows, labels)
+        entries = self._prepare_recent_rows(rows, labels)
+        reverse = order_sql == "DESC"
+        entries.sort(
+            key=lambda e: ((e.get("sim_label") or "").casefold(), e.get("started_at") or ""),
+            reverse=reverse,
+        )
+        return entries[:limit]
 
     def _tenant_lap_counts_by_player(
         self,

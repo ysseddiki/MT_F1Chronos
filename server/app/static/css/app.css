@@ -915,8 +915,47 @@ a.card:hover {
 .board-view-slot { margin-top: 4px; }
 .board-recent-lede { margin: 0 0 14px; }
 .recent-laps-table .recent-when {
-    font-variant-numeric: tabular-nums;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.chrono-filters {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+}
+.chrono-filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: flex-end;
+}
+.chrono-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+    flex: 1 1 140px;
+    max-width: 220px;
+}
+.chrono-filter-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.chrono-filter-select {
+    width: 100%;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--bg-soft);
+    color: var(--text);
+    font-size: 0.88rem;
+}
+.chrono-list-meta {
+    margin: 0 0 8px;
+    font-size: 0.82rem;
 }
 
 .rank { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); }

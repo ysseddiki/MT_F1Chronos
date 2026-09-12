@@ -27,7 +27,7 @@ from .serializers import (
     user_out,
     versus_out,
 )
-from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS, make_all_tenant
+from .store import DEFAULT_PAGE_SIZE, DEFAULT_RECENT_LAPS, DEFAULT_LIST_CHRONOS, make_all_tenant
 
 BASE = deps.BASE
 STATIC_DIR = BASE / "static"
@@ -512,12 +512,28 @@ def get_sim_recent_laps(
 def get_tenant_recent_laps(
     request: Request,
     tenant_id: str,
-    limit: int = DEFAULT_RECENT_LAPS,
+    limit: int = DEFAULT_LIST_CHRONOS,
+    track_id: int | None = None,
+    simulator_id: str | None = None,
+    org_id: str | None = None,
+    pilot: str | None = None,
+    sort: str = "started_at",
+    order: str = "desc",
 ):
     user = deps.require_admin(request)
     tenant = deps.tenant_or_404(tenant_id, user)
     scope = deps.scope_tenant_ids(tenant, user)
-    rows = deps.store().tenant_recent_laps(tenant["id"], limit, scope)
+    rows = deps.store().tenant_recent_laps(
+        tenant["id"],
+        limit,
+        scope,
+        track_id=track_id,
+        simulator_id=simulator_id,
+        org_id=org_id,
+        pilot=pilot,
+        sort=sort,
+        order=order,
+    )
     return {"ok": True, "rows": [lap_out(r) for r in rows]}
 
 

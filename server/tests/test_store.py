@@ -267,6 +267,17 @@ def test_tenant_recent_laps_includes_sim_label(tmp_path: Path):
     assert labels[sim_a["id"]] == "Box A"
     assert labels[sim_b["id"]] == "Box B"
 
+    only_ada = store.tenant_recent_laps(tenant["id"], pilot="Ada")
+    assert [r["name"] for r in only_ada] == ["Ada"]
+
+    by_sim = store.tenant_recent_laps(tenant["id"], simulator_id=sim_b["id"])
+    assert [r["name"] for r in by_sim] == ["Bob"]
+
+    by_time_asc = store.tenant_recent_laps(
+        tenant["id"], sort="name", order="asc"
+    )
+    assert [r["name"] for r in by_time_asc] == ["Ada", "Bob"]
+
 
 def test_enqueue_set_player_name(tmp_path: Path):
     store = _store(tmp_path)

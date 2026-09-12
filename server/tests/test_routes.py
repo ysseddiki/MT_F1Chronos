@@ -308,6 +308,14 @@ def test_tenant_recent_laps_over_api(client):
     assert r.status_code == 200
     assert len(r.json()["rows"]) == 2
 
+    filtered = client.get(
+        f"/api/v1/tenants/{tenant['id']}/recent-laps",
+        params={"pilot": "Pilote 0", "sort": "best_lap_ms", "order": "asc", "limit": 50},
+    )
+    assert filtered.status_code == 200
+    names = [row["name"] for row in filtered.json()["rows"]]
+    assert names == ["Pilote 0"]
+
 
 def test_tenant_resolved_by_slug(client):
     _setup_admin(client)
