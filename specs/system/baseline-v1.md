@@ -6,7 +6,7 @@
 | **Version** | `v1` |
 | **Produit** | F1 Chronos (`MT_F1Chronos`) |
 | **Statut** | `baseline` (état actuel du code) |
-| **Date** | 2026-09-03 |
+| **Date** | 2026-09-12 |
 | **Portée** | Domaine Core + orchestration App + serveur de résultats (`server/`) |
 | **Source de vérité** | Code sous `src/`, `server/` et `tests/` |
 
@@ -146,7 +146,7 @@ F1 (UDP :20888)
 | `ContestLeaderboardSize` | `10` | |
 | `HideGlobalWhenContest` | `false` | |
 | `BestPerPlayer` | `false` | |
-| `CountCustomSetupLaps` | `true` | Si `false`, ignore les tours TT en setup perso (menu) |
+| `CountCustomSetupLaps` | `true` | Admin : si `false`, ignore les tours TT en setup perso (menu) — hors overlay |
 
 #### Serveur de résultats (optionnel)
 
@@ -215,12 +215,17 @@ Racine : `%LOCALAPPDATA%\MT_F1Chronos\`
 |---|---|
 | `settings.json` | `AppSettings` |
 | `admin.secret.json` | Salt + hash PBKDF2 admin |
-| `sessions/track-{id}.json` | Scores globaux |
-| `sessions.json` (+ `.bak`) | Legacy → migration |
-| `contests/index.json` | Métadonnées concours |
-| `contests/{contestId}/track-{id}.json` | Scores concours |
+| `chronos.db` (+ `-wal` / `-shm`) | SQLite : scores globaux, concours, tours |
+| `archive-json/{stamp}/` | Anciens JSON après migration one-shot |
+| `sessions/`, `contests/`, `sessions.json` | Legacy JSON — importés puis archivés |
 
-Écriture atomique : `*.tmp` → `File.Move(overwrite)`. Flush différé : **2 s**.
+Schéma SQLite (`LocalChronosDb`, version **1**) :
+
+- `meta` — `schema_version`, `json_migrated`
+- `contests` — métadonnées concours
+- `laps` — tours (`contest_id` NULL = global)
+
+Flush différé : **2 s**. Migration JSON → SQLite : voir [`client/local-sqlite-migration.md`](../client/local-sqlite-migration.md).
 
 ---
 
@@ -273,9 +278,9 @@ IReadOnlyList<LeaderboardRow> ToRows(IEnumerable<ChronoEntry> ranked);
 
 | Constante | Valeur |
 |---|---|
-| `MaxEntriesPerTrack` | `5000` |
+| `MaxEntriesPerTrack` | `50000` |
 
-API clé : `LoadFromDirectory`, `Record`, `GetLeaderboard`, `GetScoresForTrack`, `Delete*`, `Clear*`, `PersistDirty`, `DrainDirty`, `GetRecentPlayerNames(max=10)`.
+API clé : `LoadFromStore` (SQLite), `LoadFromDirectory` (legacy / tests), `Record`, `GetLeaderboard`, `GetScoresForTrack`, `Delete*`, `Clear*`, `PersistDirty`, `DrainDirty`, `GetRecentPlayerNames(max=10)`.
 
 Événement : `BecameDirty`.
 
@@ -357,8 +362,8 @@ Responsabilités publiques (contrat UI) :
 | Domaine | Méthodes |
 |---|---|
 | Cycle de vie | `CreateOverlay`, `Start`, `Dispose` |
-| Overlay | `PositionOverlay`, `SetOverlayWidth`, `SaveOverlayPosition`, `SetLeaderboardSize`, `SetContestLeaderboardSize`, `SetBestPerPlayer`, `SetCountCustomSetupLaps`, `PromptPlayerName` |
-| Admin / fenêtres | `ShowAdminWindow` (password), `ShowManageScores`, `ShowAllScores`, `ShowContestScores`, `ShowDebugWindow`, `ChangeAdminPassword` |
+| Overlay | `PositionOverlay`, `SetOverlayWidth`, `SaveOverlayPosition`, `SetLeaderboardSize`, `SetContestLeaderboardSize`, `SetBestPerPlayer`, `PromptPlayerName` |
+| Admin / fenêtres | `ShowAdminWindow` (password), `ShowManageScores`, `ShowAllScores`, `ShowContestScores`, `ShowDebugWindow`, `ChangeAdminPassword`, `Get/SetCountCustomSetupLaps` |
 | Concours | `ListContests`, `CreateContest`, `StartContest`, `StopContest`, `DeleteContest`, `SetOverlayContest`, `Get/SetOverlayDisplayMode` |
 | Export | `ExportScores(format, contestId?, trackId?)`, `ListExportTracks` |
 | Sync | `NotifyScoresChanged` (+ `ResultsSyncClient.RequestSync` si activé) |
@@ -471,7 +476,7 @@ Un tour n’est persisté que si **toutes** les conditions sont vraies :
 3. `CompletedLapMs > 0`
 4. `TrackId >= 0`
 5. Pseudo joueur non vide (trim)
-6. Si `HasCustomSetup` **et** `CountCustomSetupLaps == false` → **pas** d’enregistrement (option overlay)
+6. Si `HasCustomSetup` **et** `CountCustomSetupLaps == false` → **pas** d’enregistrement (option admin)
 
 Effets : écriture dans **SessionStore (global)** **et** dans **chaque concours `Active`** éligible. `ChronoEntry.CustomSetup` mémorise le flag TT.
 
@@ -508,8 +513,9 @@ Tant que le joueur est en piste (`IsOnTrack` ou chrono courant &gt; 0), un bascu
 
 ### BR-08 — Capacité & flush
 
-- Max **5000** entrées scorées par circuit (global et par concours) — conservation des meilleurs
+- Max **50 000** entrées scorées par circuit (global et par concours) — conservation des meilleurs
 - Flush différé **2 s** après dirty ; flush immédiat sur dispose / mutations destructives
+- Persistance locale : **SQLite** (`chronos.db`) ; migration JSON one-shot au premier `Load()`
 
 ### BR-09 — Pseudo
 
@@ -581,7 +587,8 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 
 | Projet | Package | Version |
 |---|---|---|
-| Core / App | — | Aucun (BCL uniquement) |
+| Core | `Microsoft.Data.Sqlite` | `8.0.11` |
+| Core / App | — | BCL pour le reste |
 | Tests | `Microsoft.NET.Test.Sdk` | `17.11.1` |
 | Tests | `xunit` | `2.9.2` |
 | Tests | `xunit.runner.visualstudio` | `2.8.2` |
@@ -599,7 +606,8 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 ### 4.4 Dépendances système BCL (notables)
 
 - `System.Net.Sockets` (`UdpClient`)
-- `System.Text.Json` (persistance)
+- `Microsoft.Data.Sqlite` (persistance locale `chronos.db`)
+- `System.Text.Json` (settings, sync HTTP, migration JSON legacy)
 - `System.Security.Cryptography` (PBKDF2 admin)
 - `System.Windows` / WPF (App uniquement)
 - `Microsoft.Win32` (`SaveFileDialog` export)

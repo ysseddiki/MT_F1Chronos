@@ -33,7 +33,16 @@ public partial class AdminWindow : Window
         RefreshContestList();
         RefreshExportSelectors();
         LoadResultsServerFields();
+        CountCustomSetupCheck.IsChecked = _controller.GetCountCustomSetupLaps();
         _ready = true;
+    }
+
+    private void OnCountCustomSetupChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready)
+            return;
+
+        _controller.SetCountCustomSetupLaps(CountCustomSetupCheck.IsChecked == true);
     }
 
     private void LoadResultsServerFields()

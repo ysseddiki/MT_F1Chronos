@@ -158,15 +158,11 @@ Fichier `%LOCALAPPDATA%\MT_F1Chronos\settings.json` :
 
 ## Données
 
-Scores globaux : `%LOCALAPPDATA%\MT_F1Chronos\sessions\track-{id}.json` (un fichier par circuit)
+Scores locaux : `%LOCALAPPDATA%\MT_F1Chronos\chronos.db` (SQLite — global + concours)
 
-Concours : `%LOCALAPPDATA%\MT_F1Chronos\contests\`
-- `index.json` — métadonnées des concours
-- `{contestId}/track-{id}.json` — scores du concours
-
-- Écriture atomique (`.tmp` → replace) et sauvegarde différée (~2 s), flush à la fermeture
-- Au plus **5000** meilleurs tours conservés par circuit (global et par concours)
-- Migration automatique depuis l’ancien `sessions.json` (renommé en `sessions.json.bak`)
+- Sauvegarde différée (~2 s), flush à la fermeture
+- Au plus **50 000** meilleurs tours conservés par circuit (global et par concours)
+- Migration automatique depuis les anciens JSON (`sessions/`, `contests/`) au premier lancement — voir [`specs/client/local-sqlite-migration.md`](specs/client/local-sqlite-migration.md)
 
 Le TOP 3 / 5 / 10 n’est qu’un filtre d’affichage sur ces données.
 

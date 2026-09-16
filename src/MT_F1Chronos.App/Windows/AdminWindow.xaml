@@ -161,6 +161,30 @@
 
                     <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
 
+                    <!-- Enregistrement -->
+                    <TextBlock Text="ENREGISTREMENT"
+                               FontFamily="Segoe UI"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#FFE10600"
+                               Margin="0,0,0,8"/>
+                    <CheckBox x:Name="CountCustomSetupCheck"
+                              Content="Compter les tours en setup voiture personnalisé (Time Trial)"
+                              FontFamily="Segoe UI"
+                              FontSize="12"
+                              Foreground="White"
+                              Margin="0,0,0,6"
+                              Checked="OnCountCustomSetupChanged"
+                              Unchecked="OnCountCustomSetupChanged"/>
+                    <TextBlock Text="Menu garage TT uniquement (pas frein / différentiel MFD). Décoché = seuls les setups stock sont enregistrés."
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#FFC5CAD3"
+                               Margin="0,0,0,12"
+                               TextWrapping="Wrap"/>
+
+                    <Rectangle Height="1" Fill="#22FFFFFF" Margin="0,8,0,12"/>
+
                     <!-- Affichage -->
                     <TextBlock Text="AFFICHAGE OVERLAY"
                                FontFamily="Segoe UI"

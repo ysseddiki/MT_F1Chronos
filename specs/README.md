@@ -8,6 +8,7 @@ Documentation produit et technique du dépôt `MT_F1Chronos`.
 |---|---|
 | **Reprise sur une nouvelle machine** | [`onboarding.md`](onboarding.md) |
 | **État actuel du produit** | [`system/baseline-v1.md`](system/baseline-v1.md) |
+| **Migration overlay JSON → SQLite** | [`client/local-sqlite-migration.md`](client/local-sqlite-migration.md) |
 | **Serveur : variables d’env** | [`server/env.md`](server/env.md) |
 | **Serveur : routes SPA** | [`server/spa-routes.md`](server/spa-routes.md) |
 | **Historique des jalons** | [`archives/INDEX.md`](archives/INDEX.md) |
@@ -20,6 +21,8 @@ specs/
 ├── README.md                    # Ce fichier
 ├── system/
 │   └── baseline-v1.md           # Baseline : modèles, contrats, règles métier
+├── client/
+│   └── local-sqlite-migration.md # Post-update : migration chronos locaux
 ├── server/
 │   ├── env.md                   # Variables RESULTS_* / Caddy
 │   └── spa-routes.md            # Routes frontend résultats

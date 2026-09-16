@@ -1,4 +1,3 @@
-using System.Text.Json;
 using MT_F1Chronos.Core.Models;
 
 namespace MT_F1Chronos.Core.Services;
@@ -7,15 +6,8 @@ public sealed class ContestStore : IDisposable
 {
     private static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(2);
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    };
-
-    private readonly string _contestsDirectory;
-    private readonly string _indexPath;
+    private readonly string _dataDirectory;
+    private readonly LocalChronosDb _db;
     private readonly TimeProvider _time;
     private readonly List<Contest> _contests = [];
     private readonly Dictionary<string, TrackScoreBoard> _boards = new(StringComparer.Ordinal);
@@ -27,17 +19,19 @@ public sealed class ContestStore : IDisposable
     public ContestStore(string? dataDirectory = null, TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
-        var root = dataDirectory ?? Path.Combine(
+        _dataDirectory = dataDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "MT_F1Chronos");
-        _contestsDirectory = Path.Combine(root, "contests");
-        _indexPath = Path.Combine(_contestsDirectory, "index.json");
+        _db = LocalChronosDb.Open(_dataDirectory);
         _flush = new DeferredFlush(SaveDelay, FlushDirty);
     }
 
+    public string DatabasePath => _db.DatabasePath;
+
     public void Load()
     {
-        Directory.CreateDirectory(_contestsDirectory);
+        Directory.CreateDirectory(_dataDirectory);
+        LocalChronosMigrator.MigrateIfNeeded(_dataDirectory, _db);
 
         lock (_gate)
         {
@@ -47,26 +41,13 @@ public sealed class ContestStore : IDisposable
             _boards.Clear();
             _indexDirty = false;
 
-            if (File.Exists(_indexPath))
-            {
-                try
-                {
-                    var json = File.ReadAllText(_indexPath);
-                    var index = JsonSerializer.Deserialize<ContestIndex>(json, JsonOptions);
-                    if (index?.Contests is { Count: > 0 })
-                        _contests.AddRange(index.Contests);
-                }
-                catch
-                {
-                    // Keep empty index on corrupt file.
-                }
-            }
+            _contests.AddRange(_db.LoadContests());
 
             foreach (var contest in _contests)
             {
-                var board = new TrackScoreBoard(_time);
+                var board = new TrackScoreBoard(_time, _db, contest.Id);
                 board.BecameDirty += OnBoardBecameDirty;
-                board.LoadFromDirectory(ContestDirectory(contest.Id));
+                board.LoadFromStore();
                 _boards[contest.Id] = board;
             }
         }
@@ -104,10 +85,9 @@ public sealed class ContestStore : IDisposable
         lock (_gate)
         {
             _contests.Add(contest);
-            var board = new TrackScoreBoard(_time);
+            var board = new TrackScoreBoard(_time, _db, contest.Id);
             board.BecameDirty += OnBoardBecameDirty;
             _boards[contest.Id] = board;
-            Directory.CreateDirectory(ContestDirectory(contest.Id));
             _indexDirty = true;
             _flush.Schedule();
         }
@@ -176,18 +156,7 @@ public sealed class ContestStore : IDisposable
             board.BecameDirty -= OnBoardBecameDirty;
 
         FlushDirty();
-
-        var dir = ContestDirectory(contestId);
-        try
-        {
-            if (Directory.Exists(dir))
-                Directory.Delete(dir, recursive: true);
-        }
-        catch
-        {
-            // best effort
-        }
-
+        _db.DeleteContest(contestId);
         return true;
     }
 
@@ -278,7 +247,7 @@ public sealed class ContestStore : IDisposable
             return 0;
 
         FlushDirty();
-        board.DeleteAllTrackFiles(ContestDirectory(contestId));
+        board.DeleteAllPersisted();
         return removed;
     }
 
@@ -349,6 +318,7 @@ public sealed class ContestStore : IDisposable
         }
 
         _flush.Dispose();
+        _db.Dispose();
     }
 
     private TrackScoreBoard? GetBoard(string contestId)
@@ -374,27 +344,14 @@ public sealed class ContestStore : IDisposable
         }
 
         if (saveIndex)
-            PersistIndex(contestsSnapshot);
+            _db.ReplaceContests(contestsSnapshot);
 
-        foreach (var (contestId, board) in boards)
+        foreach (var (_, board) in boards)
         {
             if (board.HasDirty)
-                board.PersistDirty(ContestDirectory(contestId));
+                board.PersistDirty();
         }
     }
-
-    private void PersistIndex(List<Contest> contests)
-    {
-        Directory.CreateDirectory(_contestsDirectory);
-        var path = _indexPath;
-        var tmp = path + ".tmp";
-        var json = JsonSerializer.Serialize(new ContestIndex { Contests = contests }, JsonOptions);
-        File.WriteAllText(tmp, json);
-        File.Move(tmp, path, overwrite: true);
-    }
-
-    private string ContestDirectory(string contestId) =>
-        Path.Combine(_contestsDirectory, contestId);
 
     private sealed class ContestScoreBoardView(ContestStore store, string contestId) : IScoreBoardView
     {

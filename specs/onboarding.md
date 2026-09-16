@@ -6,7 +6,7 @@ Guide pour cloner, configurer, builder et vérifier **F1 Chronos** (`MT_F1Chrono
 |---|---|
 | **Dépôt** | `MT_F1Chronos` |
 | **Branche de référence** | `main` |
-| **Dernière mise à jour** | 2026-09-01 |
+| **Dernière mise à jour** | 2026-09-12 |
 
 ---
 
@@ -24,6 +24,7 @@ L’overlay fonctionne **sans réseau**. Le serveur est une vitrine / archive : 
 Documentation complémentaire :
 
 - [`system/baseline-v1.md`](system/baseline-v1.md) — contrats, modèles, règles métier
+- [`client/local-sqlite-migration.md`](client/local-sqlite-migration.md) — migration JSON → SQLite après update
 - [`README.md`](../README.md) — guide utilisateur overlay
 - [`AGENTS.md`](../AGENTS.md) — conventions pour agents IA
 
@@ -94,9 +95,10 @@ Tout est sous `%LOCALAPPDATA%\MT_F1Chronos\` :
 |---|---|
 | `settings.json` | Réglages (UDP, overlay, serveur optionnel) |
 | `admin.secret.json` | Hash mot de passe admin local |
-| `sessions/track-{id}.json` | Scores globaux |
-| `contests/index.json` | Métadonnées concours |
-| `contests/{id}/track-{id}.json` | Scores par concours |
+| `chronos.db` | Scores + concours (SQLite) |
+| `archive-json/` | Anciens JSON après migration (si applicable) |
+
+Après une mise à jour depuis une version JSON : lancer l’overlay **une fois** — migration automatique. Détail : [`client/local-sqlite-migration.md`](client/local-sqlite-migration.md).
 
 **Ne jamais committer** ces fichiers ni les secrets serveur.
 

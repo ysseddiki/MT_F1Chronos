@@ -110,6 +110,37 @@ public class ContestStoreTests
         }
     }
 
+    [Fact]
+    public void Save_ThenReload_ReadsFromSqlite()
+    {
+        var root = NewTempRoot();
+        string contestId;
+        try
+        {
+            using (var contests = new ContestStore(root))
+            {
+                contests.Load();
+                var contest = contests.Create("Persisté");
+                contestId = contest.Id;
+                contests.RecordCompletedLap("Ada", 2, "Paul Ricard", 84_000);
+                contests.Save();
+                Assert.True(File.Exists(contests.DatabasePath));
+            }
+
+            using var reloaded = new ContestStore(root);
+            reloaded.Load();
+            Assert.Equal("Persisté", reloaded.Get(contestId)!.Name);
+            var rows = reloaded.GetLeaderboard(contestId, 2);
+            Assert.Single(rows);
+            Assert.Equal("Ada", rows[0].Name);
+            Assert.Equal(84_000u, rows[0].BestLapMs);
+        }
+        finally
+        {
+            TryDelete(root);
+        }
+    }
+
     private static string NewTempRoot()
     {
         var root = Path.Combine(Path.GetTempPath(), "MT_F1Chronos_tests", Guid.NewGuid().ToString("N"));

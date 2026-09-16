@@ -626,7 +626,7 @@ public sealed class AppController : IDisposable
             var customSetup = update.State.HasCustomSetup;
             if (customSetup && !_settings.CountCustomSetupLaps)
             {
-                // Setup perso exclu par option overlay — ne pas enregistrer (BR custom setup).
+                // Setup perso exclu par option admin — ne pas enregistrer (BR custom setup).
                 _overlay?.UpdateLiveChrono(update.State.CurrentLapTimeMs);
                 RefreshOverlay();
                 return;

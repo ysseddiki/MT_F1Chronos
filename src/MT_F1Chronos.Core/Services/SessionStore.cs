@@ -1,4 +1,3 @@
-using System.Text.Json;
 using MT_F1Chronos.Core.Models;
 using MT_F1Chronos.Core.Telemetry;
 
@@ -12,18 +11,12 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
 
     private static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(2);
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     private readonly string _dataDirectory;
-    private readonly string _sessionsDirectory;
-    private readonly string _legacyFilePath;
+    private readonly LocalChronosDb _db;
     private readonly TrackScoreBoard _board;
     private readonly object _flushGate = new();
     private readonly DeferredFlush _flush;
+    private string _migrationStatus = "";
 
     private int _liveTrackId = -1;
     private string _liveTrackName = "Inconnu";
@@ -35,18 +28,26 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
         _dataDirectory = dataDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "MT_F1Chronos");
-        _sessionsDirectory = Path.Combine(_dataDirectory, "sessions");
-        _legacyFilePath = Path.Combine(_dataDirectory, "sessions.json");
-        _board = new TrackScoreBoard(time);
+        _db = LocalChronosDb.Open(_dataDirectory);
+        _board = new TrackScoreBoard(time, _db, contestId: null);
         _flush = new DeferredFlush(SaveDelay, FlushDirty);
         _board.BecameDirty += () => _flush.Schedule();
     }
 
     public bool HasLiveSession => _liveTrackId >= 0;
 
-    public string SessionsDirectoryPath => _sessionsDirectory;
+    public string DataDirectoryPath => _dataDirectory;
 
-    public string SessionsFilePath => _sessionsDirectory;
+    public string DatabasePath => _db.DatabasePath;
+
+    /// <summary>Legacy path kept for debug UI (now points at the SQLite file).</summary>
+    public string SessionsDirectoryPath => _db.DatabasePath;
+
+    public string SessionsFilePath => _db.DatabasePath;
+
+    public string MigrationStatus => _migrationStatus;
+
+    public LocalChronosDb Database => _db;
 
     public SessionStoreDebugInfo BuildDebugInfo()
     {
@@ -57,7 +58,7 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
             ActiveTrackId = HasLiveSession ? _liveTrackId : null,
             ActiveTrackName = HasLiveSession ? _liveTrackName : null,
             ActiveBestLapMs = _liveLastLapMs,
-            SessionsFilePath = _sessionsDirectory,
+            SessionsFilePath = _db.DatabasePath,
             TotalSessions = entries.Count,
             ScoredSessions = entries.Count,
         };
@@ -65,9 +66,9 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
 
     public void Load()
     {
-        Directory.CreateDirectory(_sessionsDirectory);
-        MigrateLegacyIfNeeded();
-        _board.LoadFromDirectory(_sessionsDirectory);
+        Directory.CreateDirectory(_dataDirectory);
+        _migrationStatus = LocalChronosMigrator.MigrateIfNeeded(_dataDirectory, _db);
+        _board.LoadFromStore();
     }
 
     public void Save() => FlushDirty();
@@ -170,7 +171,7 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
             return 0;
 
         FlushDirty();
-        _board.DeleteAllTrackFiles(_sessionsDirectory);
+        _board.DeleteAllPersisted();
         return removed;
     }
 
@@ -224,6 +225,7 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
         _disposed = true;
         FlushDirty();
         _flush.Dispose();
+        _db.Dispose();
     }
 
     public int ResolveOverlayTrackId(TelemetryState state)
@@ -251,47 +253,6 @@ public sealed class SessionStore : IDisposable, IScoreBoardView
     private void FlushDirty()
     {
         lock (_flushGate)
-            _board.PersistDirty(_sessionsDirectory);
-    }
-
-    private void MigrateLegacyIfNeeded()
-    {
-        if (!File.Exists(_legacyFilePath))
-            return;
-
-        ChronoDatabase? legacy;
-        try
-        {
-            var json = File.ReadAllText(_legacyFilePath);
-            legacy = JsonSerializer.Deserialize<ChronoDatabase>(json, JsonOptions);
-        }
-        catch
-        {
-            return;
-        }
-
-        if (legacy is null)
-            return;
-
-        foreach (var group in legacy.Sessions.GroupBy(s => s.TrackId))
-        {
-            if (group.Key < 0)
-                continue;
-
-            var capped = TrackScoreBoard.CapEntries(group.ToList());
-            TrackScoreBoard.PersistTrack(_sessionsDirectory, group.Key, capped);
-        }
-
-        try
-        {
-            var bak = _legacyFilePath + ".bak";
-            if (File.Exists(bak))
-                File.Delete(bak);
-            File.Move(_legacyFilePath, bak);
-        }
-        catch
-        {
-            // Migration files were written; leaving the legacy file is preferable to data loss.
-        }
+            _board.PersistDirty();
     }
 }

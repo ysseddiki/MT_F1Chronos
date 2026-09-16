@@ -5,19 +5,22 @@ namespace MT_F1Chronos.Core.Services;
 
 /// <summary>
 /// In-memory per-track chrono board with deferred dirty tracking.
-/// Persistence directory is supplied by the owner (global sessions or a contest folder).
+/// Persist via <see cref="LocalChronosDb"/> when provided; otherwise JSON directory (migrator / tests).
 /// </summary>
 public sealed class TrackScoreBoard
 {
-    public const int MaxEntriesPerTrack = 5_000;
+    /// <summary>Max scored entries kept per track (best times). Raised with SQLite storage.</summary>
+    public const int MaxEntriesPerTrack = 50_000;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true,
+        WriteIndented = false,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly TimeProvider _time;
+    private readonly LocalChronosDb? _db;
+    private readonly string? _contestId;
     private readonly Dictionary<int, List<ChronoEntry>> _byTrack = new();
     private readonly HashSet<int> _dirty = new();
     private readonly HashSet<string> _deletedIds = new(StringComparer.Ordinal);
@@ -25,9 +28,30 @@ public sealed class TrackScoreBoard
 
     public event Action? BecameDirty;
 
-    public TrackScoreBoard(TimeProvider? time = null)
+    public TrackScoreBoard(TimeProvider? time = null, LocalChronosDb? db = null, string? contestId = null)
     {
         _time = time ?? TimeProvider.System;
+        _db = db;
+        _contestId = contestId;
+    }
+
+    public bool UsesSqlite => _db is not null;
+
+    /// <summary>Load from SQLite when a DB was provided; otherwise no-op (use <see cref="LoadFromDirectory"/>).</summary>
+    public void LoadFromStore()
+    {
+        if (_db is null)
+            return;
+
+        var loaded = _db.LoadLapsByTrack(_contestId);
+        lock (_gate)
+        {
+            _byTrack.Clear();
+            _dirty.Clear();
+            _deletedIds.Clear();
+            foreach (var (trackId, list) in loaded)
+                _byTrack[trackId] = CapEntries(list);
+        }
     }
 
     public void LoadFromDirectory(string directory)
@@ -468,15 +492,37 @@ public sealed class TrackScoreBoard
         }
     }
 
-    public void PersistDirty(string directory)
+    public void PersistDirty(string? directory = null)
     {
         var dirty = DrainDirty();
         if (dirty.Count == 0)
             return;
 
+        if (_db is not null)
+        {
+            foreach (var (trackId, entries) in dirty)
+                _db.ReplaceTrackLaps(_contestId, trackId, CapEntries(entries));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(directory))
+            throw new InvalidOperationException("PersistDirty requires a directory when SQLite is not configured.");
+
         Directory.CreateDirectory(directory);
         foreach (var (trackId, entries) in dirty)
             PersistTrack(directory, trackId, entries);
+    }
+
+    public void DeleteAllPersisted(string? directory = null)
+    {
+        if (_db is not null)
+        {
+            _db.DeleteAllLaps(_contestId);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(directory))
+            DeleteAllTrackFiles(directory);
     }
 
     public void DeleteAllTrackFiles(string directory)

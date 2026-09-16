@@ -32,7 +32,6 @@ public partial class OverlayWindow : Window
     private bool _statusPulseActive;
     private string _widthFitKey = string.Empty;
     private bool _bestPerPlayer;
-    private bool _countCustomSetupLaps = true;
 
     public OverlayWindow(AppSettings settings, AppController controller)
     {
@@ -43,9 +42,7 @@ public partial class OverlayWindow : Window
         Width = Math.Clamp(settings.OverlayWidth, OverlaySizes.Default, OverlaySizes.Max);
         Topmost = true;
         _bestPerPlayer = settings.BestPerPlayer;
-        _countCustomSetupLaps = settings.CountCustomSetupLaps;
         SyncBestPerPlayerToggle(animate: false);
-        SyncCountCustomSetupToggle(animate: false);
 
         SourceInitialized += OnSourceInitialized;
         Activated += (_, _) => AssertTopMost();
@@ -121,15 +118,6 @@ public partial class OverlayWindow : Window
         _controller.SetBestPerPlayer(next);
     }
 
-    private void OnCountCustomSetupToggleClick(object sender, MouseButtonEventArgs e)
-    {
-        e.Handled = true;
-        var next = !_countCustomSetupLaps;
-        _countCustomSetupLaps = next;
-        SyncCountCustomSetupToggle(animate: true);
-        _controller.SetCountCustomSetupLaps(next);
-    }
-
     private void OnRenameClick(object sender, RoutedEventArgs e) => _controller.PromptPlayerName();
     private void OnScoresClick(object sender, RoutedEventArgs e) => _controller.ShowAllScores();
     private void OnAdminClick(object sender, RoutedEventArgs e) => _controller.ShowAdminWindow();
@@ -160,12 +148,6 @@ public partial class OverlayWindow : Window
         {
             _bestPerPlayer = snapshot.BestPerPlayer;
             SyncBestPerPlayerToggle(animate: true);
-        }
-
-        if (snapshot.CountCustomSetupLaps != _countCustomSetupLaps)
-        {
-            _countCustomSetupLaps = snapshot.CountCustomSetupLaps;
-            SyncCountCustomSetupToggle(animate: true);
         }
 
         TrackText.Text = snapshot.TrackName.ToUpperInvariant();
@@ -227,18 +209,6 @@ public partial class OverlayWindow : Window
         BestPerPlayerLabel.Foreground = UiBrushes.FromHex(on ? "#FFFFFFFF" : "#FFA8A8B3");
 
         AnimateToggleKnob(BestPerPlayerKnob, BestPerPlayerLabel, on, animate);
-    }
-
-    private void SyncCountCustomSetupToggle(bool animate)
-    {
-        // ON = count custom setups (default). OFF = stock-only / exclude custom (strict, red).
-        var on = _countCustomSetupLaps;
-        CountCustomSetupToggle.Background = UiBrushes.FromHex(on ? "#FF252530" : "#FFE10600");
-        CountCustomSetupLabel.Text = on ? "Setup perso : comptés" : "Setup perso : exclus";
-        CountCustomSetupLabel.Foreground = UiBrushes.FromHex(on ? "#FFA8A8B3" : "#FFFFFFFF");
-
-        // Knob left when counting (on), right when excluding — invert visual vs BestPerPlayer.
-        AnimateToggleKnob(CountCustomSetupKnob, CountCustomSetupLabel, !on, animate);
     }
 
     private static void AnimateToggleKnob(
@@ -308,7 +278,6 @@ public partial class OverlayWindow : Window
           .Append(snapshot.ShowGlobalLeaderboard).Append('|')
           .Append(snapshot.ShowContestLeaderboard).Append('|')
           .Append(snapshot.BestPerPlayer).Append('|')
-          .Append(snapshot.CountCustomSetupLaps).Append('|')
           .Append(snapshot.HasCustomSetup).Append('|')
           .Append(snapshot.ContestLabel).Append('|');
 

@@ -121,6 +121,74 @@ public class SessionStoreTests
             catch { /* ignore */ }
         }
     }
+
+    [Fact]
+    public void Save_ThenReload_ReadsFromSqlite()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MT_F1Chronos_tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            using (var store = new SessionStore(root))
+            {
+                store.Load();
+                store.RecordCompletedLap("Pilot", 7, "Spa", 91_000);
+                store.Save();
+                Assert.True(File.Exists(store.DatabasePath));
+            }
+
+            using var reloaded = new SessionStore(root);
+            reloaded.Load();
+            var rows = reloaded.GetLeaderboard(7, count: 5);
+            Assert.Single(rows);
+            Assert.Equal("Pilot", rows[0].Name);
+            Assert.Equal(91_000u, rows[0].BestLapMs);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch { /* ignore */ }
+        }
+    }
+}
+
+public class LocalChronosMigratorTests
+{
+    [Fact]
+    public void MigrateIfNeeded_ImportsLegacyJsonIntoSqlite()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MT_F1Chronos_tests", Guid.NewGuid().ToString("N"));
+        var sessionsDir = Path.Combine(root, "sessions");
+        Directory.CreateDirectory(sessionsDir);
+
+        try
+        {
+            var board = new TrackScoreBoard();
+            board.Record("Legacy", 5, "Monza", 88_000);
+            board.PersistDirty(sessionsDir);
+
+            using var store = new SessionStore(root);
+            store.Load();
+
+            Assert.Contains("importé", store.MigrationStatus, StringComparison.OrdinalIgnoreCase);
+            Assert.True(File.Exists(store.DatabasePath));
+            Assert.False(Directory.Exists(sessionsDir));
+
+            var rows = store.GetLeaderboard(5, count: 5);
+            Assert.Single(rows);
+            Assert.Equal("Legacy", rows[0].Name);
+            Assert.Equal(88_000u, rows[0].BestLapMs);
+
+            store.Load();
+            Assert.Contains("déjà migré", store.MigrationStatus, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch { /* ignore */ }
+        }
+    }
 }
 
 public class TelemetryStateTests

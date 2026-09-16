@@ -21,7 +21,7 @@ Spécification système (modèles, contrats, règles métier, dépendances) :
 ## Architecture
 
 ```
-src/MT_F1Chronos.Core/     # Domaine, UDP, stores, export, contrat sync résultats (net8.0, sans NuGet)
+src/MT_F1Chronos.Core/     # Domaine, UDP, stores SQLite, export, sync résultats (net8.0)
 src/MT_F1Chronos.App/      # WPF + orchestration (net8.0-windows)
 server/                    # Serveur de résultats Linux (FastAPI + SQLite, Docker/Podman)
 tests/MT_F1Chronos.Tests/  # xUnit, référence Core uniquement
@@ -69,7 +69,8 @@ Avant de modifier l’enregistrement de tours ou l’overlay, relire **§3** de 
 
 - C# moderne, nullable activé, `ImplicitUsings` activé
 - Noms de types / API en **anglais** ; chaînes UI en **français**
-- Persistance JSON camelCase, écriture atomique (`*.tmp` → move)
+- Persistance locale scores : SQLite `chronos.db` (`LocalChronosDb`) ; migration JSON one-shot au premier lancement
+- JSON restant : settings / sync HTTP camelCase ; écriture atomique settings (`*.tmp` → move)
 - Flush différé stores : **~2 s** (`DeferredFlush` / `TrackScoreBoard`)
 - Horodatage scores : `TimeProvider` (injectable pour tests)
 - Styles ComboBox sombres partagés : `App/Themes/DarkControls.xaml`
