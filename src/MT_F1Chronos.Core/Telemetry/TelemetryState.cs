@@ -28,7 +28,8 @@ public sealed class TelemetryState
     public string? LastEventCode { get; set; }
 
     /// <summary>
-    /// Time Trial menu « setup personnalisé » (<c>m_customSetup</c>).
+    /// Time Trial custom setup: menu flag <c>m_customSetup</c>, or structural CarSetup
+    /// delta vs session baseline (covers loaded community setups that leave the menu flag at 0).
     /// Independent of live MFD brake bias / on-throttle diff.
     /// </summary>
     public bool HasCustomSetup { get; set; }

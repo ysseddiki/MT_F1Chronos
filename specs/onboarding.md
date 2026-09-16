@@ -100,6 +100,13 @@ Tout est sous `%LOCALAPPDATA%\MT_F1Chronos\` :
 
 Après une mise à jour depuis une version JSON : lancer l’overlay **une fois** — migration automatique. Détail : [`client/local-sqlite-migration.md`](client/local-sqlite-migration.md).
 
+Diagnostic conf locale (Windows) :
+
+```powershell
+.\scripts\overlay-status.ps1
+# ou : python scripts/overlay-status.py --data-dir "$env:LOCALAPPDATA\MT_F1Chronos"
+```
+
 **Ne jamais committer** ces fichiers ni les secrets serveur.
 
 ### Configuration jeu (test)

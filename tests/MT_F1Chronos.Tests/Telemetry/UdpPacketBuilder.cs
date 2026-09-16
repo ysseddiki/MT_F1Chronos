@@ -99,4 +99,29 @@ internal static class UdpPacketBuilder
         buffer[offset + Profile.TimeTrialCustomSetupOffset] = customSetup ? (byte)1 : (byte)0;
         return buffer;
     }
+
+    /// <summary>Car setups packet — fills player car structural fields (wings, etc.).</summary>
+    public static byte[] CarSetupsPacket(
+        byte frontWing = 5,
+        byte rearWing = 8,
+        ulong sessionUid = 1,
+        byte playerCarIndex = 0)
+    {
+        var carSize = Profile.CarSetupDataSize;
+        var buffer = new byte[Profile.HeaderSize + carSize * Profile.MaxCars + 4];
+        Header(F1UdpConstants.PacketCarSetups, sessionUid, playerCarIndex).CopyTo(buffer, 0);
+
+        var offset = Profile.HeaderSize + playerCarIndex * carSize;
+        buffer[offset] = frontWing;
+        buffer[offset + 1] = rearWing;
+        // Plausible defaults for remaining structural bytes (non-zero floats left 0).
+        buffer[offset + 2] = 50; // onThrottle
+        buffer[offset + 3] = 50; // offThrottle
+        buffer[offset + 20] = 8; // frontSuspension
+        buffer[offset + 21] = 8;
+        buffer[offset + 26] = 100; // brakePressure
+        buffer[offset + 27] = 55; // brakeBias (ignored by fingerprint)
+        buffer[offset + 28] = 0; // engineBraking
+        return buffer;
+    }
 }

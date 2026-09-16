@@ -507,7 +507,7 @@ def test_championship_and_points_settings(client):
     assert body["standings"][1]["points"] == 5
 
 
-def test_pilot_profile_requires_linked_account(client):
+def test_pilot_profile_linked_after_sync_auto_provision(client):
     _setup_admin(client)
     tenant, sim, token = _make_tenant_with_sim(client)
     _sync_laps(client, token, count=2)
@@ -517,33 +517,28 @@ def test_pilot_profile_requires_linked_account(client):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["pilot"]["simPseudo"] == "Pilote 0"
-    assert body["pilot"]["linked"] is False
-    assert body["pilot"]["role"] is None
-    assert body["profile"]["totalLaps"] >= 1
-    assert body["profile"]["bests"]
-
-    r = client.post(
-        "/api/v1/admin/users",
-        json={"email": "sim@club.fr", "password": "motdepasse", "role": "simracer", "tenant_ids": [tenant["id"]]},
-    )
-    assert r.status_code == 200
-    sim_client = _login(client, "sim@club.fr", "motdepasse")
-    r = sim_client.patch("/api/v1/profile/sim-pseudo", json={"sim_pseudo": "Pilote 0"})
-    assert r.status_code == 200, r.text
-
-    linked = anon.get(f"/api/v1/tenants/{tenant['id']}/linked-pilots")
-    assert linked.status_code == 200
-    assert "Pilote 0" in linked.json()["pseudos"]
-
-    r = anon.get(f"/api/v1/tenants/{tenant['id']}/pilots/Pilote%200")
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["pilot"]["simPseudo"] == "Pilote 0"
     assert body["pilot"]["linked"] is True
     assert body["pilot"]["role"] == "simracer"
     assert "email" not in body["pilot"]
     assert body["profile"]["totalLaps"] >= 1
     assert body["profile"]["bests"]
+
+    users = client.get("/api/v1/admin/users").json()["users"]
+    auto = next(u for u in users if u.get("simPseudo") == "Pilote 0")
+    assert auto["credentialsPending"] is True
+
+    linked = anon.get(f"/api/v1/tenants/{tenant['id']}/linked-pilots")
+    assert linked.status_code == 200
+    assert "Pilote 0" in linked.json()["pseudos"]
+
+    r = client.patch(
+        f"/api/v1/admin/users/{auto['id']}",
+        json={"password": "motdepasse-pilote"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["user"]["credentialsPending"] is False
+    sim_client = _login(client, auto["email"], "motdepasse-pilote")
+    assert sim_client.get("/api/v1/auth/me").status_code == 200
 
 
 def test_sim_pseudo_unique_across_users(client):

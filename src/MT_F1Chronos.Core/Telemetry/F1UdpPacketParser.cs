@@ -27,6 +27,9 @@ public sealed class F1UdpPacketParser
     private uint _timeTrialPersonalBestMs;
     private byte _previousCurrentLapInvalid;
     private bool _seedLastLapWithoutRecording;
+    private bool _ttMenuCustom;
+    private bool _setupDeltaCustom;
+    private string? _stockSetupFingerprint;
     private CarLapDebugRow[] _carRows = [];
     private TelemetryUpdate? _lastUpdate;
 
@@ -105,6 +108,10 @@ public sealed class F1UdpPacketParser
                 ParseTimeTrialPacket(buffer, state);
                 break;
 
+            case F1UdpConstants.PacketCarSetups:
+                ParseCarSetupsPacket(buffer, state);
+                break;
+
             case F1UdpConstants.PacketSessionHistory:
                 ParseSessionHistoryPacket(buffer, state);
                 break;
@@ -145,7 +152,9 @@ public sealed class F1UdpPacketParser
             F1UdpConstants.PacketEvent =>
                 $"event {state.LastEventCode}",
             F1UdpConstants.PacketTimeTrial =>
-                $"tt best={_timeTrialSessionBestMs} personal={_timeTrialPersonalBestMs}",
+                $"tt best={_timeTrialSessionBestMs} personal={_timeTrialPersonalBestMs} custom={state.HasCustomSetup}",
+            F1UdpConstants.PacketCarSetups =>
+                $"setups custom={state.HasCustomSetup} delta={_setupDeltaCustom} menu={_ttMenuCustom}",
             F1UdpConstants.PacketSessionHistory =>
                 $"history car={buffer[Profile.HeaderSize]} laps={buffer[Profile.HeaderSize + 1]}",
             _ => $"unknown pkt={packetId} len={buffer.Length}",
@@ -308,9 +317,14 @@ public sealed class F1UdpPacketParser
         if (buffer.Length > offset)
             state.GameMode = buffer[offset];
 
-        // Custom setup flag only exists on Time Trial packets.
+        // Custom setup flag only exists on Time Trial packets / car setup delta.
         if (!state.IsTimeTrial)
+        {
+            _ttMenuCustom = false;
+            _setupDeltaCustom = false;
+            _stockSetupFingerprint = null;
             state.HasCustomSetup = false;
+        }
     }
 
     private bool ShouldAcceptTrackUpdate(TelemetryState state, int newTrackId)
@@ -402,6 +416,70 @@ public sealed class F1UdpPacketParser
         state.ResetLapData();
         _previousCurrentLapInvalid = 0;
         _seedLastLapWithoutRecording = true;
+        _ttMenuCustom = false;
+        _setupDeltaCustom = false;
+        _stockSetupFingerprint = null;
+        state.HasCustomSetup = false;
+    }
+
+    private void PublishCustomSetup(TelemetryState state) =>
+        state.HasCustomSetup = state.IsTimeTrial && (_ttMenuCustom || _setupDeltaCustom);
+
+    private void ParseCarSetupsPacket(ReadOnlySpan<byte> buffer, TelemetryState state)
+    {
+        if (!state.IsTimeTrial)
+            return;
+
+        var carIndex = state.PlayerCarIndex;
+        if (carIndex >= Profile.MaxCars)
+            return;
+
+        var offset = Profile.HeaderSize + carIndex * Profile.CarSetupDataSize;
+        if (buffer.Length < offset + Profile.CarSetupDataSize)
+            return;
+
+        var fingerprint = BuildStructuralSetupFingerprint(buffer.Slice(offset, Profile.CarSetupDataSize));
+        if (_stockSetupFingerprint is null)
+        {
+            // First TT setup seen this session — treat as stock baseline until it changes
+            // (load community / garage custom) or the menu flag says custom.
+            if (!_ttMenuCustom)
+                _stockSetupFingerprint = fingerprint;
+        }
+        else if (!string.Equals(_stockSetupFingerprint, fingerprint, StringComparison.Ordinal))
+        {
+            // Wings / suspension / pressures changed vs session baseline → custom
+            // (covers loaded setups that leave m_customSetup at 0).
+            _setupDeltaCustom = true;
+        }
+        else
+        {
+            _setupDeltaCustom = false;
+        }
+
+        PublishCustomSetup(state);
+    }
+
+    /// <summary>
+    /// Fingerprint of garage fields that are not typical MFD live tweaks
+    /// (excludes on/off throttle differential and brake bias).
+    /// </summary>
+    private static string BuildStructuralSetupFingerprint(ReadOnlySpan<byte> setup)
+    {
+        // EA CarSetupData (50 bytes): skip onThrottle/offThrottle (2-3) and brakeBias (27).
+        Span<byte> key = stackalloc byte[43];
+        var n = 0;
+        key[n++] = setup[0]; // frontWing
+        key[n++] = setup[1]; // rearWing
+        setup[4..20].CopyTo(key[n..]); // camber + toe
+        n += 16;
+        setup[20..27].CopyTo(key[n..]); // suspension, ARB, ride height, brake pressure
+        n += 7;
+        key[n++] = setup[28]; // engineBraking
+        setup[29..45].CopyTo(key[n..]); // tyre pressures
+        n += 16;
+        key[n++] = setup[45]; // ballast
+        return Convert.ToHexString(key[..n]);
     }
 
     private void UpdateCarRows(ReadOnlySpan<byte> buffer, TelemetryState state)
@@ -456,7 +534,9 @@ public sealed class F1UdpPacketParser
 
         // Player session-best dataset: official TT menu flag (custom setup vs stock).
         // Not derived from CarSetup brake bias / differential (MFD live adjusts).
-        state.HasCustomSetup = buffer[offset + Profile.TimeTrialCustomSetupOffset] != 0;
+        // Loaded community setups often leave this flag at 0 — CarSetup delta covers that.
+        _ttMenuCustom = buffer[offset + Profile.TimeTrialCustomSetupOffset] != 0;
+        PublishCustomSetup(state);
 
         _timeTrialSessionBestMs = ReadTimeTrialLapTime(buffer, offset);
         if (_timeTrialSessionBestMs > 0)

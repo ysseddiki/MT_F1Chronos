@@ -161,6 +161,7 @@ async def sync(request: Request):
         return JSONResponse({"ok": False, "message": "JSON invalide."}, status_code=400)
 
     jobs = deps.store().ingest(sim, payload)
+    deps.auth().provision_pilots_from_sync_payload(payload, sim.get("tenant_id"))
     return {
         "ok": True,
         "serverTime": db.utcnow(),

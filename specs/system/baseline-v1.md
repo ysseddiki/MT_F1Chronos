@@ -193,7 +193,7 @@ Champs principaux : `IsReceiving`, `LastPacketUtc`, `SessionUid`, `TrackId` / `R
 | `IsTimeTrial` | `SessionType == 13` **ou** `GameMode == 5` |
 | `TrackName` | `F1UdpConstants.GetTrackName` |
 | `EffectiveBestLapMs` | session ?? personal ?? last |
-| `HasCustomSetup` | Paquet Time Trial (`14`) : `m_customSetup` du dataset session-best joueur. Flag **menu garage TT**, pas frein/différentiel MFD. |
+| `HasCustomSetup` | Paquet Time Trial (`14`) : `m_customSetup` **ou** écart structurel CarSetup (`5`) vs baseline de session (setup chargé). Pas frein/différentiel MFD. |
 
 #### `TelemetryUpdate` (événement publié)
 
@@ -410,7 +410,7 @@ API web (JSON, camelCase) :
 
 | `/api/v1/admin/*` | rôle `admin` | CRUD tenants/sims/users, gestion chronos, jobs, réglages |
 
-**Comptes** : table `users` (email unique, hash PBKDF2, rôle `admin`/`visitor`/`simracer`, `sim_pseudo`, `disabled`) + `user_tenant_access` (visiteur / SimRacer → tenants assignés). **SimRacer** : lecture comme visiteur ; page `/profile` pour définir `sim_pseudo` (obligatoire à la première connexion) ; bouton « Appliquer » sur les feuilles de temps pour envoyer un job `setPlayerName` avec **son** pseudo uniquement (pas de saisie libre comme l’admin). Ligne du classement web surlignée si le nom correspond à `sim_pseudo` (comme l’overlay). Premier compte : hash legacy migré, sinon seed `RESULTS_ADMIN_PASSWORD` → `admin@localhost`, sinon formulaire de bootstrap (`/auth/setup`, refusé dès qu’un compte existe). Le dernier admin actif ne peut être ni rétrogradé, ni désactivé, ni supprimé. Login rate-limité (5 échecs / 5 min / IP).
+**Comptes** : table `users` (email unique, hash PBKDF2, rôle `admin`/`visitor`/`simracer`, `sim_pseudo`, `credentials_pending`, `disabled`) + `user_tenant_access`. **Sync** : chaque pseudo de chrono provisionne un SimRacer (`{slug}@pilots.local`, mot de passe aléatoire non affiché, `credentialsPending`) — l’admin définit le mot de passe dans Utilisateurs pour activer la connexion. **SimRacer** : lecture comme visiteur ; page `/profile` si `sim_pseudo` vide ; bouton « Appliquer » sur les feuilles de temps. Premier compte : hash legacy / `RESULTS_ADMIN_PASSWORD` / `/auth/setup`. Login rate-limité (5 échecs / 5 min / IP).
 
 **Visibilité** : tenant `public` (lisible anonymement si `public_access` global actif, sinon compte requis) ou `private` (admin + visiteurs / SimRacers assignés). `public_access` = réglage global admin.
 
@@ -628,6 +628,7 @@ Toute cellule commençant par `=`, `+`, `-`, `@`, `\t`, `\r` est préfixée par 
 | `scripts/validate-results-env.sh` | Valide domaine, mode TLS, certificats |
 | `scripts/up-results.sh` | Valide puis `docker compose up -d --build` |
 | `scripts/check-results-ssl.sh` | Health + certificat selon `RESULTS_TLS_MODE` |
+| `scripts/overlay-status.ps1` / `overlay-status.py` | Résumé conf overlay (version, SQLite/JSON, tours, pseudos) |
 | `scripts/setup-podman-ports.sh` | Ports 80/443 pour Podman rootless |
 
 Variables : [`specs/server/env.md`](../server/env.md). Reprise machine : [`specs/onboarding.md`](../onboarding.md).

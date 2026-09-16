@@ -110,6 +110,7 @@ class UserAuth:
             return None
         user = dict(row)
         user["disabled"] = bool(user.get("disabled"))
+        user["credentials_pending"] = bool(user.get("credentials_pending"))
         user["tenant_ids"] = self.tenant_ids_for_user(user["id"])
         return user
 
@@ -185,11 +186,28 @@ class UserAuth:
 
     # --- writes ---
 
-    def _insert_user(self, email: str, password_hash: str, role: str) -> dict:
+    def _insert_user(
+        self,
+        email: str,
+        password_hash: str,
+        role: str,
+        *,
+        sim_pseudo: str = "",
+        credentials_pending: bool = False,
+    ) -> dict:
         user_id = uuid.uuid4().hex
         self._conn.execute(
-            "INSERT INTO users (id, email, password_hash, role, disabled, created_at, sim_pseudo) VALUES (?, ?, ?, ?, 0, ?, '')",
-            (user_id, email, password_hash, role, db.utcnow()),
+            """INSERT INTO users (id, email, password_hash, role, disabled, created_at, sim_pseudo, credentials_pending)
+               VALUES (?, ?, ?, ?, 0, ?, ?, ?)""",
+            (
+                user_id,
+                email,
+                password_hash,
+                role,
+                db.utcnow(),
+                (sim_pseudo or "").strip()[:MAX_SIM_PSEUDO_LENGTH],
+                1 if credentials_pending else 0,
+            ),
         )
         self._conn.commit()
         user = self.get_user(user_id)
@@ -259,7 +277,7 @@ class UserAuth:
             )
         if password is not None:
             self._conn.execute(
-                "UPDATE users SET password_hash = ? WHERE id = ?",
+                """UPDATE users SET password_hash = ?, credentials_pending = 0 WHERE id = ?""",
                 (hash_password(password), user_id),
             )
         self._conn.commit()
@@ -328,7 +346,75 @@ class UserAuth:
                 f"Le nouveau mot de passe doit faire au moins {MIN_PASSWORD_LENGTH} caractères."
             )
         self._conn.execute(
-            "UPDATE users SET password_hash = ? WHERE id = ?",
+            """UPDATE users SET password_hash = ?, credentials_pending = 0 WHERE id = ?""",
             (hash_password(new_password), user_id),
         )
         self._conn.commit()
+
+    def ensure_pilot_account(self, pseudo: str, tenant_id: str | None = None) -> dict | None:
+        """
+        Un pseudo synchronisé = un profil SimRacer.
+        Mot de passe aléatoire non communiqué → l'admin le définit dans Utilisateurs.
+        """
+        name = (pseudo or "").strip()[:MAX_SIM_PSEUDO_LENGTH]
+        if not name:
+            return None
+
+        existing = self.get_user_by_sim_pseudo(name)
+        if existing is not None:
+            if tenant_id and existing["role"] != ROLE_ADMIN:
+                ids = list(existing.get("tenant_ids") or [])
+                if tenant_id not in ids:
+                    ids.append(tenant_id)
+                    self.set_tenant_access(existing["id"], ids)
+                    existing = self.get_user(existing["id"])
+            return existing
+
+        slug = db._slugify(name) or "pilote"
+        email = f"{slug}@pilots.local"
+        if self.get_user_by_email(email) is not None:
+            email = f"{slug}-{uuid.uuid4().hex[:6]}@pilots.local"
+
+        random_password = uuid.uuid4().hex + uuid.uuid4().hex[:8]
+        user = self._insert_user(
+            email,
+            hash_password(random_password),
+            ROLE_SIMRACER,
+            sim_pseudo=name,
+            credentials_pending=True,
+        )
+        if tenant_id:
+            self.set_tenant_access(user["id"], [tenant_id])
+            user = self.get_user(user["id"])
+        return user
+
+    def provision_pilots_from_sync_payload(
+        self, payload: dict, tenant_id: str | None
+    ) -> int:
+        """Crée les comptes manquants pour chaque pseudo présent dans un sync."""
+        names: set[str] = set()
+
+        def collect_board(board: dict | None) -> None:
+            if not board:
+                return
+            for track in board.get("tracks") or []:
+                for entry in track.get("entries") or []:
+                    n = (entry.get("name") or "").strip()
+                    if n:
+                        names.add(n)
+
+        collect_board(payload.get("global") or {})
+        for contest in payload.get("contests") or []:
+            collect_board({"tracks": contest.get("tracks") or []})
+
+        session_name = (payload.get("playerName") or "").strip()
+        if session_name:
+            names.add(session_name)
+
+        created = 0
+        for name in names:
+            before = self.get_user_by_sim_pseudo(name)
+            user = self.ensure_pilot_account(name, tenant_id)
+            if before is None and user is not None:
+                created += 1
+        return created

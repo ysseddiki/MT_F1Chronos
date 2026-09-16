@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL CHECK (role IN ('admin', 'visitor', 'simracer')),
     disabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
-    sim_pseudo TEXT NOT NULL DEFAULT ''
+    sim_pseudo TEXT NOT NULL DEFAULT '',
+    credentials_pending INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS user_tenant_access (
@@ -128,12 +129,16 @@ def _migrate_users_simracer(conn: sqlite3.Connection) -> None:
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
     if "sim_pseudo" not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN sim_pseudo TEXT NOT NULL DEFAULT ''")
+    if "credentials_pending" not in user_cols:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN credentials_pending INTEGER NOT NULL DEFAULT 0"
+        )
 
     try:
         conn.execute("SAVEPOINT migrate_simracer_role")
         conn.execute(
-            """INSERT INTO users (id, email, password_hash, role, disabled, created_at, sim_pseudo)
-               VALUES ('_migrate_test', '_migrate@test.local', 'x', 'simracer', 1, ?, '')""",
+            """INSERT INTO users (id, email, password_hash, role, disabled, created_at, sim_pseudo, credentials_pending)
+               VALUES ('_migrate_test', '_migrate@test.local', 'x', 'simracer', 1, ?, '', 0)""",
             (utcnow(),),
         )
         conn.execute("DELETE FROM users WHERE id = '_migrate_test'")
@@ -151,13 +156,14 @@ def _migrate_users_simracer(conn: sqlite3.Connection) -> None:
             role TEXT NOT NULL CHECK (role IN ('admin', 'visitor', 'simracer')),
             disabled INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
-            sim_pseudo TEXT NOT NULL DEFAULT ''
+            sim_pseudo TEXT NOT NULL DEFAULT '',
+            credentials_pending INTEGER NOT NULL DEFAULT 0
         )"""
     )
     conn.execute(
-        """INSERT INTO users_new (id, email, password_hash, role, disabled, created_at, sim_pseudo)
+        """INSERT INTO users_new (id, email, password_hash, role, disabled, created_at, sim_pseudo, credentials_pending)
            SELECT id, email, password_hash, role, disabled, created_at,
-                  COALESCE(sim_pseudo, '') FROM users"""
+                  COALESCE(sim_pseudo, ''), COALESCE(credentials_pending, 0) FROM users"""
     )
     conn.execute("DROP TABLE users")
     conn.execute("ALTER TABLE users_new RENAME TO users")

@@ -166,6 +166,10 @@ export async function usersTab(slot) {
     };
     const roleBadgeClass = (role) => (role === 'admin' ? 'public' : 'private');
 
+    slot.append(h('p', { class: 'hint' },
+        'Chaque pseudo synchronisé crée un profil SimRacer avec un mot de passe aléatoire ',
+        '(non communiqué). Définis un mot de passe dans « Modifier » pour que le pilote puisse se connecter.'));
+
     slot.append(h('div', { class: 'panel' },
         h('h2', {}, 'Comptes'),
         h('table', { class: 'admin-table' },
@@ -185,7 +189,10 @@ export async function usersTab(slot) {
                     u.role === 'admin'
                         ? 'Toutes'
                         : (u.tenantIds.length ? u.tenantIds.map(tenantLabel).join(', ') : 'Tenants publics uniquement')),
-                h('td', {}, h('span', { class: `status-dot ${u.disabled ? 'err' : 'ok'}` }, u.disabled ? 'Désactivé' : 'Actif')),
+                h('td', {},
+                    u.credentialsPending
+                        ? h('span', { class: 'badge private', title: 'Définis un mot de passe pour activer la connexion' }, 'MDP à définir')
+                        : h('span', { class: `status-dot ${u.disabled ? 'err' : 'ok'}` }, u.disabled ? 'Désactivé' : 'Actif')),
                 h('td', {}, h('div', { class: 'row-actions' },
                     h('button', {
                         class: 'btn-sm', type: 'button',
@@ -279,7 +286,13 @@ function editUserModal(user, tenants) {
         h('option', { value: 'admin', selected: user.role === 'admin' }, 'Admin'),
     );
     const disabled = h('input', { type: 'checkbox', checked: user.disabled });
-    const newPassword = h('input', { type: 'password', minlength: '8', autocomplete: 'new-password', placeholder: 'Laisser vide pour ne pas changer' });
+    const newPassword = h('input', {
+        type: 'password',
+        minlength: '8',
+        autocomplete: 'new-password',
+        placeholder: user.credentialsPending ? 'Obligatoire pour activer la connexion' : 'Laisser vide pour ne pas changer',
+        required: !!user.credentialsPending,
+    });
     const access = tenantChecklist(tenants, user.tenantIds);
     const accessField = h('div', { class: 'field' }, h('label', {}, 'Organisations accessibles'), access.el);
 
@@ -287,17 +300,29 @@ function editUserModal(user, tenants) {
     role.addEventListener('change', toggleAccess);
     toggleAccess();
 
-    openModal(`Modifier ${user.email}`, [
+    const fields = [
         h('div', { class: 'field' }, h('label', {}, 'Rôle'), role),
         accessField,
-        h('div', { class: 'field' }, h('label', {}, 'Nouveau mot de passe'), newPassword),
+        h('div', { class: 'field' },
+            h('label', {}, user.credentialsPending ? 'Définir le mot de passe' : 'Nouveau mot de passe'),
+            newPassword,
+            user.credentialsPending
+                ? h('p', { class: 'hint' }, 'Profil auto-créé depuis un chrono — le mot de passe généré n’a jamais été affiché.')
+                : null,
+        ),
         h('label', { class: 'check-item' }, disabled, 'Compte désactivé'),
-    ], [
+    ];
+
+    openModal(`Modifier ${user.email}`, fields, [
         { label: 'Annuler', onClick: (c) => c() },
         {
             label: 'Enregistrer',
             class: 'btn-primary',
             onClick: async (close) => {
+                if (user.credentialsPending && !newPassword.value) {
+                    toast('Définis un mot de passe pour activer ce compte.', 'error');
+                    return;
+                }
                 const body = {
                     role: role.value,
                     disabled: disabled.checked,

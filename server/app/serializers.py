@@ -184,6 +184,7 @@ def user_out(u: dict) -> dict:
         "tenantIds": u.get("tenant_ids") or [],
         "simPseudo": sim_pseudo,
         "profileRequired": u.get("role") == "simracer" and not sim_pseudo,
+        "credentialsPending": bool(u.get("credentials_pending")),
     }
 
 

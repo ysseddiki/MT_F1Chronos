@@ -13,6 +13,7 @@ public sealed class UdpFormatProfile
     public int WeatherForecastSampleSize { get; init; }
     public int TimeTrialDataSetSize { get; init; }
     public int TimeTrialLapTimeOffset { get; init; }
+    public int CarSetupDataSize { get; init; }
 
     /// <summary>
     /// Offset of <c>m_customSetup</c> within a TimeTrialDataSet
@@ -41,6 +42,7 @@ public sealed class UdpFormatProfile
         WeatherForecastSampleSize = 9,
         TimeTrialDataSetSize = 24,
         TimeTrialLapTimeOffset = 2,
+        CarSetupDataSize = 50,
     };
 
     /// <summary>F1 26 — même header 29 octets, 24 voitures.</summary>
@@ -57,5 +59,6 @@ public sealed class UdpFormatProfile
         WeatherForecastSampleSize = 9,
         TimeTrialDataSetSize = 25,
         TimeTrialLapTimeOffset = 3,
+        CarSetupDataSize = 50,
     };
 }

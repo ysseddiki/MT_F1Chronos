@@ -7,6 +7,7 @@ public static class F1UdpConstants
     public const byte PacketSession = 1;
     public const byte PacketLapData = 2;
     public const byte PacketEvent = 3;
+    public const byte PacketCarSetups = 5;
     public const byte PacketTimeTrial = 14;
     public const byte PacketSessionHistory = 11;
 

@@ -176,7 +176,7 @@
                               Margin="0,0,0,6"
                               Checked="OnCountCustomSetupChanged"
                               Unchecked="OnCountCustomSetupChanged"/>
-                    <TextBlock Text="Menu garage TT uniquement (pas frein / différentiel MFD). Décoché = seuls les setups stock sont enregistrés."
+                    <TextBlock Text="Inclut setup créé en garage et setups chargés (ex. d’un autre joueur). Frein / différentiel MFD exclus. Décoché = stock uniquement."
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#FFC5CAD3"

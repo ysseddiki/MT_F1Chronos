@@ -165,3 +165,70 @@ def test_change_password(tmp_path: Path):
         auth.change_password(user["id"], "ancien-mdp", "x" * (MIN_PASSWORD_LENGTH - 1))
     auth.change_password(user["id"], "ancien-mdp", "nouveau-mdp")
     assert auth.verify_credentials("a@b.co", "nouveau-mdp") is not None
+
+
+def test_ensure_pilot_account_auto_creates_pending_credentials(tmp_path: Path):
+    conn = connect(tmp_path / "t.sqlite")
+    conn.execute(
+        "INSERT INTO tenants (id, label, visibility, slug, created_at) VALUES (?, ?, 'public', ?, ?)",
+        ("t1", "Club", "club", db.utcnow()),
+    )
+    conn.commit()
+    auth = UserAuth(conn)
+
+    created = auth.ensure_pilot_account("  Ada  ", "t1")
+    assert created is not None
+    assert created["role"] == "simracer"
+    assert created["sim_pseudo"] == "Ada"
+    assert created["credentials_pending"] is True
+    assert created["tenant_ids"] == ["t1"]
+    assert created["email"].endswith("@pilots.local")
+    assert auth.verify_credentials(created["email"], "nimportequoi") is None
+
+    again = auth.ensure_pilot_account("ada", "t1")
+    assert again["id"] == created["id"]
+
+    auth.update_user(created["id"], password="motdepasse-ok")
+    updated = auth.get_user(created["id"])
+    assert updated["credentials_pending"] is False
+    assert auth.verify_credentials(created["email"], "motdepasse-ok") is not None
+
+
+def test_provision_pilots_from_sync_payload(tmp_path: Path):
+    auth = _auth(tmp_path)
+    n = auth.provision_pilots_from_sync_payload(
+        {
+            "playerName": "Live",
+            "global": {
+                "tracks": [
+                    {
+                        "trackId": 1,
+                        "entries": [
+                            {"id": "a", "name": "Ada", "bestLapMs": 1},
+                            {"id": "b", "name": "Bob", "bestLapMs": 2},
+                        ],
+                    }
+                ]
+            },
+            "contests": [],
+        },
+        tenant_id=None,
+    )
+    assert n == 3
+    assert auth.get_user_by_sim_pseudo("Ada")["credentials_pending"] is True
+    assert (
+        auth.provision_pilots_from_sync_payload(
+            {
+                "global": {
+                    "tracks": [
+                        {
+                            "trackId": 1,
+                            "entries": [{"id": "a", "name": "Ada", "bestLapMs": 1}],
+                        }
+                    ]
+                }
+            },
+            None,
+        )
+        == 0
+    )

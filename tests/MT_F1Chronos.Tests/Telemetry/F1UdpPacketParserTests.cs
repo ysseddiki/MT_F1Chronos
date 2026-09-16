@@ -146,6 +146,11 @@ public class F1UdpPacketParserTests
         var state = new TelemetryState();
 
         Assert.True(parser.TryParse(
+            UdpPacketBuilder.SessionPacket(7, gameMode: F1UdpConstants.GameModeTimeTrial),
+            state, out _));
+        Assert.True(state.IsTimeTrial);
+
+        Assert.True(parser.TryParse(
             UdpPacketBuilder.TimeTrialPacket(sessionBestLapMs: 80_000, customSetup: true),
             state, out _));
         Assert.True(state.HasCustomSetup);
@@ -155,6 +160,28 @@ public class F1UdpPacketParserTests
             UdpPacketBuilder.TimeTrialPacket(sessionBestLapMs: 79_000, customSetup: false),
             state, out _));
         Assert.False(state.HasCustomSetup);
+    }
+
+    [Fact]
+    public void CarSetupDelta_MarksCustom_WhenStructuralFieldsChange()
+    {
+        var parser = new F1UdpPacketParser();
+        parser.SetFormat(2025);
+        var state = new TelemetryState();
+
+        parser.TryParse(
+            UdpPacketBuilder.SessionPacket(7, gameMode: F1UdpConstants.GameModeTimeTrial),
+            state, out _);
+
+        parser.TryParse(UdpPacketBuilder.CarSetupsPacket(frontWing: 5, rearWing: 8), state, out _);
+        Assert.False(state.HasCustomSetup);
+
+        // Menu flag still off — community / loaded setup often looks like this.
+        parser.TryParse(UdpPacketBuilder.TimeTrialPacket(customSetup: false), state, out _);
+        Assert.False(state.HasCustomSetup);
+
+        parser.TryParse(UdpPacketBuilder.CarSetupsPacket(frontWing: 12, rearWing: 3), state, out _);
+        Assert.True(state.HasCustomSetup);
     }
 
     [Fact]
